@@ -59,9 +59,12 @@ browser. No server, no build step; every file here is static.
 
 ## Deployment
 
-Every push to `main` runs `.github/workflows/deploy-pages.yml`, which
-uploads the repository as-is to GitHub Pages (no build). In the repo
-settings, *Pages → Source* must be set to **GitHub Actions** once.
+Hosted on **Cloudflare Pages**. Every push to `main` runs
+`.github/workflows/deploy-cloudflare.yml`, which uploads the repository as-is
+(no build) with `wrangler pages deploy`. The workflow needs two repository
+secrets: `CLOUDFLARE_API_TOKEN` (a token with *Cloudflare Pages: Edit*) and
+`CLOUDFLARE_ACCOUNT_ID`. `_headers` sets long-lived caching for `vendor/`;
+`.assetsignore` keeps VCS/CI files out of the upload.
 
 ## Running locally
 
@@ -92,7 +95,8 @@ tools/build-monaco.sh  rebuilds vendor/monaco + vendor/fonts (output is committe
 vendor/clang/       YoWASP runtime (bundle.js) — see NOTICE.md for licensing
 vendor/monaco/      Monaco editor bundle (MIT)
 vendor/fonts/       JetBrains Mono (OFL-1.1)
-.github/workflows/  deploys main to GitHub Pages
+.github/workflows/  deploys main to Cloudflare Pages
+_headers            Cloudflare Pages response headers (caching)
 ```
 
 ## Caveats
