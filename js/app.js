@@ -366,7 +366,6 @@ function wireControls() {
     e.target.value = '';
   });
 
-  $('run').addEventListener('click', () => scheduleCompile(0));
   $('share').addEventListener('click', async () => {
     updateHash();
     try {
