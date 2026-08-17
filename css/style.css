@@ -227,7 +227,20 @@ a { color: var(--accent); }
 
 /* ------------------------------------------------------------- records -- */
 
-.record-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.results-bar { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.record-chips { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; }
+.record-chips[hidden] { display: none; }
+.icon-btn {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  width: 30px; height: 30px; padding: 0; border-radius: 7px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--page); color: var(--text-secondary);
+}
+.icon-btn:hover { border-color: var(--baseline); color: var(--text-primary); }
+.icon-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.icon-btn .ic-tabs { display: none; }
+.icon-btn[aria-pressed="true"] .ic-stack { display: none; }
+.icon-btn[aria-pressed="true"] .ic-tabs { display: block; }
+.record-section + .record-section { margin-top: 28px; padding-top: 22px; border-top: 1px solid var(--grid-line); }
 .record-chip {
   font: inherit; font-size: 12.5px;
   padding: 4px 10px; border-radius: 999px; cursor: pointer;

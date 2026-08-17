@@ -22,6 +22,7 @@ const state = {
   extraFlags: '',
   showInternal: false,
   selectedRecord: null,
+  view: localStorage.getItem('abix-view') === 'stack' ? 'stack' : 'tabs',
 };
 
 let worker = null;
@@ -205,6 +206,8 @@ function renderResult(result) {
   const recs = displayableRecords(result);
   const chipsBox = $('record-chips');
   chipsBox.textContent = '';
+  const sectionsBox = $('sections');
+  sectionsBox.textContent = '';
 
   if (recs.length === 0) {
     $('results').hidden = true;
@@ -218,79 +221,99 @@ function renderResult(result) {
   $('empty-note').hidden = true;
   $('results').hidden = false;
 
+  const stacked = state.view === 'stack';
+  $('view-toggle').setAttribute('aria-pressed', String(stacked));
+  $('view-toggle').title = stacked ? 'Show one record at a time (tabs)' : 'Show all records stacked';
+  chipsBox.hidden = stacked;
+
   let selected = recs.find(r => recKey(r) === state.selectedRecord) ?? recs[recs.length - 1];
   state.selectedRecord = recKey(selected);
 
-  for (const rec of recs) {
-    const chip = document.createElement('button');
-    chip.className = 'record-chip' + (rec === selected ? ' selected' : '');
-    chip.innerHTML = `<span class="rc-kind">${rec.kind}</span> ${escapeText(rec.name)} <span class="rc-size">${rec.sizeBytes} B</span>`;
-    chip.addEventListener('click', () => {
-      state.selectedRecord = recKey(rec);
-      renderResult(result);
-      updateHash();
-    });
-    chipsBox.appendChild(chip);
+  if (!stacked) {
+    for (const rec of recs) {
+      const chip = document.createElement('button');
+      chip.className = 'record-chip' + (rec === selected ? ' selected' : '');
+      chip.setAttribute('role', 'tab');
+      chip.setAttribute('aria-selected', String(rec === selected));
+      chip.innerHTML = `<span class="rc-kind">${rec.kind}</span> ${escapeText(rec.name)} <span class="rc-size">${rec.sizeBytes} B</span>`;
+      chip.addEventListener('click', () => {
+        state.selectedRecord = recKey(rec);
+        renderResult(result);
+        updateHash();
+      });
+      chipsBox.appendChild(chip);
+    }
   }
 
-  const model = buildRenderModel(selected, result.scalars, result.recordIndex, result.probeSizes);
-  assignColors(model);
+  // Reset editor-linked hover state before building sections.
+  currentSections = [];
+  currentLineInfo = new Map();
+  editor.setMemberDots([]);
+  editor.setLineInlay(null);
+  editor.highlightLines([]);
 
-  $('record-title').textContent = `${selected.kind} ${selected.name}`;
-  renderSummary($('summary'), model);
+  const shown = stacked ? recs : [selected];
+  for (const rec of shown) {
+    const model = buildRenderModel(rec, result.scalars, result.recordIndex, result.probeSizes);
+    assignColors(model);
+    const section = renderSection(rec, model, stacked);
+    sectionsBox.appendChild(section.el);
+    currentSections.push(section);
+  }
 
-  const gridBox = $('grid'), tableBox = $('table');
+  void updateMemberDots(currentSections);
+  renderDiagnostics(result.diagnostics);
+}
+
+/** Build the DOM for one record (title, stat tiles, byte grid, table). */
+function renderSection(rec, model, stacked) {
+  const el = document.createElement('section');
+  el.className = 'record-section';
+  el.innerHTML = `
+    <div class="record-head"><h2 class="record-title mono"></h2></div>
+    <div class="summary"></div>
+    <p class="estimate-note" hidden>≈ some field sizes could not be measured exactly and are estimated from neighbouring offsets.</p>
+    <div class="grid-box"></div>
+    <div class="table-box"></div>`;
+  const title = el.querySelector('.record-title');
+  title.textContent = `${rec.kind} ${rec.name}`;
+  if (stacked) {
+    title.id = 'rec-' + recKey(rec).replace(/[^\w]+/g, '-');
+  }
+  renderSummary(el.querySelector('.summary'), model);
+  const gridBox = el.querySelector('.grid-box'), tableBox = el.querySelector('.table-box');
   const hover = createHoverController(gridBox, tableBox, $('tooltip'), model);
-  // Link hover both ways with the editor: grid/table hover highlights the
-  // member's source line; gutter-dot hover drives the grid/table highlight.
+  const section = { rec, model, el, hover, leafLines: new Map() };
+  // grid/table hover -> editor line highlight + inlay
   const baseEnter = hover.enter, baseLeave = hover.leave;
   hover.enter = (i, anchor, byte) => {
     baseEnter(i, anchor, byte);
-    const line = currentLeafLines.get(i);
+    const line = section.leafLines.get(i);
     editor.highlightLines(line ? [line] : []);
     editor.setLineInlay(line, line ? describeItems([model.leaves[i]]) : null);
   };
   hover.leave = () => { baseLeave(); editor.highlightLines([]); editor.setLineInlay(null); };
-  currentHover = hover;
-  currentModel = model;
-  currentLeafLines = new Map();
-  currentLineInfo = new Map();
-  editor.setMemberDots([]);
-  editor.setLineInlay(null);
   renderGrid(gridBox, model, hover);
   renderTable(tableBox, model, hover);
-  void updateMemberDots(result, selected, model);
-
-  const estCount = model.leaves.filter(l => l.estimated).length;
-  $('estimate-note').hidden = estCount === 0;
-
-  renderDiagnostics(result.diagnostics);
+  el.querySelector('.estimate-note').hidden = !model.leaves.some(l => l.estimated);
+  return section;
 }
 
 // ------------------------------------------------------- gutter dots --
 
-let currentHover = null;
-let currentModel = null;
-let currentLeafLines = new Map();
-let currentLineInfo = new Map();
+let currentSections = [];        // [{ rec, model, el, hover, leafLines }]
+let currentLineInfo = new Map(); // line -> [{ section, leaves:Set, items:[] }]
 let dotsToken = 0;
 const fieldLineCache = new Map(); // key -> fieldLines
 
-async function updateMemberDots(result, record, model) {
-  const token = ++dotsToken;
+async function fieldLinesForOwners(owners, token) {
   const isCxx = state.lang === 'c++';
   const ext = isCxx ? 'cc' : 'c';
   const mainFile = 'input.' + ext;
   const source = editor.getValue();
-
-  // One filtered AST dump per distinct owner record (the selected record plus
-  // nested/base record types); anonymous members live inside their parent's
-  // dump. Results are cached per (source, options, owner).
-  const owners = new Set([record.name, ...model.leaves.map(l => l.owner || '')]
-    .map(unqualifiedName).filter(Boolean));
   const baseKey = [source, state.lang, state.std, activeTriple(), state.extraFlags].join('\u0000');
   const fieldLines = [];
-  for (const owner of [...owners].slice(0, 12)) {
+  for (const owner of owners) {
     const key = baseKey + '\u0000' + owner;
     let lines = fieldLineCache.get(key);
     if (!lines) {
@@ -300,46 +323,81 @@ async function updateMemberDots(result, record, model) {
       let r;
       try {
         r = await compileInWorker(isCxx ? 'clang++' : 'clang', args, { [mainFile]: source });
-      } catch { return; }
-      if (token !== dotsToken) return;
+      } catch { return null; }
+      if (token !== dotsToken) return null;
       lines = extractFieldLines(r.stdout, mainFile);
       if (fieldLineCache.size > 200) fieldLineCache.clear();
       fieldLineCache.set(key, lines);
     }
     fieldLines.push(...lines);
   }
-  if (token !== dotsToken) return;
+  return fieldLines;
+}
 
-  const leafLines = matchItemsToLines(model.leaves, fieldLines);
-  const groupLines = matchItemsToLines(model.groups, fieldLines);
-  currentLeafLines = leafLines;
+async function updateMemberDots(sections) {
+  const token = ++dotsToken;
+  // One filtered AST dump per distinct owner record across all shown
+  // sections (records plus nested/base record types); anonymous members live
+  // inside their parent's dump. Results are cached per (source, options, owner).
+  const owners = new Set();
+  for (const sec of sections) {
+    owners.add(unqualifiedName(sec.rec.name));
+    for (const l of sec.model.leaves) owners.add(unqualifiedName(l.owner || ''));
+  }
+  owners.delete('');
+  const fieldLines = await fieldLinesForOwners([...owners].slice(0, 24), token);
+  if (!fieldLines || token !== dotsToken) return;
 
-  // Per line: which leaves to highlight and which items to describe. A
-  // compound member (struct/union-typed field, anonymous struct) on a line
+  // Per line: for each section, which leaves to highlight and which items to
+  // describe. A compound member (struct/union-typed field, anonymous struct)
   // contributes all of its leaves; its own offset/size/align is described.
   const info = new Map();
-  const at = (line) => { if (!info.has(line)) info.set(line, { leaves: new Set(), items: [] }); return info.get(line); };
-  for (const [gi, line] of groupLines) {
-    const g = model.groups[gi];
-    const e = at(line);
-    for (const li of g.leafIndexes) e.leaves.add(li);
-    e.items.push(g);
-  }
-  for (const [li, line] of leafLines) {
-    const e = at(line);
-    // A leaf that lives inside a group already described on this line
-    // (e.g. `struct { uint8_t a, b; };` collapsed on one line) is subsumed.
-    if (e.items.some(it => it.leafIndexes && it.leafIndexes.includes(li))) continue;
-    e.leaves.add(li);
-    e.items.push(model.leaves[li]);
+  for (const sec of sections) {
+    const { model } = sec;
+    const leafLines = matchItemsToLines(model.leaves, fieldLines);
+    const groupLines = matchItemsToLines(model.groups, fieldLines);
+    sec.leafLines = leafLines;
+    const local = new Map();
+    const at = (line) => { if (!local.has(line)) local.set(line, { section: sec, leaves: new Set(), items: [] }); return local.get(line); };
+    for (const [gi, line] of groupLines) {
+      const g = model.groups[gi];
+      const e = at(line);
+      for (const li of g.leafIndexes) e.leaves.add(li);
+      e.items.push(g);
+    }
+    for (const [li, line] of leafLines) {
+      const e = at(line);
+      if (e.items.some(it => it.leafIndexes && it.leafIndexes.includes(li))) continue;
+      e.leaves.add(li);
+      e.items.push(model.leaves[li]);
+    }
+    for (const [line, e] of local) {
+      if (!info.has(line)) info.set(line, []);
+      info.get(line).push(e);
+    }
   }
   currentLineInfo = info;
 
-  editor.setMemberDots([...info].map(([line, e]) => {
-    const first = [...e.leaves][0];
-    return { line, leafIndexes: [...e.leaves], colorClass: model.leaves[first].colorClass };
+  editor.setMemberDots([...info].map(([line, entries]) => {
+    const primary = primaryEntry(entries);
+    const first = [...primary.leaves][0];
+    return { line, leafIndexes: [...primary.leaves], colorClass: primary.section.model.leaves[first].colorClass };
   }));
   editor.refreshHover();
+}
+
+/** Prefer the section where the line's member is a direct (depth-0) member. */
+function primaryEntry(entries) {
+  return entries.find(e => e.items.some(it => (it.depth ?? it.path?.length ?? 0) === 0)) ?? entries[0];
+}
+
+function onEditorLineHover(line) {
+  const entries = line !== null ? currentLineInfo.get(line) : null;
+  for (const sec of currentSections) sec.hover.leave();
+  if (!entries) return;
+  for (const e of entries) e.section.hover.enterMany([...e.leaves], true);
+  editor.highlightLines([line]);
+  editor.setLineInlay(line, describeItems(primaryEntry(entries).items));
 }
 
 /** "offset 16 · 8 B · align 8" for one or more items on a line. */
@@ -469,6 +527,12 @@ function wireControls() {
   bindCheck('wasi-libc', 'wasiLibc');
   bindCheck('warn-padded', 'warnPadded');
   $('extra-flags').addEventListener('input', (e) => { state.extraFlags = e.target.value; scheduleCompile(800); });
+  $('view-toggle').addEventListener('click', () => {
+    state.view = state.view === 'stack' ? 'tabs' : 'stack';
+    localStorage.setItem('abix-view', state.view);
+    if (lastResult) renderResult(lastResult);
+    updateHash();
+  });
   $('show-internal').addEventListener('change', (e) => {
     state.showInternal = e.target.checked;
     if (lastResult) renderResult(lastResult);
@@ -508,7 +572,7 @@ function updateHash() {
     t: state.triple, ct: state.customTriple,
     p: state.pack, mb: +state.msBitfields, se: +state.shortEnums,
     sw: +state.shortWchar, wl: +state.wasiLibc, wp: +state.warnPadded,
-    x: state.extraFlags, r: state.selectedRecord,
+    x: state.extraFlags, r: state.selectedRecord, vw: state.view,
   };
   const enc = btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(data))))
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -534,6 +598,7 @@ function loadHash() {
     state.shortWchar = !!data.sw; state.wasiLibc = !!data.wl; state.warnPadded = !!data.wp;
     state.extraFlags = data.x || '';
     state.selectedRecord = data.r || null;
+    if (data.vw === 'stack' || data.vw === 'tabs') state.view = data.vw;
     return true;
   } catch {
     return false;
@@ -566,14 +631,7 @@ editor = createEditor($('editor'), {
   language: state.lang === 'c++' ? 'cpp' : 'c',
   onChange: () => scheduleCompile(600),
 });
-editor.onLineHover((line) => {
-  if (!currentHover) return;
-  const e = line !== null ? currentLineInfo.get(line) : null;
-  if (!e) { currentHover.leave(); return; }
-  currentHover.enterMany([...e.leaves]);
-  editor.highlightLines([line]);
-  editor.setLineInlay(line, describeItems(e.items));
-});
+editor.onLineHover(onEditorLineHover);
 applyStateToControls();
 wireControls();
 startWorker();

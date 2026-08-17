@@ -319,8 +319,8 @@ export function createHoverController(gridRoot, tableRoot, tooltip, model) {
   };
   return {
     /** Highlight several leaves at once, without a tooltip. */
-    enterMany(leafIndexes) {
-      clear();
+    enterMany(leafIndexes, additive = false) {
+      if (!additive) clear();
       for (const i of leafIndexes) mark(i);
     },
     enter(leafIndex, anchor, byte) {

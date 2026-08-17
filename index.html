@@ -98,14 +98,18 @@
     <p id="empty-note" class="empty-note" hidden></p>
 
     <div id="results" hidden>
-      <div id="record-chips" class="record-chips" role="tablist"></div>
-      <div class="record-head">
-        <h2 id="record-title" class="mono"></h2>
+      <div class="results-bar">
+        <div id="record-chips" class="record-chips" role="tablist"></div>
+        <button id="view-toggle" class="icon-btn" type="button" aria-pressed="false" title="Show all records stacked" aria-label="Toggle between tabs and stacked view">
+          <svg class="ic-tabs" viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+            <path d="M2.5 6.5h15v10h-15z M2.5 6.5v-3h6l1.5 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          </svg>
+          <svg class="ic-stack" viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+            <path d="M2.5 3.5h15v4h-15z M2.5 10h15v4h-15z M2.5 16.5h15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+          </svg>
+        </button>
       </div>
-      <div id="summary" class="summary"></div>
-      <p id="estimate-note" class="estimate-note" hidden>≈ some field sizes could not be measured exactly and are estimated from neighbouring offsets.</p>
-      <div id="grid" class="grid-box"></div>
-      <div id="table" class="table-box"></div>
+      <div id="sections"></div>
     </div>
 
     <details id="diagnostics-wrap" class="diagnostics" hidden>

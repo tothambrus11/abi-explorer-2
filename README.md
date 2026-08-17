@@ -32,6 +32,8 @@ browser. No server, no build step; every file here is static.
 - Monaco editor (self-hosted, JetBrains Mono, custom “Glacier” light and
   “Nocturne” dark themes that follow your OS setting) with clang's
   diagnostics shown inline as squiggles.
+- Records can be shown one at a time (tabs) or all stacked below each
+  other — toggle with the icon at the top of the results pane (remembered).
 - Share button encodes the source + all options into the URL fragment.
 - Installable PWA: after the first visit the app shell, editor, fonts and
   the clang runtime are cached, so it keeps working fully offline (a
