@@ -5,10 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Struct Layout Explorer — clang in your browser</title>
 <meta name="description" content="Visualize C and C++ struct layouts (field offsets, sizes, alignment, padding) for any LLVM target — powered by clang compiled to WebAssembly, running entirely in your browser.">
+<meta name="theme-color" content="#0f1420">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="css/fonts.css">
 <link rel="stylesheet" href="vendor/monaco/monaco.css">
 <link rel="stylesheet" href="css/style.css">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='0' y='4' width='5' height='8' fill='%232a78d6'/%3E%3Crect x='5' y='4' width='3' height='8' fill='%23e1e0d9'/%3E%3Crect x='8' y='4' width='8' height='8' fill='%23eb6834'/%3E%3C/svg%3E">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
 </head>
 <body>
 
@@ -121,6 +125,7 @@
   <span>· layouts computed by <a href="https://llvm.org/" rel="noopener">clang</a> compiled to WebAssembly
     (<a href="https://yowasp.org/" rel="noopener">YoWASP</a> build, Apache-2.0 w/ LLVM exception)</span>
   <span>· nothing you type leaves this page</span>
+  <span id="offline-status" class="offline-status" hidden>· ✓ available offline</span>
 </footer>
 
 <script type="module" src="js/app.js"></script>

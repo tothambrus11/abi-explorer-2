@@ -33,6 +33,10 @@ browser. No server, no build step; every file here is static.
   “Nocturne” dark themes that follow your OS setting) with clang's
   diagnostics shown inline as squiggles.
 - Share button encodes the source + all options into the URL fragment.
+- Installable PWA: after the first visit the app shell, editor, fonts and
+  the clang runtime are cached, so it keeps working fully offline (a
+  “✓ available offline” badge appears in the footer once everything is
+  cached).
 
 ## How it works
 
@@ -90,6 +94,8 @@ js/model.js         render model: leaf extents, padding runs, stats
 js/render.js        summary tiles, byte grid, field table, tooltips
 js/targets.js       curated targets, standards, examples
 js/editor.js        Monaco setup: themes, diagnostics → markers
+sw.js               service worker (offline app shell)
+manifest.webmanifest, icons/  PWA metadata
 tools/vendor-clang.sh  optional: vendor the wasm assets for offline hosting
 tools/build-monaco.sh  rebuilds vendor/monaco + vendor/fonts (output is committed)
 vendor/clang/       YoWASP runtime (bundle.js) — see NOTICE.md for licensing

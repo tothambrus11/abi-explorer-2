@@ -49,6 +49,8 @@ function startWorker() {
         : `Preparing clang… ${pct}%`;
     } else if (msg.type === 'ready') {
       workerReady = true;
+      clangCached = true;
+      updateOfflineStatus();
       $('loading').hidden = true;
       $('clang-version').textContent = msg.version.replace(/\(.*?\)\s*/, '');
       scheduleCompile(0);
@@ -445,3 +447,34 @@ editor = createEditor($('editor'), {
 applyStateToControls();
 wireControls();
 startWorker();
+registerServiceWorker();
+
+// ------------------------------------------------------------------- PWA --
+
+let clangCached = false;
+
+async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.register(new URL('../sw.js', import.meta.url), { scope: './' });
+    // A new worker installed while the page is open: activate it now so the
+    // next reload gets the fresh shell.
+    reg.addEventListener('updatefound', () => {
+      const w = reg.installing;
+      w?.addEventListener('statechange', () => {
+        if (w.state === 'installed' && navigator.serviceWorker.controller) {
+          w.postMessage({ type: 'SKIP_WAITING' });
+        }
+      });
+    });
+    await navigator.serviceWorker.ready;
+    updateOfflineStatus();
+  } catch (e) {
+    console.warn('service worker registration failed', e);
+  }
+}
+
+function updateOfflineStatus() {
+  const controlled = !!navigator.serviceWorker?.controller;
+  $('offline-status').hidden = !(controlled && clangCached);
+}
