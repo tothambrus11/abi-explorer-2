@@ -180,7 +180,9 @@ export function createEditor(container, opts) {
 
   const dotDecorations = editor.createDecorationsCollection([]);
   const lineDecorations = editor.createDecorationsCollection([]);
+  const inlayDecorations = editor.createDecorationsCollection([]);
   const dotsByLine = new Map();
+  let hoverLine = null, hoverCb = null;
   let suppress = false;
   model.onDidChangeContent(() => { if (!suppress) opts.onChange?.(); });
 
@@ -254,20 +256,30 @@ export function createEditor(container, opts) {
         options: { isWholeLine: true, className: 'member-line-hovered', linesDecorationsClassName: 'member-line-hovered-gutter' },
       })));
     },
-    /** cb(leafIndexes|null, glyphElement) as the mouse enters/leaves a dot. */
-    onDotHover(cb) {
-      let current = null;
-      const leave = () => { if (current !== null) { current = null; cb(null, null); } };
+    /** cb(lineNumber|null) as the mouse moves across lines (gutter or text). */
+    onLineHover(cb) {
+      const leave = () => { if (hoverLine !== null) { hoverLine = null; cb(null); } };
       editor.onMouseMove((e) => {
-        const t = e.target;
-        if (t.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN && dotsByLine.has(t.position.lineNumber)) {
-          if (current !== t.position.lineNumber) {
-            current = t.position.lineNumber;
-            cb(dotsByLine.get(current), t.element);
-          }
-        } else leave();
+        const line = e.target?.position?.lineNumber ?? null;
+        if (line === null) { leave(); return; }
+        if (line !== hoverLine) { hoverLine = line; cb(line); }
       });
       editor.onMouseLeave(leave);
+      hoverCb = cb;
+    },
+    /** Re-emit the currently hovered line (after the line→member map changed). */
+    refreshHover() { if (hoverCb && hoverLine !== null) hoverCb(hoverLine); },
+    /** Show an inlay-hint-like annotation at the end of `line` (or null to clear). */
+    setLineInlay(line, text) {
+      if (!line || !text) { inlayDecorations.set([]); return; }
+      const col = model.getLineMaxColumn(line);
+      inlayDecorations.set([{
+        range: new monaco.Range(line, col, line, col),
+        options: {
+          after: { content: '\u2002' + text, inlineClassName: 'member-inlay', cursorStops: monaco.editor.InjectedTextCursorStops.None },
+          showIfCollapsed: true,
+        },
+      }]);
     },
   };
 }

@@ -84,10 +84,10 @@ function splitJsonDocuments(text) {
 }
 
 /**
- * Map render-model leaves to editor lines.
- * @returns Map leafIndex -> line
+ * Map render-model items (leaves or groups: objects with .owner/.name/.kind)
+ * to editor lines. Returns Map itemIndex -> line.
  */
-export function matchLeavesToLines(leaves, fieldLines) {
+export function matchItemsToLines(items, fieldLines) {
   const byOwnerName = new Map();
   const byName = new Map();
   for (const f of fieldLines) {
@@ -97,13 +97,14 @@ export function matchLeavesToLines(leaves, fieldLines) {
     byName.get(f.name).push(f.line);
   }
   const result = new Map();
-  leaves.forEach((leaf, i) => {
-    if (leaf.kind === 'special' || !leaf.name || leaf.name.startsWith('(')) return;
-    const owner = unqualified(leaf.owner || '');
-    let line = byOwnerName.get(owner + '\u0000' + leaf.name);
-    if (line === undefined && /\(anon/.test(leaf.owner || '')) line = byOwnerName.get('\u0000' + leaf.name);
-    if (line === undefined) {
-      const cands = byName.get(leaf.name);
+  items.forEach((item, i) => {
+    if (item.kind === 'special' || item.isBase || !item.name) return;
+    const name = item.name.startsWith('(') ? '' : item.name; // anonymous member
+    const owner = unqualified(item.owner || '');
+    let line = byOwnerName.get(owner + '\u0000' + name);
+    if (line === undefined && /\(anon/.test(item.owner || '')) line = byOwnerName.get('\u0000' + name);
+    if (line === undefined && name) {
+      const cands = byName.get(name);
       if (cands && new Set(cands).size === 1) line = cands[0];
     }
     if (line !== undefined) result.set(i, line);

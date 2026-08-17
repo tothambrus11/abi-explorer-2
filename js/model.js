@@ -16,6 +16,7 @@ import { resolveTypeSize } from './size-resolver.js';
 export function buildRenderModel(record, scalars, recordIndex, probeSizes) {
   const leaves = [];
   const markers = [];
+  const groups = []; // record-typed members / bases with inline children
   const unresolved = new Set();
   const sizeBits = record.sizeBytes * 8;
 
@@ -33,7 +34,7 @@ export function buildRenderModel(record, scalars, recordIndex, probeSizes) {
           kind: 'special', row, path,
           name: row.label, type: null,
           offsetBits: row.offsetBits,
-          sizeBits: ptrBits ?? 0,
+          sizeBits: ptrBits ?? 0, align: scalars.get('ptr')?.align ?? null,
           estimated: ptrBits === null,
           depth: path.length, owner,
         });
@@ -45,7 +46,14 @@ export function buildRenderModel(record, scalars, recordIndex, probeSizes) {
         if (row.isEmpty) {
           markers.push({ kind: 'empty-base', row, path, name: row.type, offsetBits: row.offsetBits });
         }
-        visit(row.children, [...path, baseLabel(row)], parentEnd, inUnion, stripKw(row.type));
+        {
+          const first = leaves.length;
+          visit(row.children, [...path, baseLabel(row)], parentEnd, inUnion, stripKw(row.type));
+          const r = resolveWithProbes(row.type, scalars, recordIndex, probeSizes);
+          groups.push({ kind: row.rowKind, name: baseLabel(row), type: row.type, owner, path,
+            offsetBits: row.offsetBits, sizeBits: r.bits ?? null, align: r.align ?? null,
+            leafIndexes: range(first, leaves.length), isBase: true });
+        }
         continue;
       }
 
@@ -57,7 +65,7 @@ export function buildRenderModel(record, scalars, recordIndex, probeSizes) {
           leaves.push({
             kind: 'bitfield', row, path,
             name: row.name || '(pad bits)', type: row.type,
-            offsetBits: row.offsetBits, sizeBits: row.bitWidth,
+            offsetBits: row.offsetBits, sizeBits: row.bitWidth, align: null,
             estimated: false, depth: path.length, owner,
           });
         }
@@ -67,13 +75,20 @@ export function buildRenderModel(record, scalars, recordIndex, probeSizes) {
       if (row.children.length > 0) {
         // Record-typed member with inline children: recurse; the member's own
         // extent is implied by its children plus its record's size for padding.
-        visit(row.children, pathName, endOf(row, scalars, recordIndex, probeSizes, parentEnd), inUnion || isUnionType(row.type, recordIndex), stripKw(row.type));
-        // Also record the member itself as a group extent (not a leaf).
+        {
+          const first = leaves.length;
+          visit(row.children, pathName, endOf(row, scalars, recordIndex, probeSizes, parentEnd), inUnion || isUnionType(row.type, recordIndex), stripKw(row.type));
+          const r = resolveWithProbes(row.type, scalars, recordIndex, probeSizes);
+          groups.push({ kind: 'member', name: row.name || '(anonymous)', type: row.type, owner, path,
+            offsetBits: row.offsetBits, sizeBits: r.bits ?? null, align: r.align ?? null,
+            leafIndexes: range(first, leaves.length), isBase: false });
+        }
         continue;
       }
 
       const res = resolveWithProbes(row.type, scalars, recordIndex, probeSizes);
       let bits = res.bits, estimated = false;
+      const align = res.align ?? null;
       if (bits === undefined) {
         if (res.probe) unresolved.add(res.probe);
         // Estimate: to next sibling's offset, or to parent end.
@@ -83,7 +98,7 @@ export function buildRenderModel(record, scalars, recordIndex, probeSizes) {
       leaves.push({
         kind: 'field', row, path,
         name: row.name || '(anonymous)', type: row.type,
-        offsetBits: row.offsetBits, sizeBits: bits,
+        offsetBits: row.offsetBits, sizeBits: bits, align,
         estimated, depth: path.length, owner,
       });
     }
@@ -108,7 +123,13 @@ export function buildRenderModel(record, scalars, recordIndex, probeSizes) {
   }
   const paddingBytes = paddings.reduce((n, p) => n + (p.end - p.start), 0);
 
-  return { record, leaves, markers, paddings, sizeBits, paddingBytes, unresolved: [...unresolved] };
+  return { record, leaves, groups, markers, paddings, sizeBits, paddingBytes, unresolved: [...unresolved] };
+}
+
+function range(a, b) {
+  const out = [];
+  for (let i = a; i < b; i++) out.push(i);
+  return out;
 }
 
 function stripKw(type) {
@@ -130,7 +151,8 @@ function resolveWithProbes(type, scalars, recordIndex, probeSizes) {
   const res = resolveTypeSize(type, scalars, recordIndex);
   if (res.bits !== undefined) return res;
   if (res.probe && probeSizes.has(res.probe)) {
-    return { bits: probeSizes.get(res.probe) * (res.arrayCount ?? 1) };
+    const pr = probeSizes.get(res.probe);
+    return { bits: pr.bits * (res.arrayCount ?? 1), align: pr.align };
   }
   return res;
 }

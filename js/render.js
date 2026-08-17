@@ -310,16 +310,24 @@ export function createHoverController(gridRoot, tableRoot, tooltip, model) {
     for (const n of document.querySelectorAll('.hovered')) n.classList.remove('hovered');
     tooltip.hidden = true;
   };
+  const mark = (leafIndex) => {
+    for (const n of gridRoot.querySelectorAll(`[data-leaf="${leafIndex}"]`)) n.classList.add('hovered');
+    for (const n of gridRoot.querySelectorAll('[data-multi]')) {
+      if (n.dataset.multi.split(',').map(Number).includes(leafIndex)) n.classList.add('hovered');
+    }
+    for (const n of tableRoot.querySelectorAll(`tr[data-leaf="${leafIndex}"]`)) n.classList.add('hovered');
+  };
   return {
+    /** Highlight several leaves at once, without a tooltip. */
+    enterMany(leafIndexes) {
+      clear();
+      for (const i of leafIndexes) mark(i);
+    },
     enter(leafIndex, anchor, byte) {
       clear();
       const leaf = model.leaves[leafIndex];
       if (!leaf) return;
-      for (const n of gridRoot.querySelectorAll(`[data-leaf="${leafIndex}"]`)) n.classList.add('hovered');
-      for (const n of gridRoot.querySelectorAll('[data-multi]')) {
-        if (n.dataset.multi.split(',').map(Number).includes(leafIndex)) n.classList.add('hovered');
-      }
-      for (const n of tableRoot.querySelectorAll(`tr[data-leaf="${leafIndex}"]`)) n.classList.add('hovered');
+      mark(leafIndex);
       const lines = [
         `<strong>${escapeHtml(pathLabel(leaf))}</strong>`,
         leaf.type ? escapeHtml(leaf.type) : '',

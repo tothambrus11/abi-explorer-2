@@ -31,6 +31,10 @@ struct __abix_s_bool { bool v; };
 #else
 struct __abix_s_bool { _Bool v; };
 #endif
+struct __abix_s_u8 { __UINT8_TYPE__ v; };
+struct __abix_s_u16 { __UINT16_TYPE__ v; };
+struct __abix_s_u32 { __UINT32_TYPE__ v; };
+struct __abix_s_u64 { __UINT64_TYPE__ v; };
 #ifdef __SIZEOF_INT128__
 struct __abix_s_int128 { __int128 v; };
 #endif
@@ -110,6 +114,10 @@ function scalarBits(scalars, key) {
   const e = scalars.get(key);
   return e ? e.size * 8 : null;
 }
+function scalarAlign(scalars, key) {
+  const e = scalars.get(key);
+  return e ? e.align : null;
+}
 
 function resolveInner(t, scalars, recordIndex, depth) {
   if (depth > 8 || t === '') return {};
@@ -118,7 +126,7 @@ function resolveInner(t, scalars, recordIndex, depth) {
   // References -> pointer size
   if (/&+$/.test(t)) {
     const b = scalarBits(scalars, 'ptr');
-    return b ? { bits: b } : {};
+    return b ? { bits: b, align: scalarAlign(scalars, 'ptr') } : {};
   }
 
   // Function pointers, incl. arrays of them: "int (*[2])(void)", "void (*)(double)"
@@ -129,7 +137,7 @@ function resolveInner(t, scalars, recordIndex, depth) {
     const key = /::\*/.test(t) ? null : 'fnptr'; // member pointers: probe instead
     if (key === null) return { probe: t };
     const b = scalarBits(scalars, key) ?? scalarBits(scalars, 'ptr');
-    return b ? { bits: b * count } : {};
+    return b ? { bits: b * count, align: scalarAlign(scalars, key) ?? scalarAlign(scalars, 'ptr') } : {};
   }
 
   // Array suffixes: "char[3][5]", flexible "char[]"
@@ -141,7 +149,7 @@ function resolveInner(t, scalars, recordIndex, depth) {
     }
     if (flexible) return { bits: 0 };
     const el = resolveInner(arr[1], scalars, recordIndex, depth + 1);
-    if (el.bits !== undefined) return { bits: el.bits * count };
+    if (el.bits !== undefined) return { bits: el.bits * count, align: el.align };
     if (el.probe) return { probe: el.probe, arrayCount: count };
     return {};
   }
@@ -149,27 +157,27 @@ function resolveInner(t, scalars, recordIndex, depth) {
   // Pointers
   if (/\*$/.test(t)) {
     const b = scalarBits(scalars, 'ptr');
-    return b ? { bits: b } : {};
+    return b ? { bits: b, align: scalarAlign(scalars, 'ptr') } : {};
   }
 
   // _Complex
   const cx = /^_Complex\s+(.*)$/.exec(t) || /^(.*)\s+_Complex$/.exec(t);
   if (cx) {
     const el = resolveInner(cx[1], scalars, recordIndex, depth + 1);
-    return el.bits !== undefined ? { bits: el.bits * 2 } : { probe: t };
+    return el.bits !== undefined ? { bits: el.bits * 2, align: el.align } : { probe: t };
   }
 
   // Fixed-width integer typedefs (spec-mandated widths)
   const fixed = /^(?:std::)?u?int(8|16|32|64)_t$/.exec(t);
-  if (fixed) return { bits: Number(fixed[1]) };
-  const fixedChar = /^(?:std::)?char(16|32)_t$/.exec(t) || /^char(16|32)_t$/.exec(t);
-  if (fixedChar) return { bits: Number(fixedChar[1]) };
+  if (fixed) return { bits: Number(fixed[1]), align: scalarAlign(scalars, 'u' + fixed[1]) ?? undefined };
+  const fixedChar = /^(?:std::)?char(16|32)_t$/.exec(t);
+  if (fixedChar) return { bits: Number(fixedChar[1]), align: scalarAlign(scalars, 'u' + fixedChar[1]) ?? undefined };
 
   // Scalar table
   const key = SCALAR_SPELLINGS.get(t);
   if (key) {
     const b = scalarBits(scalars, key);
-    if (b !== null) return { bits: b };
+    if (b !== null) return { bits: b, align: scalarAlign(scalars, key) };
   }
 
   // _BitInt: representation is target-dependent -> probe
@@ -178,7 +186,7 @@ function resolveInner(t, scalars, recordIndex, depth) {
   // Record types dumped in this TU
   const bare = t.replace(RECORD_KW_RE, '');
   const rec = recordIndex.get(bare) || recordIndex.get(anonKey(bare)) || recordIndex.get(t);
-  if (rec) return { bits: rec.sizeBytes * 8, record: rec };
+  if (rec) return { bits: rec.sizeBytes * 8, align: rec.align, record: rec };
 
   // Anything containing an anonymous spelling can't be probed
   if (/\((?:anonymous|unnamed|lambda)/.test(t)) return {};
@@ -240,13 +248,13 @@ export function failingProbeIndices(stderr, fileName, firstProbeLine, probes) {
   return bad;
 }
 
-/** Extract probe results: Map spelling -> bits. */
+/** Extract probe results: Map spelling -> { bits, align }. */
 export function readProbeResults(records, probes) {
   const bySuffix = new Map(probes.map(p => [`__abix_p${p.index}`, p]));
   const out = new Map();
   for (const rec of records) {
     const p = bySuffix.get(rec.name);
-    if (p) out.set(p.spelling, rec.sizeBytes * 8);
+    if (p) out.set(p.spelling, { bits: rec.sizeBytes * 8, align: rec.align });
   }
   return out;
 }

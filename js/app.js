@@ -4,7 +4,7 @@ import { STATIC_PROBE_SOURCE, buildScalarTable, buildRecordIndex, buildProbeSour
 import { buildRenderModel } from './model.js';
 import { assignColors, renderSummary, renderGrid, renderTable, createHoverController } from './render.js';
 import { createEditor, parseDiagnostics } from './editor.js';
-import { extractFieldLines, matchLeavesToLines } from './ast-locations.js';
+import { extractFieldLines, matchItemsToLines } from './ast-locations.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -148,7 +148,7 @@ async function runPipeline(token) {
     const r2 = await compileInWorker(argv0, buildArgs([probe2File]), { [probe2File]: psrc });
     if (token !== compileToken) return null;
     const recs2 = parseRecordLayouts(r2.stdout);
-    for (const [spelling, bits] of readProbeResults(recs2, probes)) probeSizes.set(spelling, bits);
+    for (const [spelling, pr] of readProbeResults(recs2, probes)) probeSizes.set(spelling, pr);
     if (r2.code === 0) break;
     const bad = failingProbeIndices(r2.stderr, probe2File, firstProbeLine, probes);
     if (bad.size === 0) break;
@@ -248,11 +248,15 @@ function renderResult(result) {
     baseEnter(i, anchor, byte);
     const line = currentLeafLines.get(i);
     editor.highlightLines(line ? [line] : []);
+    editor.setLineInlay(line, line ? describeItems([model.leaves[i]]) : null);
   };
-  hover.leave = () => { baseLeave(); editor.highlightLines([]); };
+  hover.leave = () => { baseLeave(); editor.highlightLines([]); editor.setLineInlay(null); };
   currentHover = hover;
+  currentModel = model;
   currentLeafLines = new Map();
+  currentLineInfo = new Map();
   editor.setMemberDots([]);
+  editor.setLineInlay(null);
   renderGrid(gridBox, model, hover);
   renderTable(tableBox, model, hover);
   void updateMemberDots(result, selected, model);
@@ -266,7 +270,9 @@ function renderResult(result) {
 // ------------------------------------------------------- gutter dots --
 
 let currentHover = null;
+let currentModel = null;
 let currentLeafLines = new Map();
+let currentLineInfo = new Map();
 let dotsToken = 0;
 const fieldLineCache = new Map(); // key -> fieldLines
 
@@ -304,15 +310,59 @@ async function updateMemberDots(result, record, model) {
   }
   if (token !== dotsToken) return;
 
-  currentLeafLines = matchLeavesToLines(model.leaves, fieldLines);
-  const byLine = new Map();
-  for (const [leafIndex, line] of currentLeafLines) {
-    if (!byLine.has(line)) byLine.set(line, []);
-    byLine.get(line).push(leafIndex);
+  const leafLines = matchItemsToLines(model.leaves, fieldLines);
+  const groupLines = matchItemsToLines(model.groups, fieldLines);
+  currentLeafLines = leafLines;
+
+  // Per line: which leaves to highlight and which items to describe. A
+  // compound member (struct/union-typed field, anonymous struct) on a line
+  // contributes all of its leaves; its own offset/size/align is described.
+  const info = new Map();
+  const at = (line) => { if (!info.has(line)) info.set(line, { leaves: new Set(), items: [] }); return info.get(line); };
+  for (const [gi, line] of groupLines) {
+    const g = model.groups[gi];
+    const e = at(line);
+    for (const li of g.leafIndexes) e.leaves.add(li);
+    e.items.push(g);
   }
-  editor.setMemberDots([...byLine].map(([line, leafIndexes]) => ({
-    line, leafIndexes, colorClass: model.leaves[leafIndexes[0]].colorClass,
-  })));
+  for (const [li, line] of leafLines) {
+    const e = at(line);
+    // A leaf that lives inside a group already described on this line
+    // (e.g. `struct { uint8_t a, b; };` collapsed on one line) is subsumed.
+    if (e.items.some(it => it.leafIndexes && it.leafIndexes.includes(li))) continue;
+    e.leaves.add(li);
+    e.items.push(model.leaves[li]);
+  }
+  currentLineInfo = info;
+
+  editor.setMemberDots([...info].map(([line, e]) => {
+    const first = [...e.leaves][0];
+    return { line, leafIndexes: [...e.leaves], colorClass: model.leaves[first].colorClass };
+  }));
+  editor.refreshHover();
+}
+
+/** "offset 16 · 8 B · align 8" for one or more items on a line. */
+function describeItems(items) {
+  const one = items.length === 1;
+  const it = items[0];
+  if (one && it.kind === 'bitfield') {
+    return `offset ${fmtOffset(it.offsetBits)} · ${it.sizeBits} bit${it.sizeBits === 1 ? '' : 's'}`;
+  }
+  const start = Math.min(...items.map(i => i.offsetBits));
+  const ends = items.map(i => i.offsetBits + (i.sizeBits ?? 0));
+  const end = Math.max(...ends);
+  const sizeBytes = (end - start) / 8;
+  const parts = [`offset ${fmtOffset(start)}`];
+  if (one && it.sizeBits === null) parts.push('size ?');
+  else parts.push(`${one && it.estimated ? '≈' : ''}${Number.isInteger(sizeBytes) ? sizeBytes : sizeBytes.toFixed(1)} B`);
+  if (one && it.align) parts.push(`align ${it.align}`);
+  else if (!one) parts.unshift(`${items.length} members ·`);
+  return parts.join(' · ').replace('· ·', '·');
+}
+
+function fmtOffset(bits) {
+  return bits % 8 === 0 ? String(bits / 8) : `${Math.floor(bits / 8)} +${bits % 8}b`;
 }
 
 function unqualifiedName(name) {
@@ -516,10 +566,13 @@ editor = createEditor($('editor'), {
   language: state.lang === 'c++' ? 'cpp' : 'c',
   onChange: () => scheduleCompile(600),
 });
-editor.onDotHover((leafIndexes, glyphEl) => {
+editor.onLineHover((line) => {
   if (!currentHover) return;
-  if (leafIndexes) currentHover.enter(leafIndexes[0], glyphEl, null);
-  else currentHover.leave();
+  const e = line !== null ? currentLineInfo.get(line) : null;
+  if (!e) { currentHover.leave(); return; }
+  currentHover.enterMany([...e.leaves]);
+  editor.highlightLines([line]);
+  editor.setLineInlay(line, describeItems(e.items));
 });
 applyStateToControls();
 wireControls();
