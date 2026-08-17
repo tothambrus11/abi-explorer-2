@@ -277,6 +277,27 @@ export function createEditor(container, opts) {
     /** Re-emit the current hover (after the line→member map changed). */
     refreshHover() { if (hoverCb && hoverLine !== null) hoverCb(hoverLine, hoverWord); },
     getLineText: (line) => model.getLineContent(line),
+    /**
+     * Register a documentation hover: provide(line, {word,startColumn,endColumn})
+     * returns Markdown or null.
+     */
+    registerTypeHover(provide) {
+      for (const lang of ['c', 'cpp']) {
+        monaco.languages.registerHoverProvider(lang, {
+          provideHover(m, position) {
+            if (m !== model) return null;
+            const w = m.getWordAtPosition(position);
+            if (!w) return null;
+            const md = provide(position.lineNumber, w);
+            if (!md) return null;
+            return {
+              range: new monaco.Range(position.lineNumber, w.startColumn, position.lineNumber, w.endColumn),
+              contents: [{ value: md, supportHtml: false }],
+            };
+          },
+        });
+      }
+    },
     /** Show an inlay-hint-like annotation at the end of `line` (or null to clear). */
     setLineInlay(line, text) {
       if (!line || !text) { inlayDecorations.set([]); return; }

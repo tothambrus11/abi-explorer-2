@@ -395,11 +395,10 @@ function primaryEntry(entries) {
 function onEditorLineHover(line, word) {
   const entries = line !== null ? currentLineInfo.get(line) : null;
   for (const sec of currentSections) sec.hover.leave();
-  const typeText = word ? describeTypeAt(line, word) : null;
-  if (!entries && !typeText) return;
-  if (entries) for (const e of entries) e.section.hover.enterMany([...e.leaves], true);
+  if (!entries) return;
+  for (const e of entries) e.section.hover.enterMany([...e.leaves], true);
   editor.highlightLines([line]);
-  editor.setLineInlay(line, typeText ?? describeItems(primaryEntry(entries).items));
+  editor.setLineInlay(line, describeItems(primaryEntry(entries).items));
 }
 
 // -------------------------------------------------------- type hover --
@@ -407,7 +406,10 @@ function onEditorLineHover(line, word) {
 const TYPE_WORDS = new Set(['unsigned', 'signed', 'long', 'short', 'int', 'char', 'double', 'float',
   '_Complex', 'const', 'volatile', 'struct', 'union', 'class', 'enum', '__int128', 'wchar_t', 'bool', '_Bool']);
 
-/** If the hovered word names a type, return "type · size · align" text. */
+/**
+ * If the word at (line, word) names a type, return Markdown documenting its
+ * size/alignment for the current target; otherwise null.
+ */
 function describeTypeAt(line, word) {
   if (!lastResult) return null;
   const text = editor.getLineText(line);
@@ -427,6 +429,7 @@ function describeTypeAt(line, word) {
   }
   cands.sort((x, y) => y.length - x.length);
   const { records, scalars, recordIndex, probeSizes } = lastResult;
+  const target = activeTriple();
   for (const cand of cands) {
     if (/^(?:const|volatile|struct|union|class|enum)$/.test(cand)) continue;
     // 1. Records (by exact, unqualified, or template-base name)
@@ -434,10 +437,20 @@ function describeTypeAt(line, word) {
     const recs = records.filter(r => r.name === bare || r.name.endsWith('::' + bare) ||
       r.name.replace(/<[^]*$/, '') === bare || r.name.replace(/<[^]*$/, '').endsWith('::' + bare));
     if (recs.length) {
-      return recs.slice(0, 3).map(r => {
-        const pad = r.dsize !== undefined && r.dsize !== r.sizeBytes ? ` · dsize ${r.dsize}` : '';
-        return `${r.kind} ${r.name} · ${r.sizeBytes} B · align ${r.align}${pad}`;
-      }).join('  |  ') + (recs.length > 3 ? '  |  …' : '');
+      const blocks = recs.slice(0, 4).map(r => {
+        const model = buildRenderModel(r, scalars, recordIndex, probeSizes);
+        const rows = [
+          `| sizeof | **${r.sizeBytes}** B |`,
+          `| alignof | **${r.align}** B |`,
+          `| padding | ${model.paddingBytes} B${r.sizeBytes ? ` (${Math.round(100 * model.paddingBytes / r.sizeBytes)}%)` : ''} |`,
+        ];
+        if (r.dsize !== undefined && r.dsize !== r.sizeBytes) rows.push(`| dsize | ${r.dsize} B |`);
+        if (r.nvsize !== undefined && r.nvsize !== r.sizeBytes) rows.push(`| nvsize | ${r.nvsize} B |`);
+        if (r.nvalign !== undefined && r.nvalign !== r.align) rows.push(`| nvalign | ${r.nvalign} B |`);
+        const n = model.leaves.filter(l => l.kind !== 'special').length;
+        return `**\`${r.kind} ${r.name}\`** — ${n} member${n === 1 ? '' : 's'}\n\n| | |\n|---|---|\n${rows.join('\n')}`;
+      });
+      return blocks.join('\n\n---\n\n') + (recs.length > 4 ? '\n\n…' : '') + `\n\n*${target}*`;
     }
     // 2. Scalars / typedefs / pointers etc.
     if (!/[A-Za-z_]/.test(cand[0])) continue;
@@ -445,7 +458,9 @@ function describeTypeAt(line, word) {
     const pr = res.bits === undefined && res.probe ? probeSizes.get(res.probe) : null;
     const bits = res.bits ?? pr?.bits, align = res.align ?? pr?.align;
     if (bits !== undefined && bits > 0) {
-      return `${cand} · ${bits % 8 ? bits + ' bits' : bits / 8 + ' B'}${align ? ' · align ' + align : ''}`;
+      const size = bits % 8 ? `${bits} bits` : `**${bits / 8}** B`;
+      return `**\`${cand}\`**\n\n| | |\n|---|---|\n| sizeof | ${size} |` +
+        (align ? `\n| alignof | **${align}** B |` : '') + `\n\n*${target}*`;
     }
   }
   return null;
@@ -687,6 +702,7 @@ editor = createEditor($('editor'), {
   onChange: () => scheduleCompile(600),
 });
 editor.onLineHover(onEditorLineHover);
+editor.registerTypeHover((line, word) => describeTypeAt(line, word));
 applyStateToControls();
 wireControls();
 startWorker();
