@@ -1,0 +1,6 @@
+# Large clang-wasm assets are fetched at runtime from the npm registry (see
+# js/clang-worker.js), or vendored locally with tools/vendor-clang.sh for
+# fully offline hosting. Only bundle.js (the JS runtime) is committed.
+vendor/clang/llvm.core*.wasm
+vendor/clang/llvm-resources.tar
+node_modules/

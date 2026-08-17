@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Struct Layout Explorer — clang in your browser</title>
+<meta name="description" content="Visualize C and C++ struct layouts (field offsets, sizes, alignment, padding) for any LLVM target — powered by clang compiled to WebAssembly, running entirely in your browser.">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='0' y='4' width='5' height='8' fill='%232a78d6'/%3E%3Crect x='5' y='4' width='3' height='8' fill='%23e1e0d9'/%3E%3Crect x='8' y='4' width='8' height='8' fill='%23eb6834'/%3E%3C/svg%3E">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true"><i class="b1"></i><i class="b2"></i><i class="b3"></i></span>
+    <h1>Struct Layout Explorer</h1>
+    <span class="subtitle">clang → WebAssembly · runs entirely in your browser</span>
+  </div>
+  <div class="top-actions">
+    <span id="status" class="status" role="status"></span>
+    <button id="run" class="btn primary" title="Recompile (also happens automatically as you type)">Compile</button>
+    <button id="share" class="btn" title="Copy a shareable link that encodes the code and all options">Share</button>
+  </div>
+</header>
+
+<section class="controls">
+  <div class="control-group">
+    <label class="control-label" for="target">Target</label>
+    <select id="target" class="input"></select>
+    <span id="custom-triple-wrap" hidden>
+      <input id="custom-triple" class="input mono" placeholder="e.g. thumbv7em-none-eabihf" spellcheck="false">
+    </span>
+  </div>
+
+  <div class="control-group">
+    <span class="control-label" id="lang-label">Language</span>
+    <div class="segmented" role="radiogroup" aria-labelledby="lang-label">
+      <label><input type="radio" name="lang" value="c" checked><span>C</span></label>
+      <label><input type="radio" name="lang" value="c++"><span>C++</span></label>
+    </div>
+    <select id="std" class="input" aria-label="Language standard"></select>
+  </div>
+
+  <details class="more-options">
+    <summary>More options</summary>
+    <div class="options-grid">
+      <label class="opt">
+        <span>Max field alignment <code>-fpack-struct</code></span>
+        <select id="pack" class="input">
+          <option value="">default</option>
+          <option value="1">1</option><option value="2">2</option>
+          <option value="4">4</option><option value="8">8</option><option value="16">16</option>
+        </select>
+      </label>
+      <label class="opt check"><input type="checkbox" id="ms-bitfields">
+        <span>MS bit-field layout <code>-mms-bitfields</code></span></label>
+      <label class="opt check"><input type="checkbox" id="short-enums">
+        <span>Smallest-fit enums <code>-fshort-enums</code></span></label>
+      <label class="opt check"><input type="checkbox" id="short-wchar">
+        <span>2-byte wchar_t <code>-fshort-wchar</code></span></label>
+      <label class="opt check"><input type="checkbox" id="warn-padded">
+        <span>Report padding <code>-Wpadded</code></span></label>
+      <label class="opt check"><input type="checkbox" id="wasi-libc">
+        <span>WASI libc headers <small>lets <code>&lt;stdio.h&gt;</code> &amp; co. resolve on non-WASI targets — their internals reflect wasi-libc, not the target's real libc</small></span></label>
+      <label class="opt wide">
+        <span>Extra flags</span>
+        <input id="extra-flags" class="input mono" placeholder="-funsigned-char -malign-double …" spellcheck="false">
+      </label>
+      <label class="opt check"><input type="checkbox" id="show-internal">
+        <span>Show compiler-internal &amp; anonymous records</span></label>
+    </div>
+  </details>
+</section>
+
+<main class="panes">
+  <section class="pane editor-pane">
+    <div class="pane-head">
+      <h2>Code</h2>
+      <select id="example" class="input small" aria-label="Load an example">
+        <option value="">Examples…</option>
+      </select>
+    </div>
+    <textarea id="source" class="editor" spellcheck="false" autocomplete="off"
+      aria-label="C or C++ source code"></textarea>
+    <p class="hint">Freestanding headers (<code>&lt;stdint.h&gt;</code>, <code>&lt;stddef.h&gt;</code>, …) work for every
+      target<span id="cxx-hint">; libc++ headers are available in C++ mode</span>. Templates must be instantiated to appear.</p>
+  </section>
+
+  <section class="pane result-pane">
+    <div id="loading" class="loading">
+      <div class="load-track"><div id="load-bar" class="load-fill"></div></div>
+      <p id="load-text">Downloading clang (wasm)…</p>
+      <p class="load-note">~100 MB on first visit, then served from browser cache.</p>
+    </div>
+
+    <p id="empty-note" class="empty-note" hidden></p>
+
+    <div id="results" hidden>
+      <div id="record-chips" class="record-chips" role="tablist"></div>
+      <div class="record-head">
+        <h2 id="record-title" class="mono"></h2>
+      </div>
+      <div id="summary" class="summary"></div>
+      <p id="estimate-note" class="estimate-note" hidden>≈ some field sizes could not be measured exactly and are estimated from neighbouring offsets.</p>
+      <div id="grid" class="grid-box"></div>
+      <div id="table" class="table-box"></div>
+    </div>
+
+    <details id="diagnostics-wrap" class="diagnostics" hidden>
+      <summary>Compiler diagnostics</summary>
+      <pre id="diagnostics" class="mono"></pre>
+    </details>
+  </section>
+</main>
+
+<div id="tooltip" class="tooltip" hidden></div>
+
+<footer class="footer">
+  <span id="clang-version" class="mono"></span>
+  <span>· layouts computed by <a href="https://llvm.org/" rel="noopener">clang</a> compiled to WebAssembly
+    (<a href="https://yowasp.org/" rel="noopener">YoWASP</a> build, Apache-2.0 w/ LLVM exception)</span>
+  <span>· nothing you type leaves this page</span>
+</footer>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
