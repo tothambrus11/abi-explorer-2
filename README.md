@@ -29,6 +29,9 @@ browser. No server, no build step; every file here is static.
 - Freestanding headers (`<stdint.h>`, `<stddef.h>`, `<limits.h>`, …) resolve
   for every target; libc++ headers are available in C++ mode; WASI libc
   headers can optionally be mapped in for other targets.
+- Monaco editor (self-hosted, JetBrains Mono, custom “Glacier” light and
+  “Nocturne” dark themes that follow your OS setting) with clang's
+  diagnostics shown inline as squiggles.
 - Share button encodes the source + all options into the URL fragment.
 
 ## How it works
@@ -54,6 +57,12 @@ browser. No server, no build step; every file here is static.
    bit-fields, virtual bases, anonymous members); `js/render.js` draws the
    byte grid and field table.
 
+## Deployment
+
+Every push to `main` runs `.github/workflows/deploy-pages.yml`, which
+uploads the repository as-is to GitHub Pages (no build). In the repo
+settings, *Pages → Source* must be set to **GitHub Actions** once.
+
 ## Running locally
 
 Any static file server works:
@@ -77,8 +86,13 @@ js/size-resolver.js scalar probe table + type-spelling → size resolution
 js/model.js         render model: leaf extents, padding runs, stats
 js/render.js        summary tiles, byte grid, field table, tooltips
 js/targets.js       curated targets, standards, examples
+js/editor.js        Monaco setup: themes, diagnostics → markers
 tools/vendor-clang.sh  optional: vendor the wasm assets for offline hosting
+tools/build-monaco.sh  rebuilds vendor/monaco + vendor/fonts (output is committed)
 vendor/clang/       YoWASP runtime (bundle.js) — see NOTICE.md for licensing
+vendor/monaco/      Monaco editor bundle (MIT)
+vendor/fonts/       JetBrains Mono (OFL-1.1)
+.github/workflows/  deploys main to GitHub Pages
 ```
 
 ## Caveats

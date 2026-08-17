@@ -90,9 +90,8 @@ body {
   font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
-.mono, code, pre, .editor {
-  font-family: ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace;
-}
+:root { --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Code", Consolas, monospace; }
+.mono, code, pre { font-family: var(--font-mono); }
 
 a { color: var(--accent); }
 
@@ -202,13 +201,16 @@ a { color: var(--accent); }
 .pane-head h2 { font-size: 13px; margin: 0; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.06em; }
 
 .editor {
-  width: 100%; min-height: 420px; resize: vertical;
-  padding: 12px; border-radius: 8px;
+  width: 100%; height: 480px; min-height: 240px; resize: vertical;
+  overflow: hidden; border-radius: 8px;
   border: 1px solid var(--border);
-  background: var(--page); color: var(--text-primary);
-  font-size: 13px; line-height: 1.5; tab-size: 4;
+  background: var(--editor-bg);
 }
-.editor:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.editor:focus-within { border-color: var(--accent); }
+.editor .monaco-editor, .editor .monaco-editor .overflow-guard { border-radius: 8px; }
+:root { --editor-bg: #f7f9fc; }
+@media (prefers-color-scheme: dark) { :root:where(:not([data-theme="light"])) { --editor-bg: #0f1420; } }
+:root[data-theme="dark"] { --editor-bg: #0f1420; }
 .hint { color: var(--text-muted); font-size: 12px; margin: 8px 0 0; }
 
 /* -------------------------------------------------------------- loading -- */
@@ -340,8 +342,8 @@ a { color: var(--accent); }
 .col-chip { width: 20px; }
 .chip { display: inline-block; width: 12px; height: 12px; border-radius: 3px; }
 .col-name .crumb { color: var(--text-muted); font-size: 12px; }
-.col-name .fname { font-family: ui-monospace, "SF Mono", Consolas, monospace; }
-.col-type { color: var(--text-secondary); font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 12px; }
+.col-name .fname { font-family: var(--font-mono); }
+.col-type { color: var(--text-secondary); font-family: var(--font-mono); font-size: 12px; }
 .col-num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .col-num.est { color: var(--text-muted); }
 .col-pad { color: var(--c-2); }

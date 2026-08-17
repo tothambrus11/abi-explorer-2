@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Struct Layout Explorer — clang in your browser</title>
 <meta name="description" content="Visualize C and C++ struct layouts (field offsets, sizes, alignment, padding) for any LLVM target — powered by clang compiled to WebAssembly, running entirely in your browser.">
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="vendor/monaco/monaco.css">
 <link rel="stylesheet" href="css/style.css">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='0' y='4' width='5' height='8' fill='%232a78d6'/%3E%3Crect x='5' y='4' width='3' height='8' fill='%23e1e0d9'/%3E%3Crect x='8' y='4' width='8' height='8' fill='%23eb6834'/%3E%3C/svg%3E">
 </head>
@@ -80,8 +82,7 @@
         <option value="">Examples…</option>
       </select>
     </div>
-    <textarea id="source" class="editor" spellcheck="false" autocomplete="off"
-      aria-label="C or C++ source code"></textarea>
+    <div id="editor" class="editor" role="region" aria-label="C or C++ source code editor"></div>
     <p class="hint">Freestanding headers (<code>&lt;stdint.h&gt;</code>, <code>&lt;stddef.h&gt;</code>, …) work for every
       target<span id="cxx-hint">; libc++ headers are available in C++ mode</span>. Templates must be instantiated to appear.</p>
   </section>

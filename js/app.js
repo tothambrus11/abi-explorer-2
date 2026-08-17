@@ -3,6 +3,7 @@ import { parseRecordLayouts, isInternalRecord, isAnonymousRecord } from './layou
 import { STATIC_PROBE_SOURCE, buildScalarTable, buildRecordIndex, buildProbeSource, failingProbeIndices, readProbeResults } from './size-resolver.js';
 import { buildRenderModel } from './model.js';
 import { assignColors, renderSummary, renderGrid, renderTable, createHoverController } from './render.js';
+import { createEditor, parseDiagnostics } from './editor.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -30,6 +31,7 @@ let compiling = false;
 let nextMsgId = 1;
 const inflight = new Map();
 
+let editor = null;
 let lastResult = null; // { records, userRecords, scalars, recordIndex, probeSizes, diagnostics }
 
 // ------------------------------------------------------------- worker API --
@@ -106,7 +108,7 @@ async function runPipeline(token) {
   const isCxx = state.lang === 'c++';
   const ext = isCxx ? 'cc' : 'c';
   const argv0 = isCxx ? 'clang++' : 'clang';
-  const source = $('source').value;
+  const source = editor.getValue();
   const mainFile = 'input.' + ext;
   const probeFile = 'abix_scalars.' + ext;
 
@@ -246,6 +248,8 @@ function renderResult(result) {
 }
 
 function renderDiagnostics(text) {
+  const ext = state.lang === 'c++' ? 'cc' : 'c';
+  editor.setDiagnostics(parseDiagnostics(text || '', 'input.' + ext));
   const box = $('diagnostics');
   const wrap = $('diagnostics-wrap');
   if (!text) { wrap.hidden = true; box.textContent = ''; return; }
@@ -324,6 +328,7 @@ function wireControls() {
   for (const radio of document.querySelectorAll('input[name="lang"]')) {
     radio.addEventListener('change', () => {
       state.lang = radio.value;
+      editor.setLanguage(state.lang);
       populateStd();
       scheduleCompile(0);
     });
@@ -344,24 +349,13 @@ function wireControls() {
     if (lastResult) renderResult(lastResult);
   });
 
-  const src = $('source');
-  src.addEventListener('input', () => scheduleCompile(600));
-  src.addEventListener('keydown', (e) => {
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const { selectionStart: s, selectionEnd: en, value } = src;
-      src.value = value.slice(0, s) + '    ' + value.slice(en);
-      src.selectionStart = src.selectionEnd = s + 4;
-      scheduleCompile(600);
-    }
-  });
-
   $('example').addEventListener('change', (e) => {
     const ex = EXAMPLES[Number(e.target.value)];
     if (!ex) return;
-    $('source').value = ex.source;
+    editor.setValue(ex.source);
     if (ex.lang !== state.lang) {
       state.lang = ex.lang;
+      editor.setLanguage(state.lang);
       document.querySelector(`input[name="lang"][value="${ex.lang}"]`).checked = true;
       populateStd();
     }
@@ -386,7 +380,7 @@ function wireControls() {
 
 function updateHash() {
   const data = {
-    v: 1, s: $('source').value, l: state.lang, std: state.std,
+    v: 1, s: editor.getValue(), l: state.lang, std: state.std,
     t: state.triple, ct: state.customTriple,
     p: state.pack, mb: +state.msBitfields, se: +state.shortEnums,
     sw: +state.shortWchar, wl: +state.wasiLibc, wp: +state.warnPadded,
@@ -397,6 +391,8 @@ function updateHash() {
   history.replaceState(null, '', '#' + enc);
 }
 
+let pendingSource = '';
+
 function loadHash() {
   if (!location.hash || location.hash.length < 2) return false;
   try {
@@ -404,7 +400,7 @@ function loadHash() {
     const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
     const data = JSON.parse(new TextDecoder().decode(bytes));
     if (data.v !== 1) return false;
-    $('source').value = data.s ?? '';
+    pendingSource = data.s ?? '';
     state.lang = data.l === 'c++' ? 'c++' : 'c';
     state.std = data.std || (state.lang === 'c++' ? DEFAULT_CXX_STD : DEFAULT_C_STD);
     state.triple = data.t || DEFAULT_TRIPLE;
@@ -440,7 +436,12 @@ function applyStateToControls() {
 
 populateControls();
 const restored = loadHash();
-if (!restored) $('source').value = EXAMPLES[0].source;
+if (!restored) pendingSource = EXAMPLES[0].source;
+editor = createEditor($('editor'), {
+  value: pendingSource,
+  language: state.lang === 'c++' ? 'cpp' : 'c',
+  onChange: () => scheduleCompile(600),
+});
 applyStateToControls();
 wireControls();
 startWorker();
