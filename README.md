@@ -91,7 +91,8 @@ js/size-resolver.js scalar probe table + type-spelling → size resolution
 js/model.js         render model: leaf extents, padding runs, stats
 js/render.js        summary tiles, byte grid, field table, tooltips
 js/targets.js       curated targets, standards, examples
-js/editor.js        Monaco setup: themes, diagnostics → markers
+js/editor.js        Monaco setup: themes, diagnostics → markers, gutter dots
+js/ast-locations.js -ast-dump=json → member source lines (for gutter dots)
 sw.js               service worker (offline app shell)
 manifest.webmanifest, icons/  PWA metadata
 tools/vendor-clang.sh  optional: vendor the wasm assets for offline hosting

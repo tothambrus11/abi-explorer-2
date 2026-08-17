@@ -328,6 +328,23 @@ a { color: var(--accent); }
 }
 .prop-seg { min-width: 2px; border-right: 1px solid var(--surface-1); }
 
+/* member dots in the editor gutter */
+.monaco-editor .member-dot { cursor: pointer; }
+.monaco-editor .member-dot::before {
+  content: ""; position: absolute; left: 50%; top: 50%;
+  width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%;
+  background: var(--dot, var(--text-muted));
+  box-shadow: 0 0 0 1.5px var(--editor-bg);
+  transition: transform 0.12s;
+}
+.monaco-editor .member-dot:hover::before { transform: scale(1.3); }
+.member-c-1 { --dot: var(--c-1); } .member-c-2 { --dot: var(--c-2); }
+.member-c-3 { --dot: var(--c-3); } .member-c-4 { --dot: var(--c-4); }
+.member-c-5 { --dot: var(--c-5); } .member-c-6 { --dot: var(--c-6); }
+.member-c-7 { --dot: var(--c-7); } .member-c-8 { --dot: var(--c-8); }
+.member-c-special { --dot: var(--c-special); }
+.monaco-editor .member-line-hovered { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+
 /* --------------------------------------------------------------- table -- */
 
 .table-box { overflow-x: auto; }

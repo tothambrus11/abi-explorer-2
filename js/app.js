@@ -4,6 +4,7 @@ import { STATIC_PROBE_SOURCE, buildScalarTable, buildRecordIndex, buildProbeSour
 import { buildRenderModel } from './model.js';
 import { assignColors, renderSummary, renderGrid, renderTable, createHoverController } from './render.js';
 import { createEditor, parseDiagnostics } from './editor.js';
+import { extractFieldLines, matchLeavesToLines } from './ast-locations.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -240,13 +241,85 @@ function renderResult(result) {
 
   const gridBox = $('grid'), tableBox = $('table');
   const hover = createHoverController(gridBox, tableBox, $('tooltip'), model);
+  // Link hover both ways with the editor: grid/table hover highlights the
+  // member's source line; gutter-dot hover drives the grid/table highlight.
+  const baseEnter = hover.enter, baseLeave = hover.leave;
+  hover.enter = (i, anchor, byte) => {
+    baseEnter(i, anchor, byte);
+    const line = currentLeafLines.get(i);
+    editor.highlightLines(line ? [line] : []);
+  };
+  hover.leave = () => { baseLeave(); editor.highlightLines([]); };
+  currentHover = hover;
+  currentLeafLines = new Map();
+  editor.setMemberDots([]);
   renderGrid(gridBox, model, hover);
   renderTable(tableBox, model, hover);
+  void updateMemberDots(result, selected, model);
 
   const estCount = model.leaves.filter(l => l.estimated).length;
   $('estimate-note').hidden = estCount === 0;
 
   renderDiagnostics(result.diagnostics);
+}
+
+// ------------------------------------------------------- gutter dots --
+
+let currentHover = null;
+let currentLeafLines = new Map();
+let dotsToken = 0;
+const fieldLineCache = new Map(); // key -> fieldLines
+
+async function updateMemberDots(result, record, model) {
+  const token = ++dotsToken;
+  const isCxx = state.lang === 'c++';
+  const ext = isCxx ? 'cc' : 'c';
+  const mainFile = 'input.' + ext;
+  const source = editor.getValue();
+
+  // One filtered AST dump per distinct owner record (the selected record plus
+  // nested/base record types); anonymous members live inside their parent's
+  // dump. Results are cached per (source, options, owner).
+  const owners = new Set([record.name, ...model.leaves.map(l => l.owner || '')]
+    .map(unqualifiedName).filter(Boolean));
+  const baseKey = [source, state.lang, state.std, activeTriple(), state.extraFlags].join('\u0000');
+  const fieldLines = [];
+  for (const owner of [...owners].slice(0, 12)) {
+    const key = baseKey + '\u0000' + owner;
+    let lines = fieldLineCache.get(key);
+    if (!lines) {
+      const args = buildArgs([mainFile]).filter(a => a !== '-fdump-record-layouts-complete');
+      const i = args.indexOf('-Xclang'); // the now-dangling -Xclang of the layout dump
+      args.splice(i, 1, '-Xclang', '-ast-dump=json', '-Xclang', '-ast-dump-filter=' + owner);
+      let r;
+      try {
+        r = await compileInWorker(isCxx ? 'clang++' : 'clang', args, { [mainFile]: source });
+      } catch { return; }
+      if (token !== dotsToken) return;
+      lines = extractFieldLines(r.stdout, mainFile);
+      if (fieldLineCache.size > 200) fieldLineCache.clear();
+      fieldLineCache.set(key, lines);
+    }
+    fieldLines.push(...lines);
+  }
+  if (token !== dotsToken) return;
+
+  currentLeafLines = matchLeavesToLines(model.leaves, fieldLines);
+  const byLine = new Map();
+  for (const [leafIndex, line] of currentLeafLines) {
+    if (!byLine.has(line)) byLine.set(line, []);
+    byLine.get(line).push(leafIndex);
+  }
+  editor.setMemberDots([...byLine].map(([line, leafIndexes]) => ({
+    line, leafIndexes, colorClass: model.leaves[leafIndexes[0]].colorClass,
+  })));
+}
+
+function unqualifiedName(name) {
+  if (/\((?:anonymous|unnamed|lambda)/.test(name)) return '';
+  const n = name.replace(/<[^]*$/, '');
+  const i = n.lastIndexOf('::');
+  return i >= 0 ? n.slice(i + 2) : n;
 }
 
 function renderDiagnostics(text) {
@@ -442,6 +515,11 @@ editor = createEditor($('editor'), {
   value: pendingSource,
   language: state.lang === 'c++' ? 'cpp' : 'c',
   onChange: () => scheduleCompile(600),
+});
+editor.onDotHover((leafIndexes, glyphEl) => {
+  if (!currentHover) return;
+  if (leafIndexes) currentHover.enter(leafIndexes[0], glyphEl, null);
+  else currentHover.leave();
 });
 applyStateToControls();
 wireControls();

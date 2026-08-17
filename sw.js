@@ -20,6 +20,7 @@ const PRECACHE = [
   './css/style.css',
   './css/fonts.css',
   './js/app.js',
+  './js/ast-locations.js',
   './js/clang-worker.js',
   './js/editor.js',
   './js/layout-parser.js',

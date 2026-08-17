@@ -21,7 +21,7 @@ export function buildRenderModel(record, scalars, recordIndex, probeSizes) {
 
   const ptrBits = scalars.get('ptr') ? scalars.get('ptr').size * 8 : null;
 
-  const visit = (rows, path, parentEnd, inUnion) => {
+  const visit = (rows, path, parentEnd, inUnion, owner) => {
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       const label = row.rowKind === 'field' ? (row.name || '(anonymous)') : null;
@@ -35,7 +35,7 @@ export function buildRenderModel(record, scalars, recordIndex, probeSizes) {
           offsetBits: row.offsetBits,
           sizeBits: ptrBits ?? 0,
           estimated: ptrBits === null,
-          depth: path.length,
+          depth: path.length, owner,
         });
         continue;
       }
@@ -45,7 +45,7 @@ export function buildRenderModel(record, scalars, recordIndex, probeSizes) {
         if (row.isEmpty) {
           markers.push({ kind: 'empty-base', row, path, name: row.type, offsetBits: row.offsetBits });
         }
-        visit(row.children, [...path, baseLabel(row)], parentEnd, inUnion);
+        visit(row.children, [...path, baseLabel(row)], parentEnd, inUnion, stripKw(row.type));
         continue;
       }
 
@@ -58,7 +58,7 @@ export function buildRenderModel(record, scalars, recordIndex, probeSizes) {
             kind: 'bitfield', row, path,
             name: row.name || '(pad bits)', type: row.type,
             offsetBits: row.offsetBits, sizeBits: row.bitWidth,
-            estimated: false, depth: path.length,
+            estimated: false, depth: path.length, owner,
           });
         }
         continue;
@@ -67,7 +67,7 @@ export function buildRenderModel(record, scalars, recordIndex, probeSizes) {
       if (row.children.length > 0) {
         // Record-typed member with inline children: recurse; the member's own
         // extent is implied by its children plus its record's size for padding.
-        visit(row.children, pathName, endOf(row, scalars, recordIndex, probeSizes, parentEnd), inUnion || isUnionType(row.type, recordIndex));
+        visit(row.children, pathName, endOf(row, scalars, recordIndex, probeSizes, parentEnd), inUnion || isUnionType(row.type, recordIndex), stripKw(row.type));
         // Also record the member itself as a group extent (not a leaf).
         continue;
       }
@@ -84,12 +84,12 @@ export function buildRenderModel(record, scalars, recordIndex, probeSizes) {
         kind: 'field', row, path,
         name: row.name || '(anonymous)', type: row.type,
         offsetBits: row.offsetBits, sizeBits: bits,
-        estimated, depth: path.length,
+        estimated, depth: path.length, owner,
       });
     }
   };
 
-  visit(record.rows, [], sizeBits, record.kind === 'union');
+  visit(record.rows, [], sizeBits, record.kind === 'union', record.name);
 
   // Compute padding: bytes of the record not covered by any leaf.
   const covered = new Array(record.sizeBytes).fill(false);
@@ -109,6 +109,10 @@ export function buildRenderModel(record, scalars, recordIndex, probeSizes) {
   const paddingBytes = paddings.reduce((n, p) => n + (p.end - p.start), 0);
 
   return { record, leaves, markers, paddings, sizeBits, paddingBytes, unresolved: [...unresolved] };
+}
+
+function stripKw(type) {
+  return (type || '').replace(/^(?:struct|class|union|__interface)\s+/, '');
 }
 
 function baseLabel(row) {

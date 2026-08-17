@@ -154,6 +154,8 @@ export function createEditor(container, opts) {
     tabSize: 4,
     insertSpaces: true,
     minimap: { enabled: false },
+    glyphMargin: true,
+    lineNumbersMinChars: 3,
     scrollBeyondLastLine: false,
     automaticLayout: true,
     renderLineHighlight: 'line',
@@ -176,6 +178,9 @@ export function createEditor(container, opts) {
     stickyScroll: { enabled: false },
   });
 
+  const dotDecorations = editor.createDecorationsCollection([]);
+  const lineDecorations = editor.createDecorationsCollection([]);
+  const dotsByLine = new Map();
   let suppress = false;
   model.onDidChangeContent(() => { if (!suppress) opts.onChange?.(); });
 
@@ -222,6 +227,48 @@ export function createEditor(container, opts) {
       monaco.editor.setModelMarkers(model, 'clang', markers);
     },
     focus: () => editor.focus(),
+
+    /**
+     * Draw colored dots in the glyph margin.
+     * @param dots [{ line, colorClass, leafIndexes: [..], title }]
+     */
+    setMemberDots(dots) {
+      dotsByLine.clear();
+      const decos = dots.map(d => {
+        dotsByLine.set(d.line, d.leafIndexes);
+        return {
+          range: new monaco.Range(d.line, 1, d.line, 1),
+          options: {
+            glyphMarginClassName: 'member-dot member-' + d.colorClass,
+            glyphMarginHoverMessage: null,
+            stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
+          },
+        };
+      });
+      dotDecorations.set(decos);
+    },
+    /** Highlight source lines (whole-line background), or [] to clear. */
+    highlightLines(lines) {
+      lineDecorations.set(lines.map(l => ({
+        range: new monaco.Range(l, 1, l, 1),
+        options: { isWholeLine: true, className: 'member-line-hovered', linesDecorationsClassName: 'member-line-hovered-gutter' },
+      })));
+    },
+    /** cb(leafIndexes|null, glyphElement) as the mouse enters/leaves a dot. */
+    onDotHover(cb) {
+      let current = null;
+      const leave = () => { if (current !== null) { current = null; cb(null, null); } };
+      editor.onMouseMove((e) => {
+        const t = e.target;
+        if (t.type === monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN && dotsByLine.has(t.position.lineNumber)) {
+          if (current !== t.position.lineNumber) {
+            current = t.position.lineNumber;
+            cb(dotsByLine.get(current), t.element);
+          }
+        } else leave();
+      });
+      editor.onMouseLeave(leave);
+    },
   };
 }
 

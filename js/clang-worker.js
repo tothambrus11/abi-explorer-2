@@ -152,8 +152,11 @@ async function compile(argv0, args, files) {
   return { code, stdout, stderr };
 }
 
-self.onmessage = async (ev) => {
-  const msg = ev.data;
+// clang runs in a single wasm instance: serialize all requests.
+let queue = Promise.resolve();
+self.onmessage = (ev) => { queue = queue.then(() => handle(ev.data)).catch(() => {}); };
+
+async function handle(msg) {
   try {
     if (msg.type === 'init') {
       await loadClang((done, total, phase) =>
@@ -167,4 +170,4 @@ self.onmessage = async (ev) => {
   } catch (e) {
     postMessage({ type: 'error', id: msg.id, message: String(e && e.stack || e) });
   }
-};
+}
