@@ -22,7 +22,6 @@
     <h1>ABI Explorer</h1>
   </div>
   <div class="top-actions">
-    <span id="status" class="status" role="status"></span>
     <button id="share" class="btn" title="Copy a shareable link that encodes the code and all options">Share</button>
   </div>
 </header>
@@ -79,6 +78,20 @@
   <section class="pane editor-pane">
     <div class="pane-head">
       <h2>Code</h2>
+      <span id="status" class="status" role="status" aria-live="polite" title="">
+        <svg class="st-spin" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="28" stroke-dashoffset="10" stroke-linecap="round"/>
+        </svg>
+        <svg class="st-ok" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <circle cx="8" cy="8" r="7" fill="currentColor"/>
+          <path d="M4.5 8.3l2.3 2.3 4.7-4.9" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <svg class="st-err" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+          <circle cx="8" cy="8" r="7" fill="currentColor"/>
+          <path d="M5.3 5.3l5.4 5.4M10.7 5.3l-5.4 5.4" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <span class="st-text"></span>
+      </span>
       <select id="example" class="input small" aria-label="Load an example">
         <option value="">Examples…</option>
       </select>

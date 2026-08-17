@@ -180,7 +180,7 @@ async function compileNow() {
       if (result.code !== 0 && nUser === 0) {
         showStatus('error', 'compilation failed — see diagnostics');
       } else if (result.code !== 0) {
-        showStatus('warn', 'compiled with errors — layouts may be incomplete');
+        showStatus('error', 'compiled with errors — layouts may be incomplete');
       } else if (result.diagnostics) {
         showStatus('warn', 'compiled with warnings');
       } else {
@@ -447,10 +447,12 @@ function escapeText(s) {
   return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
-function showStatus(kind, text) {
+function showStatus(kind, text, visibleText = '') {
   const s = $('status');
   s.className = 'status ' + kind;
-  s.textContent = text;
+  s.title = text;
+  s.setAttribute('aria-label', text);
+  s.querySelector('.st-text').textContent = visibleText;
 }
 
 // --------------------------------------------------------------- controls --
@@ -555,12 +557,14 @@ function wireControls() {
 
   $('share').addEventListener('click', async () => {
     updateHash();
+    const btn = $('share'), label = btn.textContent;
     try {
       await navigator.clipboard.writeText(location.href);
-      showStatus('ok', 'link copied');
+      btn.textContent = 'Copied!';
     } catch {
-      showStatus('warn', 'copy failed — copy the address bar URL');
+      btn.textContent = 'Copy failed';
     }
+    setTimeout(() => { btn.textContent = label; }, 1500);
   });
 }
 

@@ -114,16 +114,16 @@ a { color: var(--accent); }
 .brand-mark .b3 { background: var(--c-2); width: 14px; }
 .top-actions { display: flex; align-items: center; gap: 10px; }
 
-.status { font-size: 12.5px; color: var(--text-muted); min-height: 1em; }
-.status.error { color: var(--error); }
-.status.warn { color: var(--warn-ink); }
-.status.ok { color: var(--ok-ink); }
-.status.busy::before {
-  content: ""; display: inline-block; width: 10px; height: 10px;
-  margin-right: 6px; vertical-align: -1px;
-  border: 2px solid var(--grid-line); border-top-color: var(--accent);
-  border-radius: 50%; animation: spin 0.8s linear infinite;
+.status {
+  display: inline-flex; align-items: center; gap: 6px; margin-left: auto; margin-right: 10px;
+  font-size: 12px; color: var(--text-muted); min-height: 16px;
 }
+.status svg { display: none; flex: none; }
+.status.busy .st-spin { display: block; color: var(--accent); animation: spin 0.9s linear infinite; }
+.status.ok .st-ok, .status.warn .st-ok { display: block; color: var(--ok-ink); }
+.status.warn .st-ok { color: var(--warn-ink); }
+.status.error .st-err { display: block; color: var(--error); }
+.status .st-text:empty { display: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .btn {
