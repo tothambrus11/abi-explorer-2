@@ -182,7 +182,7 @@ export function createEditor(container, opts) {
   const lineDecorations = editor.createDecorationsCollection([]);
   const inlayDecorations = editor.createDecorationsCollection([]);
   const dotsByLine = new Map();
-  let hoverLine = null, hoverCb = null;
+  let hoverLine = null, hoverWord = null, hoverCb = null;
   let suppress = false;
   model.onDidChangeContent(() => { if (!suppress) opts.onChange?.(); });
 
@@ -258,17 +258,25 @@ export function createEditor(container, opts) {
     },
     /** cb(lineNumber|null) as the mouse moves across lines (gutter or text). */
     onLineHover(cb) {
-      const leave = () => { if (hoverLine !== null) { hoverLine = null; cb(null); } };
+      const leave = () => { if (hoverLine !== null) { hoverLine = null; hoverWord = null; cb(null, null); } };
       editor.onMouseMove((e) => {
-        const line = e.target?.position?.lineNumber ?? null;
-        if (line === null) { leave(); return; }
-        if (line !== hoverLine) { hoverLine = line; cb(line); }
+        const pos = e.target?.position ?? null;
+        if (!pos) { leave(); return; }
+        // Only real text under the pointer counts as hovering a word.
+        const onText = e.target.type === monaco.editor.MouseTargetType.CONTENT_TEXT;
+        const w = onText ? model.getWordAtPosition(pos) : null;
+        const word = w ? { word: w.word, startColumn: w.startColumn, endColumn: w.endColumn } : null;
+        if (pos.lineNumber !== hoverLine || (word?.word ?? null) !== (hoverWord?.word ?? null)) {
+          hoverLine = pos.lineNumber; hoverWord = word;
+          cb(hoverLine, word);
+        }
       });
       editor.onMouseLeave(leave);
       hoverCb = cb;
     },
-    /** Re-emit the currently hovered line (after the line→member map changed). */
-    refreshHover() { if (hoverCb && hoverLine !== null) hoverCb(hoverLine); },
+    /** Re-emit the current hover (after the line→member map changed). */
+    refreshHover() { if (hoverCb && hoverLine !== null) hoverCb(hoverLine, hoverWord); },
+    getLineText: (line) => model.getLineContent(line),
     /** Show an inlay-hint-like annotation at the end of `line` (or null to clear). */
     setLineInlay(line, text) {
       if (!line || !text) { inlayDecorations.set([]); return; }

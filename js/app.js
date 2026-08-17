@@ -5,6 +5,7 @@ import { buildRenderModel } from './model.js';
 import { assignColors, renderSummary, renderGrid, renderTable, createHoverController } from './render.js';
 import { createEditor, parseDiagnostics } from './editor.js';
 import { extractFieldLines, matchItemsToLines } from './ast-locations.js';
+import { resolveTypeSize } from './size-resolver.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -391,13 +392,63 @@ function primaryEntry(entries) {
   return entries.find(e => e.items.some(it => (it.depth ?? it.path?.length ?? 0) === 0)) ?? entries[0];
 }
 
-function onEditorLineHover(line) {
+function onEditorLineHover(line, word) {
   const entries = line !== null ? currentLineInfo.get(line) : null;
   for (const sec of currentSections) sec.hover.leave();
-  if (!entries) return;
-  for (const e of entries) e.section.hover.enterMany([...e.leaves], true);
+  const typeText = word ? describeTypeAt(line, word) : null;
+  if (!entries && !typeText) return;
+  if (entries) for (const e of entries) e.section.hover.enterMany([...e.leaves], true);
   editor.highlightLines([line]);
-  editor.setLineInlay(line, describeItems(primaryEntry(entries).items));
+  editor.setLineInlay(line, typeText ?? describeItems(primaryEntry(entries).items));
+}
+
+// -------------------------------------------------------- type hover --
+
+const TYPE_WORDS = new Set(['unsigned', 'signed', 'long', 'short', 'int', 'char', 'double', 'float',
+  '_Complex', 'const', 'volatile', 'struct', 'union', 'class', 'enum', '__int128', 'wchar_t', 'bool', '_Bool']);
+
+/** If the hovered word names a type, return "type · size · align" text. */
+function describeTypeAt(line, word) {
+  if (!lastResult) return null;
+  const text = editor.getLineText(line);
+  // Candidate spellings: the word alone, and runs of adjacent type words that
+  // include it ("unsigned long long", "struct Header", "long double").
+  const tokens = [...text.matchAll(/[A-Za-z_][A-Za-z0-9_:]*(?:<[^<>;{}]*>)?/g)]
+    .map(m => ({ t: m[0], s: m.index + 1, e: m.index + 1 + m[0].length }));
+  const idx = tokens.findIndex(t => t.s <= word.startColumn && t.e >= word.endColumn);
+  if (idx < 0) return null;
+  const cands = [];
+  for (let a = idx; a >= 0 && idx - a < 3; a--) {
+    if (a !== idx && !TYPE_WORDS.has(tokens[a].t)) break;
+    for (let b = idx; b < tokens.length && b - idx < 3; b++) {
+      if (b !== idx && !TYPE_WORDS.has(tokens[b].t)) break;
+      cands.push(tokens.slice(a, b + 1).map(t => t.t).join(' '));
+    }
+  }
+  cands.sort((x, y) => y.length - x.length);
+  const { records, scalars, recordIndex, probeSizes } = lastResult;
+  for (const cand of cands) {
+    if (/^(?:const|volatile|struct|union|class|enum)$/.test(cand)) continue;
+    // 1. Records (by exact, unqualified, or template-base name)
+    const bare = cand.replace(/^(?:struct|union|class|enum)\s+/, '');
+    const recs = records.filter(r => r.name === bare || r.name.endsWith('::' + bare) ||
+      r.name.replace(/<[^]*$/, '') === bare || r.name.replace(/<[^]*$/, '').endsWith('::' + bare));
+    if (recs.length) {
+      return recs.slice(0, 3).map(r => {
+        const pad = r.dsize !== undefined && r.dsize !== r.sizeBytes ? ` · dsize ${r.dsize}` : '';
+        return `${r.kind} ${r.name} · ${r.sizeBytes} B · align ${r.align}${pad}`;
+      }).join('  |  ') + (recs.length > 3 ? '  |  …' : '');
+    }
+    // 2. Scalars / typedefs / pointers etc.
+    if (!/[A-Za-z_]/.test(cand[0])) continue;
+    const res = resolveTypeSize(cand, scalars, recordIndex);
+    const pr = res.bits === undefined && res.probe ? probeSizes.get(res.probe) : null;
+    const bits = res.bits ?? pr?.bits, align = res.align ?? pr?.align;
+    if (bits !== undefined && bits > 0) {
+      return `${cand} · ${bits % 8 ? bits + ' bits' : bits / 8 + ' B'}${align ? ' · align ' + align : ''}`;
+    }
+  }
+  return null;
 }
 
 /** "offset 16 · 8 B · align 8" for one or more items on a line. */
