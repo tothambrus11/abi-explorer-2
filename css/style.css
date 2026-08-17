@@ -120,9 +120,9 @@ a { color: var(--accent); }
 }
 .status svg { display: none; flex: none; }
 .status.busy .st-spin { display: block; color: var(--accent); animation: spin 0.9s linear infinite; }
-.status.ok .st-ok, .status.warn .st-ok { display: block; color: var(--ok-ink); }
+.status.ok .st-ok, .status.warn .st-ok { display: block; color: #33d17a; }
 .status.warn .st-ok { color: var(--warn-ink); }
-.status.error .st-err { display: block; color: var(--error); }
+.status.error .st-err { display: block; color: #e01b24; }
 .status .st-text:empty { display: none; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
