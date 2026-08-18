@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Language selector variants — Nocturne</title>
+<style>
+  /* Nocturne tokens (src/ui/themes.ts) */
+  :root {
+    --surface-1: #1a1a19;
+    --page: #0d0d0d;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --grid-line: #2c2c2a;
+    --baseline: #383835;
+    --border: #2f2f2d;
+    --accent: #3987e5;
+    --on-accent: #ffffff;
+    --error: #e66767;
+    --warn: #fab219;
+    --ok: #0ca30c;
+    --c-1: #82aaff;
+    --c-2: #f78c6c;
+    --c-3: #7fdbca;
+    --c-4: #ffcb6b;
+    --c-5: #ff869a;
+    --c-6: #addb67;
+    --c-7: #c792ea;
+    --font-ui: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font: 14px/1.45 var(--font-ui);
+  }
+  header {
+    padding: 22px 28px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-1);
+  }
+  header h1 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
+  header p { margin: 0; color: var(--text-muted); font-size: 12.5px; }
+  main {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    gap: 18px;
+    padding: 22px 28px 40px;
+  }
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .card h2 {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .card h2 small { text-transform: none; letter-spacing: 0; font-weight: 400; }
+  .demo {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 14px;
+    border: 1px dashed var(--grid-line);
+    border-radius: 8px;
+    min-height: 62px;
+  }
+  .note { color: var(--text-secondary); font-size: 12.5px; margin: 0; }
+  code { font-family: var(--font-mono); font-size: 12px; color: var(--text-muted); }
+
+  /* shared controls */
+  .input {
+    padding: 6px 8px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--page);
+    color: var(--text-primary);
+    font: inherit;
+  }
+  .input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .btn {
+    padding: 6px 14px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font: inherit;
+    cursor: pointer;
+  }
+  .btn:hover { border-color: var(--baseline); }
+  .sr { position: absolute; opacity: 0; pointer-events: none; }
+  .std { display: none; }
+  .std.on { display: inline-flex; }
+
+  /* 1 — current segmented (baseline) */
+  .segmented { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+  .segmented label { display: contents; }
+  .segmented span {
+    padding: 6px 14px; cursor: pointer; color: var(--text-secondary);
+    border-right: 1px solid var(--border);
+  }
+  .segmented label:last-child span { border-right: none; }
+  .segmented input:checked + span { background: var(--accent); color: var(--on-accent); }
+  .segmented input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  /* 2 — pill tabs */
+  .pills { display: inline-flex; gap: 4px; padding: 3px; background: var(--page); border: 1px solid var(--border); border-radius: 999px; }
+  .pills label { display: contents; }
+  .pills span { padding: 5px 14px; border-radius: 999px; color: var(--text-secondary); cursor: pointer; transition: background .12s, color .12s; }
+  .pills span:hover { color: var(--text-primary); }
+  .pills input:checked + span { background: var(--accent); color: var(--on-accent); }
+  .pills input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* 3 — underline tabs */
+  .tabs { display: inline-flex; gap: 18px; border-bottom: 1px solid var(--border); }
+  .tabs label { display: contents; }
+  .tabs span { padding: 6px 2px 8px; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tabs span:hover { color: var(--text-primary); }
+  .tabs input:checked + span { color: var(--text-primary); border-bottom-color: var(--accent); }
+  .tabs input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+  /* 4 — outline ghost buttons */
+  .ghost { display: inline-flex; gap: 6px; }
+  .ghost label { display: contents; }
+  .ghost span { padding: 5px 13px; border: 1px solid var(--border); border-radius: 7px; color: var(--text-secondary); cursor: pointer; background: transparent; }
+  .ghost span:hover { border-color: var(--baseline); color: var(--text-primary); }
+  .ghost input:checked + span { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .ghost input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* 5 — soft segmented (muted fill instead of full accent) */
+  .soft { display: inline-flex; padding: 3px; gap: 2px; background: var(--page); border: 1px solid var(--border); border-radius: 8px; }
+  .soft label { display: contents; }
+  .soft span { padding: 4px 12px; border-radius: 5px; color: var(--text-muted); cursor: pointer; }
+  .soft span:hover { color: var(--text-secondary); }
+  .soft input:checked + span { background: var(--baseline); color: var(--text-primary); box-shadow: 0 1px 0 rgba(0,0,0,.4); }
+  .soft input:focus-visible + span { outline: 2px solid var(--accent); }
+
+  /* 6 — colour-coded chips (categorical member colours) */
+  .chips { display: inline-flex; gap: 6px; }
+  .chips label { display: contents; }
+  .chips span { --dot: var(--text-muted); display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px 5px 9px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-secondary); cursor: pointer; }
+  .chips span::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--dot); opacity: .55; }
+  .chips span:hover { border-color: var(--baseline); }
+  .chips input:checked + span { color: var(--text-primary); border-color: var(--dot); background: color-mix(in srgb, var(--dot) 14%, transparent); }
+  .chips input:checked + span::before { opacity: 1; }
+  .chips input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  /* 7 — dropdown only, language ⨯ std combined */
+  .combo { min-width: 200px; }
+
+  /* 8 — icon-badge tiles */
+  .tiles { display: inline-flex; gap: 8px; }
+  .tiles label { display: contents; }
+  .tiles span { display: inline-flex; flex-direction: column; align-items: center; gap: 4px; width: 74px; padding: 9px 6px 7px; border: 1px solid var(--border); border-radius: 9px; color: var(--text-secondary); cursor: pointer; background: var(--page); }
+  .tiles span b { font-family: var(--font-mono); font-size: 15px; font-weight: 600; color: var(--text-primary); }
+  .tiles span small { font-size: 11px; color: var(--text-muted); }
+  .tiles span:hover { border-color: var(--baseline); }
+  .tiles input:checked + span { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .tiles input:checked + span small { color: var(--accent); }
+  .tiles input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* 9 — segmented with inline std selector (one unit) */
+  .unit { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+  .unit label { display: contents; }
+  .unit span { padding: 6px 13px; color: var(--text-secondary); cursor: pointer; border-right: 1px solid var(--border); }
+  .unit input:checked + span { background: var(--accent); color: var(--on-accent); }
+  .unit input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .unit select { border: 0; border-radius: 0; background: var(--page); color: var(--text-primary); font: inherit; padding: 6px 8px; }
+  .unit select:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+  /* 10 — text-field with datalist (free-typed language / std) */
+  .field { display: inline-flex; align-items: center; gap: 0; border: 1px solid var(--border); border-radius: 7px; background: var(--page); overflow: hidden; }
+  .field .prefix { padding: 6px 10px; color: var(--text-muted); border-right: 1px solid var(--border); font-size: 12.5px; }
+  .field input { border: 0; background: transparent; color: var(--text-primary); font: inherit; font-family: var(--font-mono); font-size: 13px; padding: 6px 10px; width: 150px; }
+  .field input:focus-visible { outline: none; }
+  .field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+
+  /* 11 — vertical radio list with descriptions */
+  .list { display: flex; flex-direction: column; gap: 4px; min-width: 260px; }
+  .list label { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-radius: 7px; cursor: pointer; border: 1px solid transparent; }
+  .list label:hover { background: color-mix(in srgb, var(--text-primary) 4%, transparent); }
+  .list label:has(input:checked) { border-color: var(--border); background: var(--page); }
+  .list input { accent-color: var(--accent); margin-top: 3px; }
+  .list .t { color: var(--text-primary); }
+  .list .d { display: block; color: var(--text-muted); font-size: 12px; }
+
+  /* 12 — split-button: language + std in a single accent button + menu */
+  .split { display: inline-flex; border-radius: 7px; overflow: hidden; border: 1px solid var(--accent); }
+  .split > button { border: 0; font: inherit; cursor: pointer; padding: 6px 12px; background: var(--accent); color: var(--on-accent); }
+  .split > button + button { border-left: 1px solid color-mix(in srgb, var(--on-accent) 30%, transparent); padding: 6px 9px; }
+  .split > button:focus-visible { outline: 2px solid var(--text-primary); outline-offset: -3px; }
+  .menu { display: inline-flex; flex-direction: column; background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px; padding: 4px; min-width: 150px; box-shadow: 0 8px 24px rgba(0,0,0,.45); }
+  .menu button { text-align: left; border: 0; background: transparent; color: var(--text-secondary); font: inherit; padding: 6px 10px; border-radius: 5px; cursor: pointer; display: flex; justify-content: space-between; gap: 12px; }
+  .menu button:hover { background: color-mix(in srgb, var(--text-primary) 6%, transparent); color: var(--text-primary); }
+  .menu button[aria-current] { color: var(--text-primary); }
+  .menu button[aria-current]::after { content: '✓'; color: var(--accent); }
+  .menu hr { border: 0; border-top: 1px solid var(--border); margin: 4px 0; }
+
+  /* 13 — bonus: keyboard-hint segmented */
+  .kbd { display: inline-flex; gap: 6px; }
+  .kbd label { display: contents; }
+  .kbd span { display: inline-flex; align-items: center; gap: 8px; padding: 5px 8px 5px 12px; border: 1px solid var(--border); border-radius: 7px; color: var(--text-secondary); cursor: pointer; }
+  .kbd kbd { font: 11px var(--font-mono); color: var(--text-muted); border: 1px solid var(--baseline); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; }
+  .kbd input:checked + span { border-color: var(--accent); color: var(--text-primary); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .kbd input:checked + span kbd { color: var(--accent); border-color: var(--accent); }
+  .kbd input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 1px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Language selector variants</h1>
+  <p>C · C++ · Hylo — Nocturne palette. Each variant is live: click a language and the standard dropdown swaps to that language's list (Hylo has none yet, so it hides).</p>
+</header>
+
+<main>
+
+<section class="card">
+  <h2>1 · Segmented <small>current</small></h2>
+  <div class="demo" data-v>
+    <div class="segmented" role="radiogroup" aria-label="Language">
+      <label><input class="sr" type="radio" name="v1" value="c" checked /><span>C</span></label>
+      <label><input class="sr" type="radio" name="v1" value="c++" /><span>C++</span></label>
+      <label><input class="sr" type="radio" name="v1" value="hylo" /><span>Hylo</span></label>
+    </div>
+    <select class="input std on" data-std="c"></select>
+    <select class="input std" data-std="c++"></select>
+  </div>
+  <p class="note">The existing control with Hylo appended. Full accent fill on the selected segment.</p>
+</section>
+
+<section class="card">
+  <h2>2 · Pill tabs</h2>
+  <div class="demo" data-v>
+    <div class="pills" role="radiogroup" aria-label="Language">
+      <label><input class="sr" type="radio" name="v2" value="c" checked /><span>C</span></label>
+      <label><input class="sr" type="radio" name="v2" value="c++" /><span>C++</span></label>
+      <label><input class="sr" type="radio" name="v2" value="hylo" /><span>Hylo</span></label>
+    </div>
+    <select class="input std on" data-std="c"></select>
+    <select class="input std" data-std="c++"></select>
+  </div>
+  <p class="note">Rounded track on <code>--page</code>, accent pill slides between options.</p>
+</section>
+
+<section class="card">
+  <h2>3 · Underline tabs</h2>
+  <div class="demo" data-v>
+    <div class="tabs" role="radiogroup" aria-label="Language">
+      <label><input class="sr" type="radio" name="v3" value="c" checked /><span>C</span></label>
+      <label><input class="sr" type="radio" name="v3" value="c++" /><span>C++</span></label>
+      <label><input class="sr" type="radio" name="v3" value="hylo" /><span>Hylo</span></label>
+    </div>
+    <select class="input std on" data-std="c"></select>
+    <select class="input std" data-std="c++"></select>
+  </div>
+  <p class="note">Lowest visual weight; accent only as a 2px underline. Fits a toolbar that already has borders everywhere.</p>
+</section>
+
+<section class="card">
+  <h2>4 · Ghost / outline</h2>
+  <div class="demo" data-v>
+    <div class="ghost" role="radiogroup" aria-label="Language">
+      <label><input class="sr" type="radio" name="v4" value="c" checked /><span>C</span></label>
+      <label><input class="sr" type="radio" name="v4" value="c++" /><span>C++</span></label>
+      <label><input class="sr" type="radio" name="v4" value="hylo" /><span>Hylo</span></label>
+    </div>
+    <select class="input std on" data-std="c"></select>
+    <select class="input std" data-std="c++"></select>
+  </div>
+  <p class="note">Detached buttons; selection = accent border + accent text on a 12% accent tint.</p>
+</section>
+
+<section class="card">
+  <h2>5 · Soft segmented</h2>
+  <div class="demo" data-v>
+    <div class="soft" role="radiogroup" aria-label="Language">
+      <label><input class="sr" type="radio" name="v5" value="c" checked /><span>C</span></label>
+      <label><input class="sr" type="radio" name="v5" value="c++" /><span>C++</span></label>
+      <label><input class="sr" type="radio" name="v5" value="hylo" /><span>Hylo</span></label>
+    </div>
+    <select class="input std on" data-std="c"></select>
+    <select class="input std" data-std="c++"></select>
+  </div>
+  <p class="note">macOS-style: selection is a raised <code>--baseline</code> tab, no accent — accent stays reserved for focus/primary actions.</p>
+</section>
+
+<section class="card">
+  <h2>6 · Colour-coded chips</h2>
+  <div class="demo" data-v>
+    <div class="chips" role="radiogroup" aria-label="Language">
+      <label><input class="sr" type="radio" name="v6" value="c" checked /><span style="--dot: var(--c-1)">C</span></label>
+      <label><input class="sr" type="radio" name="v6" value="c++" /><span style="--dot: var(--c-7)">C++</span></label>
+      <label><input class="sr" type="radio" name="v6" value="hylo" /><span style="--dot: var(--c-3)">Hylo</span></label>
+    </div>
+    <select class="input std on" data-std="c"></select>
+    <select class="input std" data-std="c++"></select>
+  </div>
+  <p class="note">Each language gets one of Nocturne's categorical member colours (<code>--c-1</code>, <code>--c-7</code>, <code>--c-3</code>) as a dot + tint.</p>
+</section>
+
+<section class="card">
+  <h2>7 · Single combined dropdown</h2>
+  <div class="demo">
+    <select class="input combo" aria-label="Language and standard">
+      <optgroup label="C">
+        <option>C · c89</option><option>C · c99</option><option>C · c11</option><option selected>C · c17</option><option>C · c23</option>
+      </optgroup>
+      <optgroup label="C++">
+        <option>C++ · c++11</option><option>C++ · c++14</option><option>C++ · c++17</option><option>C++ · c++20</option><option>C++ · c++23</option><option>C++ · c++26</option>
+      </optgroup>
+      <optgroup label="Hylo">
+        <option>Hylo</option>
+      </optgroup>
+    </select>
+  </div>
+  <p class="note">One control instead of two; standards are grouped by language. Fewest pixels, most clicks.</p>
+</section>
+
+<section class="card">
+  <h2>8 · Tiles</h2>
+  <div class="demo" data-v>
+    <div class="tiles" role="radiogroup" aria-label="Language">
+      <label><input class="sr" type="radio" name="v8" value="c" checked /><span><b>C</b><small>clang</small></span></label>
+      <label><input class="sr" type="radio" name="v8" value="c++" /><span><b>C++</b><small>clang++</small></span></label>
+      <label><input class="sr" type="radio" name="v8" value="hylo" /><span><b>Hylo</b><small>hc</small></span></label>
+    </div>
+    <select class="input std on" data-std="c"></select>
+    <select class="input std" data-std="c++"></select>
+  </div>
+  <p class="note">Two-line tiles with the driver name as a caption. Taller — better for a settings panel than the toolbar.</p>
+</section>
+
+<section class="card">
+  <h2>9 · Segmented + std as one unit</h2>
+  <div class="demo" data-v>
+    <div class="unit" role="group" aria-label="Language and standard">
+      <label><input class="sr" type="radio" name="v9" value="c" checked /><span>C</span></label>
+      <label><input class="sr" type="radio" name="v9" value="c++" /><span>C++</span></label>
+      <label><input class="sr" type="radio" name="v9" value="hylo" /><span>Hylo</span></label>
+      <select class="std on" data-std="c" aria-label="Standard"></select>
+      <select class="std" data-std="c++" aria-label="Standard"></select>
+    </div>
+  </div>
+  <p class="note">The standard dropdown is welded onto the end of the segmented control so language ⟶ standard reads as one phrase.</p>
+</section>
+
+<section class="card">
+  <h2>10 · Text field with suggestions</h2>
+  <div class="demo">
+    <div class="field">
+      <span class="prefix">-x</span>
+      <input list="langs" value="c" spellcheck="false" aria-label="Language" />
+    </div>
+    <div class="field">
+      <span class="prefix">-std=</span>
+      <input list="stds" value="c17" spellcheck="false" aria-label="Standard" />
+    </div>
+    <datalist id="langs"><option value="c"><option value="c++"><option value="hylo"></datalist>
+    <datalist id="stds">
+      <option value="c89"><option value="c99"><option value="c11"><option value="c17"><option value="c23">
+      <option value="c++11"><option value="c++14"><option value="c++17"><option value="c++20"><option value="c++23"><option value="c++26">
+    </datalist>
+  </div>
+  <p class="note">Flag-shaped free-text inputs (mono, <code>--page</code> background, accent focus ring) with datalist autocomplete — mirrors the "Extra flags" field.</p>
+</section>
+
+<section class="card">
+  <h2>11 · Radio list</h2>
+  <div class="demo" data-v>
+    <div class="list" role="radiogroup" aria-label="Language">
+      <label><input type="radio" name="v11" value="c" checked /><span><span class="t">C</span><span class="d">Compile with clang · ISO C standards</span></span></label>
+      <label><input type="radio" name="v11" value="c++" /><span><span class="t">C++</span><span class="d">Compile with clang++ · ISO C++ standards</span></span></label>
+      <label><input type="radio" name="v11" value="hylo" /><span><span class="t">Hylo</span><span class="d">Experimental · layout via the Hylo compiler</span></span></label>
+    </div>
+    <select class="input std on" data-std="c"></select>
+    <select class="input std" data-std="c++"></select>
+  </div>
+  <p class="note">Native radios (accent-coloured) with descriptions. For the "More options" disclosure rather than the toolbar.</p>
+</section>
+
+<section class="card">
+  <h2>12 · Split button + menu</h2>
+  <div class="demo">
+    <div class="split">
+      <button type="button" id="splitLabel">C · c17</button>
+      <button type="button" aria-label="Choose language" onclick="document.getElementById('splitMenu').hidden = !document.getElementById('splitMenu').hidden">▾</button>
+    </div>
+    <div class="menu" id="splitMenu" role="menu">
+      <button aria-current="true">C <span>c17</span></button>
+      <button>C++ <span>c++20</span></button>
+      <button>Hylo <span></span></button>
+      <hr />
+      <button>Change standard…</button>
+    </div>
+  </div>
+  <p class="note">Compact accent button showing the current pair; the menu (styled like a tooltip/popover on <code>--surface-1</code>) picks language, with a sub-item for standard.</p>
+</section>
+
+<section class="card">
+  <h2>13 · With keyboard hints <small>bonus</small></h2>
+  <div class="demo" data-v>
+    <div class="kbd" role="radiogroup" aria-label="Language">
+      <label><input class="sr" type="radio" name="v13" value="c" checked /><span>C <kbd>1</kbd></span></label>
+      <label><input class="sr" type="radio" name="v13" value="c++" /><span>C++ <kbd>2</kbd></span></label>
+      <label><input class="sr" type="radio" name="v13" value="hylo" /><span>Hylo <kbd>3</kbd></span></label>
+    </div>
+    <select class="input std on" data-std="c"></select>
+    <select class="input std" data-std="c++"></select>
+  </div>
+  <p class="note">Ghost variant with an inline shortcut key; the <code>kbd</code> border uses <code>--baseline</code>, switching to accent when selected.</p>
+</section>
+
+</main>
+
+<script>
+  const STDS = {
+    c: ['c89', 'c99', 'c11', 'c17', 'c23'],
+    'c++': ['c++11', 'c++14', 'c++17', 'c++20', 'c++23', 'c++26'],
+  };
+  const DEF = { c: 'c17', 'c++': 'c++20' };
+  document.querySelectorAll('select[data-std]').forEach((s) => {
+    const l = s.dataset.std;
+    s.innerHTML = STDS[l].map((x) => `<option${x === DEF[l] ? ' selected' : ''}>${x}</option>`).join('');
+  });
+  document.querySelectorAll('[data-v]').forEach((box) => {
+    box.addEventListener('change', (e) => {
+      if (e.target.type !== 'radio') return;
+      const lang = e.target.value;
+      box.querySelectorAll('select[data-std]').forEach((s) => s.classList.toggle('on', s.dataset.std === lang));
+    });
+  });
+  document.querySelectorAll('#splitMenu button').forEach((b) => b.addEventListener('click', () => {
+    if (!b.querySelector('span')) return;
+    document.querySelectorAll('#splitMenu button').forEach((x) => x.removeAttribute('aria-current'));
+    b.setAttribute('aria-current', 'true');
+    document.getElementById('splitLabel').textContent = b.textContent.trim().replace(/\s+/, ' · ').replace(/ · $/, '');
+    document.getElementById('splitMenu').hidden = true;
+  }));
+</script>
+</body>
+</html>

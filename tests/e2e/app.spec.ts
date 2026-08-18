@@ -78,6 +78,9 @@ test.describe('ABI Explorer', () => {
     await waitReady(page);
     await page.selectOption('#example', '2');
     await expect(page.locator('#record-chips .chip')).toHaveCount(3);
+    // A line that only introduces a compound member gets a neutral ring, not a
+    // field colour (its bytes belong to several differently-coloured leaves).
+    await expect(page.locator('.monaco-editor .member-dot.member-c-compound')).not.toHaveCount(0);
     // Hovering a compound member in code lights up its parent (group) row plus
     // each of its leaves in the grouped table.
     await hoverWord(page, 'struct Header hdr;', 'hdr');

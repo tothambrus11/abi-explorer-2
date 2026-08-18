@@ -22,6 +22,11 @@ export interface LineInfo {
   items: (Leaf | Group)[];
   /** Record that "owns" the line (declares it as a direct member), for dot color and auto-select. */
   primary: string;
+  /**
+   * Gutter-dot colour: a single leaf's colour when the line carries exactly one
+   * byte-occupying field, else `c-compound` (a neutral ring) — a line holding a
+   * container (nested record / base) has no colour of its own.
+   */
   colorClass: string;
   /** Location of the field declared here (for the type hover). */
   location: FieldLocation | null;
@@ -319,10 +324,13 @@ export class Session {
     const out = new Map<number, LineInfo>();
     for (const [line, cands] of byLine) {
       const primary = cands.find((c) => c.direct) ?? cands[0]!;
-      const first = primary.members[0];
-      const colorClass = first
-        ? (models.get(first.record)?.leaves[first.leaf]?.colorClass ?? 'c-1')
-        : 'c-1';
+      // One field on the line → its colour; a container (or several fields) → a
+      // neutral ring, since no single colour represents the whole thing.
+      const allMembers = cands.flatMap((c) => c.members);
+      const only = allMembers.length === 1 ? allMembers[0]! : null;
+      const colorClass = only
+        ? (models.get(only.record)?.leaves[only.leaf]?.colorClass ?? 'c-compound')
+        : 'c-compound';
       out.set(line, {
         line,
         members: cands.flatMap((c) => c.members),

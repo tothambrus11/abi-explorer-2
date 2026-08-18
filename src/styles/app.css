@@ -182,6 +182,12 @@ input.input {
 .member-c-special {
   --dot: var(--c-special);
 }
+/* A container line (nested record / base): no single colour, so a hollow ring. */
+.monaco-editor .member-dot.member-c-compound::before {
+  background: transparent;
+  border: 1.6px solid var(--text-muted);
+  box-sizing: border-box;
+}
 
 /* Monaco decorations (global: rendered outside component scope) */
 .monaco-editor .member-dot {

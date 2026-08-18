@@ -54,9 +54,13 @@
     const dots = [...session.lines.values()]
       .filter((l) => l.members.some((m) => shown.has(m.record)))
       .map((l) => {
-        const first = l.members.find((m) => shown.has(m.record))!;
-        const colorClass =
-          store.models.get(first.record)?.leaves[first.leaf]?.colorClass ?? l.colorClass;
+        // A filled dot only when this line holds exactly one field in the shown
+        // record(s); a container line (several leaves) gets the neutral ring.
+        const here = l.members.filter((m) => shown.has(m.record));
+        const one = here.length === 1 ? here[0]! : null;
+        const colorClass = one
+          ? (store.models.get(one.record)?.leaves[one.leaf]?.colorClass ?? 'c-compound')
+          : 'c-compound';
         return { line: l.line, colorClass };
       });
     editor?.setMemberDots(dots);
