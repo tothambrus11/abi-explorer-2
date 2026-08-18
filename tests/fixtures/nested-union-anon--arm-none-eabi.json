@@ -72,6 +72,7 @@
      "-fdiagnostics-print-source-range-info",
      "-Xclang",
      "-fno-access-control",
+     "-ferror-limit=0",
      "input_probe.c"
     ],
     "files": {
@@ -100,6 +101,7 @@
      "-fdiagnostics-print-source-range-info",
      "-Xclang",
      "-fno-access-control",
+     "-ferror-limit=0",
      "input_probe.c"
     ],
     "files": {
@@ -128,6 +130,7 @@
      "-fdiagnostics-print-source-range-info",
      "-Xclang",
      "-fno-access-control",
+     "-ferror-limit=0",
      "input_probe.c"
     ],
     "files": {
@@ -296,6 +299,7 @@
      "-fdiagnostics-print-source-range-info",
      "-Xclang",
      "-fno-access-control",
+     "-ferror-limit=0",
      "input_probe.c"
     ],
     "files": {
@@ -324,6 +328,7 @@
      "-fdiagnostics-print-source-range-info",
      "-Xclang",
      "-fno-access-control",
+     "-ferror-limit=0",
      "input_probe.c"
     ],
     "files": {
@@ -352,6 +357,7 @@
      "-fdiagnostics-print-source-range-info",
      "-Xclang",
      "-fno-access-control",
+     "-ferror-limit=0",
      "input_probe.c"
     ],
     "files": {

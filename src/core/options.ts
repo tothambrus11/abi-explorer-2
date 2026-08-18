@@ -138,7 +138,12 @@ export function buildArgv(opts: CompileOptions, pass: PassSpec): string[] {
   if (opts.shortWchar) args.push('-fshort-wchar');
   if (opts.warnPadded) args.push('-Wpadded');
   args.push(...splitExtraFlags(opts.extraFlags)[0]);
-  if (pass.measure) args.push('-Xclang', '-fno-access-control');
+  if (pass.measure) {
+    // Probe TUs deliberately contain failing lines; clang's default error limit
+    // (~20) would stop parsing and skip both the errors *and* the layout dumps
+    // for later probes, leaving those members unmeasured. Report them all.
+    args.push('-Xclang', '-fno-access-control', '-ferror-limit=0');
+  }
   args.push(...pass.files);
   return args;
 }

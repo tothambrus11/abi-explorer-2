@@ -50,6 +50,9 @@ const EMPTY_HOVER: Hover = { members: [], line: null, inlay: null, tooltip: null
 
 const VIEW_KEY = 'abix-view';
 
+/** Shared media query for the narrow (phone) layout; one object, reused for the listener. */
+const NARROW_MQ = typeof matchMedia === 'function' ? matchMedia('(max-width: 760px)') : null;
+
 class Store {
   options: CompileOptions = $state({ ...DEFAULT_OPTIONS });
   source: string = $state(EXAMPLES[0]?.source ?? '');
@@ -66,9 +69,9 @@ class Store {
   /** A service worker controls this page (assets are cached). */
   swControlled = $state(false);
   swVersionAvailable = $state(false);
-  /** Everything needed to work offline is local: cached assets + a loaded compiler. */
   /** Narrow (phone) layout: driven by a media query. */
-  narrow = $state(typeof matchMedia === 'function' && matchMedia('(max-width: 760px)').matches);
+  narrow = $state(NARROW_MQ?.matches ?? false);
+  /** Everything needed to work offline is local: cached assets + a loaded compiler. */
   offlineReady = $derived(this.swControlled && this.compiler.state === 'ready');
 
   // -------------------------------------------------------- derived ----
@@ -166,8 +169,6 @@ function readView(): ViewMode {
 }
 
 export const store = new Store();
-if (typeof matchMedia === 'function') {
-  matchMedia('(max-width: 760px)').addEventListener('change', (e) => {
-    store.narrow = e.matches;
-  });
-}
+NARROW_MQ?.addEventListener('change', (e) => {
+  store.narrow = e.matches;
+});

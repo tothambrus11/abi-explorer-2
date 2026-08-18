@@ -7,7 +7,6 @@
   import Download from '@lucide/svelte/icons/download';
   import Upload from '@lucide/svelte/icons/upload';
   import { theme, type ColorGroup } from '$state/theme.svelte';
-  import { store } from '$state/store.svelte';
   import {
     EDITOR_FIELDS,
     MEMBER_FIELDS,
@@ -243,7 +242,7 @@
     </div>
   {/if}
   {#if note}<div class="note" role="status">{note}</div>{/if}
-  {#if store.narrow || !theme.pickerDetached}<ColorPicker />{/if}
+  {#if !theme.pickerDetached}<ColorPicker />{/if}
 </div>
 
 <style>

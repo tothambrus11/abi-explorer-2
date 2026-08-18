@@ -118,7 +118,9 @@ export function buildRenderModel(record: RecordLayout, inputs: ModelInputs): Ren
           owner: ownerRec.name,
           path,
           offsetBits: row.offsetBits,
-          sizeBits: baseRec ? baseRec.sizeBytes * 8 : null,
+          // A base subobject occupies its non-virtual size (tail padding is
+          // reused by the derived class), not its full sizeof.
+          sizeBits: baseRec ? (baseRec.nvsize ?? baseRec.sizeBytes) * 8 : null,
           align: baseRec?.align ?? null,
           leafIndexes: range(first, leaves.length),
           isBase: true,

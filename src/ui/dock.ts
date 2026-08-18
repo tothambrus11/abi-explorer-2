@@ -22,7 +22,8 @@ import Diagnostics from './Diagnostics.svelte';
 import ThemeEditorPanel from './ThemeEditorPanel.svelte';
 import ColorPicker from './ColorPicker.svelte';
 
-const LAYOUT_KEY = 'abix-dock-layout-v1';
+const LAYOUT_KEY_WIDE = 'abix-dock-layout-v1';
+const LAYOUT_KEY_NARROW = 'abix-dock-layout-narrow-v1';
 export const PANEL_EDITOR = 'editor';
 export const PANEL_LAYOUT = 'layout';
 export const PANEL_DIAGNOSTICS = 'diagnostics';
@@ -117,7 +118,10 @@ export function mountDock(container: HTMLElement, session: Session): Dock {
     for (const p of CORE_PANELS) if (!api.getPanel(p.id)) api.addPanel(p);
   };
 
-  const narrow = () => container.clientWidth < 760;
+  // Matches the CSS `@media (max-width: 760px)` breakpoint (inclusive) used
+  // across the app so the dock arrangement and the components agree.
+  const narrow = () => container.clientWidth <= 760;
+  const layoutKey = () => (narrow() ? LAYOUT_KEY_NARROW : LAYOUT_KEY_WIDE);
 
   const defaultLayout = () => {
     api.clear();
@@ -155,7 +159,7 @@ export function mountDock(container: HTMLElement, session: Session): Dock {
   // Restore or build the layout.
   let restored = false;
   try {
-    const raw = localStorage.getItem(LAYOUT_KEY);
+    const raw = localStorage.getItem(layoutKey());
     if (raw) {
       api.fromJSON(JSON.parse(raw) as SerializedDockview);
       ensureCorePanels();
@@ -172,7 +176,7 @@ export function mountDock(container: HTMLElement, session: Session): Dock {
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       try {
-        localStorage.setItem(LAYOUT_KEY, JSON.stringify(api.toJSON()));
+        localStorage.setItem(layoutKey(), JSON.stringify(api.toJSON()));
       } catch {
         /* quota / private mode */
       }
@@ -254,7 +258,7 @@ export function mountDock(container: HTMLElement, session: Session): Dock {
   return {
     api,
     resetLayout() {
-      localStorage.removeItem(LAYOUT_KEY);
+      localStorage.removeItem(layoutKey());
       defaultLayout();
     },
     openThemeEditor,

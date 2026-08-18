@@ -75,6 +75,7 @@
      "-isystem/usr/include/c++/v1",
      "-Xclang",
      "-fno-access-control",
+     "-ferror-limit=0",
      "input_probe.cc"
     ],
     "files": {
@@ -365,6 +366,7 @@
      "-isystem/usr/include/c++/v1",
      "-Xclang",
      "-fno-access-control",
+     "-ferror-limit=0",
      "input_probe.cc"
     ],
     "files": {
@@ -394,6 +396,7 @@
      "-isystem/usr/include/c++/v1",
      "-Xclang",
      "-fno-access-control",
+     "-ferror-limit=0",
      "input_probe.cc"
     ],
     "files": {
@@ -423,6 +426,7 @@
      "-isystem/usr/include/c++/v1",
      "-Xclang",
      "-fno-access-control",
+     "-ferror-limit=0",
      "input_probe.cc"
     ],
     "files": {

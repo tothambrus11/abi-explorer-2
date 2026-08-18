@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import type { Session } from '$state/session.svelte';
   import { theme, applyThemeTokens } from '$state/theme.svelte';
+  import { store } from '$state/store.svelte';
   import TopBar from '$ui/TopBar.svelte';
   import Controls from '$ui/Controls.svelte';
   import Tooltip from '$ui/Tooltip.svelte';
@@ -24,7 +25,8 @@
     if (theme.editorOpen && dock) dock.openThemeEditor();
   });
   $effect(() => {
-    if (dock) dock.setPickerDetached(theme.pickerDetached);
+    // Phones never get a second window; the picker stays inline in the theme editor.
+    if (dock) dock.setPickerDetached(theme.pickerDetached && !store.narrow);
   });
 </script>
 

@@ -206,6 +206,9 @@ export function splitJsonDocuments(text: string): string[] {
 
 /** "ns::Outer::Inner<int>" -> "Inner"; anonymous -> "". */
 export function unqualifiedName(name: string): string {
+  // A record in an anonymous namespace is still a *named* record; drop the
+  // `(anonymous namespace)::` qualifier so it resolves to its real name.
+  name = name.replace(/\(anonymous namespace\)::/g, '');
   if (/\((?:anonymous|unnamed|lambda)/.test(name)) return '';
   // Drop every balanced <...> group (not just a trailing one) so a record
   // nested in a specialization, `Outer<int>::Inner`, resolves to `Inner`.
