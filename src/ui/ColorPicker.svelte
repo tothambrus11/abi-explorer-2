@@ -6,6 +6,7 @@
   import PictureInPicture2 from '@lucide/svelte/icons/picture-in-picture-2';
   import ArrowDownToLine from '@lucide/svelte/icons/arrow-down-to-line';
   import { theme } from '$state/theme.svelte';
+  import { store } from '$state/store.svelte';
   import {
     EDITOR_FIELDS,
     MEMBER_FIELDS,
@@ -54,17 +55,19 @@
   <div class="head">
     <span class="title">{value ? label : 'Colour picker'}</span>
     {#if !readOnly && value}<span class="hex-preview mono">{value}</span>{/if}
-    <button
-      class="icon-btn small"
-      type="button"
-      onclick={() => (theme.pickerDetached = !detached)}
-      aria-label={detached
-        ? 'Attach picker to the theme editor'
-        : 'Detach picker into its own window'}
-      use:tooltip={detached ? 'Attach to the theme editor' : 'Detach into its own window'}
-    >
-      {#if detached}<ArrowDownToLine size={16} />{:else}<PictureInPicture2 size={16} />{/if}
-    </button>
+    {#if !store.narrow}
+      <button
+        class="icon-btn small"
+        type="button"
+        onclick={() => (theme.pickerDetached = !detached)}
+        aria-label={detached
+          ? 'Attach picker to the theme editor'
+          : 'Detach picker into its own window'}
+        use:tooltip={detached ? 'Attach to the theme editor' : 'Detach into its own window'}
+      >
+        {#if detached}<ArrowDownToLine size={16} />{:else}<PictureInPicture2 size={16} />{/if}
+      </button>
+    {/if}
   </div>
   {#if value && !readOnly}
     <hex-color-picker color={toHex6(value)} oncolor-changed={onPickerInput}></hex-color-picker>
@@ -126,7 +129,7 @@
   }
   .picker :global(hex-color-picker) {
     width: 100%;
-    height: 190px;
+    height: clamp(110px, 24vh, 190px);
   }
   .picker :global(hex-color-picker::part(saturation)) {
     border-radius: 8px;

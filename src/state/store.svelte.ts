@@ -67,6 +67,8 @@ class Store {
   swControlled = $state(false);
   swVersionAvailable = $state(false);
   /** Everything needed to work offline is local: cached assets + a loaded compiler. */
+  /** Narrow (phone) layout: driven by a media query. */
+  narrow = $state(typeof matchMedia === 'function' && matchMedia('(max-width: 760px)').matches);
   offlineReady = $derived(this.swControlled && this.compiler.state === 'ready');
 
   // -------------------------------------------------------- derived ----
@@ -164,3 +166,8 @@ function readView(): ViewMode {
 }
 
 export const store = new Store();
+if (typeof matchMedia === 'function') {
+  matchMedia('(max-width: 760px)').addEventListener('change', (e) => {
+    store.narrow = e.matches;
+  });
+}

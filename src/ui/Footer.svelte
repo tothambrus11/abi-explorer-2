@@ -7,11 +7,11 @@
 
 <footer class="footer">
   <span id="clang-version" class="mono">{version}</span>
-  <span
+  <span class="wide"
     >· layouts computed by <a href="https://llvm.org/" rel="noopener">clang</a> compiled to
     WebAssembly (<a href="https://yowasp.org/" rel="noopener">YoWASP</a> build, Apache-2.0 w/ LLVM exception)</span
   >
-  <span>· nothing you type leaves this page</span>
+  <span class="wide">· nothing you type leaves this page</span>
   {#if store.offlineReady}<span id="offline-status" class="ok">· ✓ available offline</span>{/if}
   {#if store.swVersionAvailable}
     <button
@@ -24,6 +24,14 @@
 </footer>
 
 <style>
+  @media (max-width: 760px) {
+    .footer {
+      padding: 6px 12px 10px;
+    }
+    .wide {
+      display: none;
+    }
+  }
   .footer {
     padding: 14px 20px 22px;
     color: var(--text-muted);

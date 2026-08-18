@@ -181,6 +181,23 @@
 </section>
 
 <style>
+  @media (max-width: 760px) {
+    .controls {
+      padding: 8px 12px;
+      gap: 8px 12px;
+    }
+    .group {
+      flex: 1 1 100%;
+      min-width: 0;
+    }
+    .group .input {
+      min-width: 0;
+      max-width: 100%;
+    }
+    .group > select#target {
+      flex: 1;
+    }
+  }
   .controls {
     display: flex;
     align-items: center;

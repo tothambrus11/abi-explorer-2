@@ -41,6 +41,11 @@
 </header>
 
 <style>
+  @media (max-width: 760px) {
+    .topbar {
+      padding: 8px 12px;
+    }
+  }
   .topbar {
     display: flex;
     align-items: center;

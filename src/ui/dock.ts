@@ -117,8 +117,32 @@ export function mountDock(container: HTMLElement, session: Session): Dock {
     for (const p of CORE_PANELS) if (!api.getPanel(p.id)) api.addPanel(p);
   };
 
+  const narrow = () => container.clientWidth < 760;
+
   const defaultLayout = () => {
     api.clear();
+    if (narrow()) {
+      // Phones: Code above Layout, Diagnostics as a tab next to Layout.
+      api.addPanel(CORE_PANELS[0]!);
+      api.addPanel({
+        id: PANEL_LAYOUT,
+        component: PANEL_LAYOUT,
+        title: 'Layout',
+        position: { referencePanel: PANEL_EDITOR, direction: 'below' },
+      });
+      api.addPanel({
+        id: PANEL_DIAGNOSTICS,
+        component: PANEL_DIAGNOSTICS,
+        title: 'Diagnostics',
+        position: { referencePanel: PANEL_LAYOUT, direction: 'within' },
+      });
+      api.getPanel(PANEL_LAYOUT)?.api.setActive();
+      api.layout(container.clientWidth, container.clientHeight);
+      api
+        .getPanel(PANEL_EDITOR)
+        ?.group.api.setSize({ height: Math.round(container.clientHeight * 0.45) });
+      return;
+    }
     ensureCorePanels();
     // ~5:7 split; diagnostics as a small strip under the code
     api.layout(container.clientWidth, container.clientHeight);
@@ -176,7 +200,7 @@ export function mountDock(container: HTMLElement, session: Session): Dock {
     // Default position: attached to the bottom of the theme editor window.
     const box = container.getBoundingClientRect();
     const te = api.getPanel(PANEL_THEME)?.group.element.getBoundingClientRect();
-    const w = te ? Math.round(te.width) : 380;
+    const w = te ? Math.round(te.width) : Math.min(380, container.clientWidth - 16);
     const h = 300;
     let x = te ? Math.round(te.left - box.left) : Math.max(8, container.clientWidth - w - 24);
     let y = te ? Math.round(te.bottom - box.top + 8) : 16;
@@ -202,13 +226,21 @@ export function mountDock(container: HTMLElement, session: Session): Dock {
       existing.api.setActive();
       return;
     }
-    const w = 400;
-    const h = Math.min(600, Math.max(360, container.clientHeight - 40));
+    // As tall as the available space (minus a small margin); on narrow
+    // screens it takes the full width.
+    const margin = 8;
+    const w = Math.min(420, container.clientWidth - 2 * margin);
+    const h = Math.max(320, container.clientHeight - 2 * margin);
     api.addPanel({
       id: PANEL_THEME,
       component: PANEL_THEME,
       title: 'Theme editor',
-      floating: { width: w, height: h, x: Math.max(8, container.clientWidth - w - 24), y: 16 },
+      floating: {
+        width: w,
+        height: h,
+        x: Math.max(margin, container.clientWidth - w - margin),
+        y: margin,
+      },
     });
   };
   theme.editorOpen = !!api.getPanel(PANEL_THEME);

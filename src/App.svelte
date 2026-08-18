@@ -43,6 +43,11 @@
     display: flex;
     flex-direction: column;
   }
+  @media (max-width: 760px) {
+    .dock {
+      padding: 6px 8px;
+    }
+  }
   .dock {
     flex: 1;
     min-height: 0;
