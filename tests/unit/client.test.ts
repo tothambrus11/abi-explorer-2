@@ -65,8 +65,9 @@ describe('ClangClient', () => {
     let hang = true;
     FakeWorker.behaviour = (w, msg) => {
       if (msg.type === 'init') w.reply({ type: 'ready', version: 'v' });
-      if (msg.type === 'compile' && !hang)
-        {w.reply({ type: 'result', id: msg.id, code: 0, stdout: 'later', stderr: '' });}
+      if (msg.type === 'compile' && !hang) {
+        w.reply({ type: 'result', id: msg.id, code: 0, stdout: 'later', stderr: '' });
+      }
     };
     const c = new ClangClient({ createWorker, timeoutMs: 100, maxRestarts: 2 });
     const statuses: string[] = [];

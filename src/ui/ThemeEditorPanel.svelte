@@ -6,21 +6,16 @@
   import Plus from '@lucide/svelte/icons/plus';
   import Download from '@lucide/svelte/icons/download';
   import Upload from '@lucide/svelte/icons/upload';
-  import { theme } from '$state/theme.svelte';
+  import { theme, type ColorGroup } from '$state/theme.svelte';
   import {
     EDITOR_FIELDS,
     MEMBER_FIELDS,
     PAGE_FIELDS,
     SYNTAX_FIELDS,
-    toHex6,
     type ThemeSpec,
   } from './themes';
   import { tooltip } from './tooltip';
-  import 'vanilla-colorful/hex-color-picker.js';
-
-  type ColorGroup = 'page' | 'syntax' | 'editor' | 'members';
-
-  let panel: HTMLElement | undefined = $state();
+  import ColorPicker from './ColorPicker.svelte';
 
   const editing = $derived(theme.editingId ? theme.byId(theme.editingId) : null);
   const readOnly = $derived(!editing || editing.preset);
@@ -90,73 +85,18 @@
     if (id) theme.editingId = id;
     else flash('Not a valid theme JSON');
   }
-  // ---- colour popover (vanilla-colorful), anchored beside the panel next to the picked swatch
-  interface Picking {
-    group: ColorGroup;
-    key: string;
-    anchor: HTMLElement;
-  }
-  let picking: Picking | null = $state(null);
-  let popX = $state(0);
-  let popY = $state(0);
-  let popover: HTMLDivElement | undefined = $state();
-  let fieldsEl: HTMLDivElement | undefined = $state();
-  const pickingValue = $derived.by(() => {
-    const pk = picking;
-    const ed = editing;
-    if (!pk || !ed) return '#888888';
-    return (ed[pk.group] as unknown as Record<string, string>)[pk.key] ?? '#888888';
-  });
-
-  function openPicker(group: ColorGroup, key: string, e: MouseEvent) {
+  // ---- colour picking: swatches select theme.picking; the picker itself lives
+  // at the bottom of this panel (ColorPicker) or in its own window when detached.
+  function openPicker(group: ColorGroup, key: string) {
     if (readOnly) return;
-    const anchor = e.currentTarget as HTMLElement;
-    picking = picking?.key === key && picking.group === group ? null : { group, key, anchor };
-    queueMicrotask(placePopover);
+    theme.picking =
+      theme.picking?.key === key && theme.picking.group === group ? null : { group, key };
   }
-  function placePopover() {
-    if (!picking || !panel) return;
-    const a = picking.anchor.getBoundingClientRect();
-    const p = panel.getBoundingClientRect();
-    const w = popover?.offsetWidth ?? 232;
-    const h = popover?.offsetHeight ?? 260;
-    // Beside the panel: prefer the right side, else the left.
-    let x = p.right + 8;
-    if (x + w > window.innerWidth - 8) x = p.left - w - 8;
-    if (x < 8) x = Math.max(8, Math.min(a.left, window.innerWidth - w - 8)); // narrow screens: over the panel
-    // Vertically aligned to the swatch row, clamped to the viewport.
-    let y = a.top + a.height / 2 - 20;
-    y = Math.max(8, Math.min(y, window.innerHeight - h - 8));
-    popX = x;
-    popY = y;
-    // Hide when the swatch scrolled out of the fields box.
-    const f = fieldsEl?.getBoundingClientRect();
-    if (f && (a.bottom < f.top || a.top > f.bottom)) picking = null;
-  }
-  // Re-place when the panel is moved/resized (dockview) — observe its box.
+  // Editing another theme: the previous selection may not exist there.
   $effect(() => {
-    if (!panel) return;
-    const ro = new ResizeObserver(() => {
-      placePopover();
-    });
-    ro.observe(panel);
-    return () => {
-      ro.disconnect();
-    };
+    void theme.editingId;
+    theme.picking = null;
   });
-  function onPickerInput(e: Event) {
-    const v = (e as CustomEvent<{ value: string }>).detail.value;
-    if (picking) setColor(picking.group, picking.key, v);
-  }
-  function onDocPointer(e: PointerEvent) {
-    if (!picking) return;
-    const t = e.target as Node;
-    if ((popover?.contains(t) ?? false) || picking.anchor.contains(t)) return;
-    picking = null;
-  }
-  function onDocKey(e: KeyboardEvent) {
-    if (e.key === 'Escape') picking = null;
-  }
 
   let note = $state('');
   let noteTimer: ReturnType<typeof setTimeout> | null = null;
@@ -172,10 +112,7 @@
   }
 </script>
 
-<svelte:window onresize={placePopover} />
-<svelte:document onpointerdown={onDocPointer} onkeydown={onDocKey} />
-
-<div class="panel" bind:this={panel}>
+<div class="panel">
   <div class="row">
     <select
       class="input"
@@ -271,7 +208,7 @@
         Presets are read-only — <button class="link" onclick={duplicate}>duplicate</button> to customize.
       </p>
     {/if}
-    <div class="fields" bind:this={fieldsEl} onscroll={placePopover}>
+    <div class="fields">
       {#each [['Page', 'page', PAGE_FIELDS], ['Members', 'members', MEMBER_FIELDS], ['Code', 'syntax', SYNTAX_FIELDS], ['Editor', 'editor', EDITOR_FIELDS]] as const as [label, group, fields] (group)}
         <h3>{label}</h3>
         {#each fields as f (f.key)}
@@ -284,9 +221,9 @@
               style:background={value}
               disabled={readOnly}
               aria-label="Pick {f.label} colour"
-              aria-expanded={picking?.group === group && picking.key === f.key}
-              onclick={(e) => {
-                openPicker(group, f.key, e);
+              aria-expanded={theme.picking?.group === group && theme.picking.key === f.key}
+              onclick={() => {
+                openPicker(group, f.key);
               }}
             ></button>
             <input
@@ -305,33 +242,8 @@
     </div>
   {/if}
   {#if note}<div class="note" role="status">{note}</div>{/if}
+  {#if !theme.pickerDetached}<ColorPicker />{/if}
 </div>
-{#if picking && editing}
-  <div
-    class="popover"
-    bind:this={popover}
-    style:left="{popX}px"
-    style:top="{popY}px"
-    role="dialog"
-    aria-label="Colour picker"
-  >
-    <hex-color-picker color={toHex6(pickingValue)} oncolor-changed={onPickerInput}
-    ></hex-color-picker>
-    <div class="pop-row">
-      <span class="pop-swatch" style:background={pickingValue}></span>
-      <input
-        class="hex mono"
-        value={pickingValue}
-        spellcheck="false"
-        aria-label="Hex colour"
-        onchange={(e) => {
-          const v = e.currentTarget.value.trim();
-          if (/^#[0-9a-fA-F]{6}$/.test(v) && picking) setColor(picking.group, picking.key, v);
-        }}
-      />
-    </div>
-  </div>
-{/if}
 
 <style>
   .panel {
@@ -438,51 +350,6 @@
   .swatch:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 1px;
-  }
-  .popover {
-    position: fixed;
-    z-index: 1000;
-    width: 232px;
-    padding: 10px;
-    background: var(--surface-1);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.28);
-  }
-  .popover :global(hex-color-picker) {
-    width: 212px;
-    height: 190px;
-  }
-  .popover :global(hex-color-picker::part(saturation)) {
-    border-radius: 8px;
-    border-bottom: none;
-  }
-  .popover :global(hex-color-picker::part(hue)) {
-    border-radius: 7px;
-    margin-top: 10px;
-    height: 14px;
-  }
-  .popover :global(hex-color-picker::part(saturation-pointer)),
-  .popover :global(hex-color-picker::part(hue-pointer)) {
-    width: 18px;
-    height: 18px;
-    border: 2px solid #fff;
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
-  }
-  .pop-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 10px;
-  }
-  .pop-swatch {
-    width: 24px;
-    height: 24px;
-    border-radius: 6px;
-    border: 1px solid var(--border);
-  }
-  .pop-row .hex {
-    flex: 1;
   }
   .hex {
     font-size: 12px;

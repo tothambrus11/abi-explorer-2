@@ -19,9 +19,12 @@
     dock = mountDock(dockHost, session);
     return () => dock?.dispose();
   });
-  // theme.editorOpen -> floating panel
+  // theme.editorOpen -> floating panel; pickerDetached -> its own window
   $effect(() => {
     if (theme.editorOpen && dock) dock.openThemeEditor();
+  });
+  $effect(() => {
+    if (dock) dock.setPickerDetached(theme.pickerDetached);
   });
 </script>
 

@@ -239,8 +239,8 @@ input.input {
   --dv-icon-hover-background-color: color-mix(in srgb, var(--text-primary) 10%, transparent);
   --dv-overlay-z-index: 999;
   --dv-border-radius: 10px;
-  --dv-tab-border-radius: 3px;
-  --dv-tab-margin: 4px 2px;
+  --dv-tab-border-radius: 6px;
+  --dv-tab-margin: 3px 3px;
   --dv-spacing-padding: 0px;
   --dv-sash-border-radius: 3px;
   --dv-dropdown-border-radius: 8px;
@@ -293,6 +293,10 @@ input.input {
 }
 .dockview-theme-abix .dv-tab {
   font-weight: 500;
+  border-radius: var(--dv-tab-border-radius);
+}
+.dockview-theme-abix .dv-dockview {
+  background-color: transparent;
 }
 .dock-panel {
   height: 100%;

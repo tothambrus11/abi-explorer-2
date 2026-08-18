@@ -3,6 +3,8 @@
 // and stores custom theme specs. Persisted in localStorage; before any choice
 // the OS colour scheme decides.
 
+export type ColorGroup = 'page' | 'syntax' | 'editor' | 'members';
+
 import {
   compileTheme,
   DEFAULT_DARK,
@@ -90,6 +92,10 @@ class ThemeStore {
   /** Editor window state. */
   editorOpen = $state(false);
   editingId: string | null = $state(null);
+  /** Colour currently being edited in the picker: which group/key of the editing theme. */
+  picking: { group: ColorGroup; key: string } | null = $state(null);
+  /** The picker lives at the bottom of the theme editor unless detached into its own window. */
+  pickerDetached = $state(false);
 
   /** Compiled custom themes, memoized per spec object (update() replaces only the edited spec). */
   private compiled = new WeakMap<ThemeSpec, Theme>();

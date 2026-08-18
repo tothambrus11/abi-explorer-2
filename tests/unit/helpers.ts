@@ -15,10 +15,11 @@ export function fixtureCompiler(fx: Fixture): FixtureCompiler {
   const map = new Map(fx.calls.map((c) => [key(c.job), c.out]));
   return new FixtureCompiler((job): CompileOutput => {
     const out = map.get(key(job));
-    if (!out)
-      {throw new Error(
+    if (!out) {
+      throw new Error(
         `no recorded output for job:\n${JSON.stringify(job.args)}\nfiles: ${Object.keys(job.files).join(',')}`,
-      );}
+      );
+    }
     return out;
   });
 }

@@ -20,6 +20,8 @@ export interface FieldLocation {
   qualType: string;
   /** Canonical type, when different (e.g. "unsigned long"). */
   desugaredType?: string;
+  /** Explicit `_Alignas`/`alignas`/`aligned` on the member, evaluated by clang (bytes). */
+  alignAttr?: number;
 }
 
 /** A named declaration whose name is written at (line, col): records and typedefs. */
@@ -125,8 +127,30 @@ function walk(node: unknown, owner: string, state: LocState, fileName: string, o
     };
     const ds = str(type, 'desugaredQualType');
     if (ds !== undefined) f.desugaredType = ds;
+    const al = alignedAttrValue(n);
+    if (al !== undefined) f.alignAttr = al;
     out.fields.push(f);
   }
+}
+
+/**
+ * The evaluated value of an AlignedAttr on a declaration node, if any: clang
+ * prints the constant it computed (`ConstantExpr.value`) inside the attribute.
+ * `alignas(type)` forms have no constant and yield undefined.
+ */
+function alignedAttrValue(decl: JsonNode): number | undefined {
+  const inner = decl['inner'];
+  if (!Array.isArray(inner)) return undefined;
+  for (const node of inner as JsonNode[]) {
+    if (str(node, 'kind') !== 'AlignedAttr') continue;
+    const args = node['inner'];
+    if (!Array.isArray(args)) continue;
+    for (const arg of args as JsonNode[]) {
+      const v = str(arg, 'value');
+      if (v !== undefined && /^\d+$/.test(v)) return Number(v);
+    }
+  }
+  return undefined;
 }
 
 function applyLoc(loc: JsonNode, state: LocState): void {

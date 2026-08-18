@@ -20,11 +20,18 @@ import {
   type RecordIndex,
   type ScalarTable,
 } from './probes';
+import { unqualifiedName } from './ast-locations';
 
 export interface ModelInputs {
   scalars: ScalarTable;
   recordIndex: RecordIndex;
   memberSizes: MemberSizes;
+  /**
+   * Explicit member alignments (`_Alignas`/`alignas`) as evaluated by clang in
+   * the AST, keyed `<unqualified owner> <field name>`; probes measure the
+   * member's *type*, so these override when larger.
+   */
+  memberAligns?: Map<string, number>;
 }
 
 interface Measure {
@@ -40,6 +47,9 @@ interface ProbeScope {
 
 export function buildRenderModel(record: RecordLayout, inputs: ModelInputs): RenderModel {
   const { scalars, recordIndex, memberSizes } = inputs;
+  const memberAligns = inputs.memberAligns;
+  const attrAlign = (owner: RecordLayout, name: string): number | undefined =>
+    memberAligns?.get(unqualifiedName(owner.name) + ' ' + name);
   const leaves: Leaf[] = [];
   const groups: Group[] = [];
   const markers: Marker[] = [];
@@ -183,6 +193,8 @@ export function buildRenderModel(record: RecordLayout, inputs: ModelInputs): Ren
       }
 
       const m = name ? measure(scope, name) : { bits: null, align: null };
+      const explicit = name ? attrAlign(ownerRec, name) : undefined;
+      const align = explicit !== undefined ? Math.max(explicit, m.align ?? 0) : m.align;
       let bits = m.bits;
       let estimated = false;
       if (bits === null) {
@@ -198,7 +210,7 @@ export function buildRenderModel(record: RecordLayout, inputs: ModelInputs): Ren
         type: row.type,
         offsetBits: row.offsetBits,
         sizeBits: bits,
-        align: m.align,
+        align,
         estimated,
         depth: path.length,
         owner: ownerRec.name,

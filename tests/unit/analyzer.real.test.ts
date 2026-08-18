@@ -142,6 +142,43 @@ struct Msg { struct { unsigned char lo, hi; }; Mix m; };`;
     expect(a.unmeasured).toEqual([]);
   }, 120_000);
 
+  it('reports per-member alignment from _Alignas / alignas, not just the type', async () => {
+    const src = `#include <stdint.h>\nstruct Aligned { _Alignas(16) uint8_t buf[10]; uint32_t n; };\n`;
+    // Probes measure the member's type; the explicit alignment comes from the AST (AlignedAttr).
+    const alignsOf = async (an: Awaited<ReturnType<typeof analyzer.analyze>>, owners: string[]) => {
+      const info = await analyzer.locate(an, owners);
+      const m = new Map<string, number>();
+      for (const f of info.fields)
+        {if (f.alignAttr !== undefined) m.set(f.owner + ' ' + f.name, f.alignAttr);}
+      return m;
+    };
+    const a = await analyzer.analyze(src, {
+      ...DEFAULT_OPTIONS,
+      triple: 'x86_64-unknown-linux-gnu',
+    });
+    const rec = a.userRecords.find((r) => r.name === 'Aligned')!;
+    expect(buildRenderModel(rec, a).leaves.map((l) => l.align)).toEqual([1, 4]); // type alignment only
+    const m = buildRenderModel(rec, { ...a, memberAligns: await alignsOf(a, ['Aligned']) });
+    expect(m.leaves.map((l) => [l.name, l.sizeBits / 8, l.align])).toEqual([
+      ['buf', 10, 16],
+      ['n', 4, 4],
+    ]);
+    const cxx = await analyzer.analyze('struct S { alignas(32) char c; int i; };\n', {
+      ...DEFAULT_OPTIONS,
+      lang: 'c++',
+      std: 'gnu++20',
+      triple: 'x86_64-unknown-linux-gnu',
+    });
+    const cm = buildRenderModel(cxx.userRecords[0]!, {
+      ...cxx,
+      memberAligns: await alignsOf(cxx, ['S']),
+    });
+    expect(cm.leaves.map((l) => [l.name, l.align])).toEqual([
+      ['c', 32],
+      ['i', 4],
+    ]);
+  }, 120_000);
+
   it('probes arbitrary spellings', async () => {
     const a = await analyzer.analyze('typedef unsigned long long ull;', {
       ...DEFAULT_OPTIONS,

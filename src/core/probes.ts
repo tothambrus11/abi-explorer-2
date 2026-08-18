@@ -153,6 +153,8 @@ export function buildFieldProbes(records: RecordLayout[], recordIndex: RecordInd
         // a member access yields the *referent* type of a reference member, so
         // references are measured through their address (a pointer) instead.
         const isRef = /&&?\s*$/.test(row.type ?? '');
+        // `__typeof__` gives the member's *type*; a per-member `_Alignas`/`alignas`
+        // lives on the declaration and is read from the AST (AlignedAttr) instead.
         const decls = spellings.map((sp) =>
           isRef ? `__typeof__(&((${sp}*)0)->${path}) v;` : `__typeof__(((${sp}*)0)->${path}) v;`,
         );

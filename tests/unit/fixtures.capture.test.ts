@@ -97,8 +97,9 @@ it.skipIf(process.env['ABIX_CAPTURE'] !== '1')(
         );
         await analyzer.locate(analysis, owners);
         // Also record a couple of spelling probes used by the hover tests.
-        for (const sp of ['uint64_t', 'long double', 'no_such_type'])
-          {await analyzer.probeSpelling(analysis, sp);}
+        for (const sp of ['uint64_t', 'long double', 'no_such_type']) {
+          await analyzer.probeSpelling(analysis, sp);
+        }
         const file = `${c.name}--${triple}.json`;
         const fx: Fixture = { name: c.name, lang: c.lang, triple, source: c.source, calls };
         await writeFile(path.join(OUT, file), JSON.stringify(fx, null, 1));

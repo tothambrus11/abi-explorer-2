@@ -20,12 +20,14 @@ import EditorPane from './EditorPane.svelte';
 import ResultsPane from './ResultsPane.svelte';
 import Diagnostics from './Diagnostics.svelte';
 import ThemeEditorPanel from './ThemeEditorPanel.svelte';
+import ColorPicker from './ColorPicker.svelte';
 
 const LAYOUT_KEY = 'abix-dock-layout-v1';
 export const PANEL_EDITOR = 'editor';
 export const PANEL_LAYOUT = 'layout';
 export const PANEL_DIAGNOSTICS = 'diagnostics';
 export const PANEL_THEME = 'theme-editor';
+export const PANEL_PICKER = 'color-picker';
 
 /** The panels every layout has (in creation order; positions are relative to earlier ones). */
 const CORE_PANELS: AddPanelOptions[] = [
@@ -61,6 +63,8 @@ export interface Dock {
   api: DockviewApi;
   resetLayout(): void;
   openThemeEditor(): void;
+  /** Show the colour picker in its own floating window (below the theme editor) or close it. */
+  setPickerDetached(detached: boolean): void;
   dispose(): void;
 }
 
@@ -73,6 +77,10 @@ export function mountDock(container: HTMLElement, session: Session): Dock {
     [PANEL_LAYOUT]: () => ResultsPane,
     [PANEL_DIAGNOSTICS]: () => Diagnostics,
     [PANEL_THEME]: () => ThemeEditorPanel,
+    [PANEL_PICKER]: () => ColorPicker,
+  };
+  const panelProps: Record<string, Record<string, unknown>> = {
+    [PANEL_PICKER]: { detached: true },
   };
 
   const api = createDockview(container, {
@@ -91,7 +99,10 @@ export function mountDock(container: HTMLElement, session: Session): Dock {
             element.textContent = `Unknown panel: ${options.name}`;
             return;
           }
-          instance = mount(factory(), { target: element, props: { session } });
+          instance = mount(factory(), {
+            target: element,
+            props: { session, ...panelProps[options.name] },
+          });
         },
         dispose() {
           if (instance) void unmount(instance);
@@ -146,8 +157,45 @@ export function mountDock(container: HTMLElement, session: Session): Dock {
 
   // Theme editor floating panel <-> theme.editorOpen
   const removeSub = api.onDidRemovePanel((p) => {
-    if (p.id === PANEL_THEME) theme.editorOpen = false;
+    if (p.id === PANEL_THEME) {
+      theme.editorOpen = false;
+      api.getPanel(PANEL_PICKER)?.api.close();
+    }
+    if (p.id === PANEL_PICKER) theme.pickerDetached = false;
   });
+  const setPickerDetached = (detached: boolean) => {
+    const existing = api.getPanel(PANEL_PICKER);
+    if (!detached) {
+      existing?.api.close();
+      return;
+    }
+    if (existing) {
+      existing.api.setActive();
+      return;
+    }
+    // Default position: attached to the bottom of the theme editor window.
+    const box = container.getBoundingClientRect();
+    const te = api.getPanel(PANEL_THEME)?.group.element.getBoundingClientRect();
+    const w = te ? Math.round(te.width) : 380;
+    const h = 300;
+    let x = te ? Math.round(te.left - box.left) : Math.max(8, container.clientWidth - w - 24);
+    let y = te ? Math.round(te.bottom - box.top + 8) : 16;
+    if (te && y + h > container.clientHeight - 8) {
+      // No room below: sit beside the theme editor, bottom-aligned.
+      y = Math.max(8, Math.round(te.bottom - box.top) - h);
+      x = Math.round(te.left - box.left) - w - 8;
+      if (x < 8) x = Math.round(te.right - box.left) + 8;
+    }
+    if (x + w > container.clientWidth - 8) x = Math.max(8, container.clientWidth - w - 8);
+    if (y + h > container.clientHeight - 8) y = Math.max(8, container.clientHeight - h - 8);
+    api.addPanel({
+      id: PANEL_PICKER,
+      component: PANEL_PICKER,
+      title: 'Colour picker',
+      floating: { width: w, height: h, x, y },
+    });
+  };
+  theme.pickerDetached = !!api.getPanel(PANEL_PICKER);
   const openThemeEditor = () => {
     const existing = api.getPanel(PANEL_THEME);
     if (existing) {
@@ -155,7 +203,7 @@ export function mountDock(container: HTMLElement, session: Session): Dock {
       return;
     }
     const w = 400;
-    const h = Math.min(640, Math.max(360, container.clientHeight - 40));
+    const h = Math.min(600, Math.max(360, container.clientHeight - 40));
     api.addPanel({
       id: PANEL_THEME,
       component: PANEL_THEME,
@@ -178,6 +226,7 @@ export function mountDock(container: HTMLElement, session: Session): Dock {
       defaultLayout();
     },
     openThemeEditor,
+    setPickerDetached,
     dispose() {
       ro.disconnect();
       layoutSub.dispose();

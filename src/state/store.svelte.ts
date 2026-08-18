@@ -61,6 +61,8 @@ class Store {
   status: AnalysisStatus = $state({ kind: 'idle' });
   analysis: Analysis | null = $state.raw(null);
   hover: Hover = $state.raw(EMPTY_HOVER);
+  /** `<unqualified owner> <field>` -> explicit alignment from the AST (filled in by the session). */
+  memberAligns: Map<string, number> = $state.raw(new Map<string, number>());
   /** A service worker controls this page (assets are cached). */
   swControlled = $state(false);
   swVersionAvailable = $state(false);
@@ -98,7 +100,7 @@ class Store {
     const out = new Map<string, RenderModel>();
     if (!a) return out;
     for (const rec of this.visibleRecords) {
-      const model = buildRenderModel(rec, a);
+      const model = buildRenderModel(rec, { ...a, memberAligns: this.memberAligns });
       assignColors(model);
       out.set(recordKey(rec), model);
     }

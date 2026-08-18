@@ -237,6 +237,14 @@ export class Session {
       const info = await this.analyzer.locate(analysis, owners, ac.signal);
       locs = info.fields;
       this.decls = info.decls;
+      // Explicit member alignments (AlignedAttr) → store; models re-derive
+      // (guarded: only when the map actually changed, since models feed back here).
+      const aligns = new Map<string, number>();
+      for (const f of info.fields)
+        {if (f.alignAttr !== undefined) aligns.set(f.owner + ' ' + f.name, f.alignAttr);}
+      const prev = store.memberAligns;
+      const same = prev.size === aligns.size && [...aligns].every(([k, v]) => prev.get(k) === v);
+      if (!same) store.memberAligns = aligns;
       this.knownSpellings = new Set(
         [
           ...info.decls.map((d) => d.name),
