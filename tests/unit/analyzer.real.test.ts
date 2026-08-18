@@ -148,8 +148,9 @@ struct Msg { struct { unsigned char lo, hi; }; Mix m; };`;
     const alignsOf = async (an: Awaited<ReturnType<typeof analyzer.analyze>>, owners: string[]) => {
       const info = await analyzer.locate(an, owners);
       const m = new Map<string, number>();
-      for (const f of info.fields)
-        {if (f.alignAttr !== undefined) m.set(f.owner + ' ' + f.name, f.alignAttr);}
+      for (const f of info.fields) {
+        if (f.alignAttr !== undefined) m.set(f.owner + ' ' + f.name, f.alignAttr);
+      }
       return m;
     };
     const a = await analyzer.analyze(src, {
@@ -177,6 +178,74 @@ struct Msg { struct { unsigned char lo, hi; }; Mix m; };`;
       ['c', 32],
       ['i', 4],
     ]);
+  }, 120_000);
+
+  it('shows user structs regardless of name, hides only compiler builtins', async () => {
+    // `__`-prefixed names are common in embedded/kernel code and must not be hidden.
+    const a = await analyzer.analyze(
+      'struct __packet { int hdr; char body[8]; };\nstruct tm_like { int a, b; };\n',
+      { ...DEFAULT_OPTIONS, triple: 'x86_64-unknown-linux-gnu' },
+    );
+    const names = a.userRecords.map((r) => r.name);
+    expect(names).toContain('__packet');
+    expect(names).toContain('tm_like');
+    expect(names).not.toContain('__va_list_tag'); // a compiler builtin
+    expect(a.builtinRecords.has('__va_list_tag')).toBe(true);
+    const m = buildRenderModel(
+      a.userRecords.find((r) => r.name === '__packet')!,
+      a,
+    );
+    expect(m.leaves.map((l) => [l.name, l.align])).toEqual([
+      ['hdr', 4],
+      ['body', 1],
+    ]);
+  }, 120_000);
+
+  it('resolves records in anonymous namespaces (C++) to their real names', async () => {
+    const src = 'namespace { struct N { char c; double d; }; }\nN n;\n';
+    const a = await analyzer.analyze(src, {
+      ...DEFAULT_OPTIONS,
+      lang: 'c++',
+      std: 'gnu++20',
+      triple: 'x86_64-unknown-linux-gnu',
+    });
+    const rec = a.userRecords.find((r) =>
+      /(^|::)N$/.test(r.name.replace(/\(anonymous namespace\)::/g, '')),
+    )!;
+    expect(rec).toBeDefined();
+    const m = buildRenderModel(rec, a);
+    expect(m.leaves.map((l) => [l.name, l.sizeBits / 8, l.align, l.estimated])).toEqual([
+      ['c', 1, 1, false],
+      ['d', 8, 8, false],
+    ]);
+    expect(a.unmeasured).toEqual([]);
+  }, 120_000);
+
+  it('maps members to the right source line for same-named records in different scopes', async () => {
+    const src = `struct A { struct S { int x; } s; };
+struct B { struct S { double y; } s; };
+A a; B b;
+`;
+    const an = await analyzer.analyze(src, {
+      ...DEFAULT_OPTIONS,
+      lang: 'c++',
+      std: 'gnu++20',
+      triple: 'x86_64-unknown-linux-gnu',
+    });
+    const info = await analyzer.locate(an, ['A', 'B']);
+    const modelA = buildRenderModel(
+      an.userRecords.find((r) => r.name === 'A')!,
+      an,
+    );
+    const modelB = buildRenderModel(
+      an.userRecords.find((r) => r.name === 'B')!,
+      an,
+    );
+    const lineOf = (m: ReturnType<typeof buildRenderModel>, field: string) =>
+      matchItemsToLocations(m.leaves, info.fields).get(m.leaves.findIndex((l) => l.name === field))
+        ?.line;
+    expect(lineOf(modelA, 'x')).toBe(1); // A::S::x on line 1
+    expect(lineOf(modelB, 'y')).toBe(2); // B::S::y on line 2 (not A's line)
   }, 120_000);
 
   it('probes arbitrary spellings', async () => {

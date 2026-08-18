@@ -12,7 +12,7 @@
 
 import type { CompileOptions } from '$core/options';
 import { buildArgv, driverFor, sourceExtension } from '$core/options';
-import { isInternalRecord, parseRecordLayouts } from '$core/layout-parser';
+import { parseRecordLayouts } from '$core/layout-parser';
 import {
   buildFieldProbes,
   buildProbeSource,
@@ -33,6 +33,11 @@ import { extractAstInfo, type AstInfo } from '$core/ast-locations';
 import type { Diagnostic, ProbeResult, RecordLayout } from '$core/types';
 import type { Compiler } from './Compiler';
 
+interface Baseline {
+  scalars: ScalarTable;
+  builtinRecords: Set<string>;
+}
+
 export interface Analysis {
   source: string;
   options: CompileOptions;
@@ -40,6 +45,8 @@ export interface Analysis {
   code: number;
   records: RecordLayout[];
   userRecords: RecordLayout[];
+  /** Names of clang's implicit/builtin records for this target (not the user's). */
+  builtinRecords: Set<string>;
   scalars: ScalarTable;
   recordIndex: RecordIndex;
   memberSizes: MemberSizes;
@@ -59,7 +66,7 @@ const FIELD_PROBE_FILE = (o: CompileOptions) => 'input_probe.' + sourceExtension
 export class Analyzer {
   private locationCache = new Map<string, AstInfo>();
   private spellingCache = new Map<string, ProbeResult | null>();
-  private scalarCache = new Map<string, ScalarTable>();
+  private baselineCache = new Map<string, Baseline>();
 
   constructor(private readonly compiler: Compiler) {}
 
@@ -69,9 +76,9 @@ export class Analyzer {
    * set — never alongside the user's code, whose errors would abort clang
    * before it reaches a second TU.
    */
-  private async scalarTable(options: CompileOptions, signal?: AbortSignal): Promise<ScalarTable> {
+  private async baseline(options: CompileOptions, signal?: AbortSignal): Promise<Baseline> {
     const key = cacheKey('', options);
-    const cached = this.scalarCache.get(key);
+    const cached = this.baselineCache.get(key);
     if (cached) return cached;
     const probeTu = PROBE_TU(options);
     const r = await this.compiler.compile({
@@ -80,18 +87,27 @@ export class Analyzer {
       files: { [probeTu]: STATIC_PROBE_SOURCE },
       signal,
     });
-    const table = buildScalarTable(parseRecordLayouts(r.stdout));
-    if (this.scalarCache.size > 64) this.scalarCache.clear();
-    if (table.size > 0) this.scalarCache.set(key, table);
-    return table;
+    const records = parseRecordLayouts(r.stdout);
+    const scalars = buildScalarTable(records);
+    // Every record clang emits for this probe-only TU is one it declares
+    // implicitly (`__va_list_tag`, `__NSConstantString_tag`, target-specific
+    // va_list, …) — apart from our own probe structs. Anything the user's TU
+    // dumps beyond this set is genuinely the user's.
+    const builtinRecords = new Set(
+      records.map((rec) => rec.name).filter((n) => !n.startsWith('__abix_')),
+    );
+    const result: Baseline = { scalars, builtinRecords };
+    if (this.baselineCache.size > 64) this.baselineCache.clear();
+    if (scalars.size > 0) this.baselineCache.set(key, result);
+    return result;
   }
 
   async analyze(source: string, options: CompileOptions, signal?: AbortSignal): Promise<Analysis> {
     const argv0 = driverFor(options.lang);
     const mainFile = MAIN_FILE(options);
 
-    // 0. scalar table (cached per option set)
-    const scalars = await this.scalarTable(options, signal);
+    // 0. scalars + builtin record set (cached per option set)
+    const { scalars, builtinRecords } = await this.baseline(options, signal);
 
     // 1. layout pass
     const r1 = await this.compiler.compile({
@@ -102,7 +118,9 @@ export class Analyzer {
     });
     const records = parseRecordLayouts(r1.stdout);
     const recordIndex = buildRecordIndex(records);
-    const userRecords = records.filter((r) => !isInternalRecord(r));
+    const userRecords = records.filter(
+      (r) => !r.name.startsWith('__abix_') && !builtinRecords.has(r.name),
+    );
     const diagnosticsAnsi = r1.stderr;
     const diagnosticsText = stripAnsi(diagnosticsAnsi);
     const diagnostics = parseDiagnostics(diagnosticsText, mainFile);
@@ -136,6 +154,7 @@ export class Analyzer {
       code: r1.code,
       records,
       userRecords,
+      builtinRecords,
       scalars,
       recordIndex,
       memberSizes,

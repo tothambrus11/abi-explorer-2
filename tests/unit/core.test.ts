@@ -172,6 +172,16 @@ describe('probes', () => {
     );
     const bad = failingProbeIndices('input.c:4:20: error: no member named t', 'input.c', 3, probes);
     expect(bad).toEqual(new Set([1]));
+    // Uses the shared diagnostic parser: source-range info and a fatal
+    // "too many errors" line are handled, warnings/notes are ignored.
+    const multi = [
+      'input.c:3:20:{3:20-3:23}: error: a',
+      'input.c:5:1: warning: w',
+      'input.c:6:1: note: n',
+      'input.c:7:9: fatal error: too many errors emitted, stopping now',
+    ].join('\n');
+    const ps2 = buildProbeSource('int x;', probes); // firstProbeLine 2
+    expect(failingProbeIndices(multi, 'input.c', 2, ps2.probes)).toEqual(new Set([1, 5]));
     const next = nextProbeRound(probes, bad, new Map([['struct S a', { bits: 32, align: 4 }]]));
     expect(next.map((p) => [p.key, p.attempt])).toEqual([
       ['struct S t', 1],

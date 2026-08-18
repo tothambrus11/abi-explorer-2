@@ -11,6 +11,8 @@ import type { Leaf, Group } from './types';
 export interface FieldLocation {
   /** Unqualified name of the innermost enclosing record ('' for anonymous). */
   owner: string;
+  /** Fully-qualified enclosing scope (e.g. `A::S`, `n::T`), matching the layout dump. */
+  qualifiedOwner: string;
   /** Field name ('' for anonymous struct/union members). */
   name: string;
   line: number;
@@ -46,6 +48,14 @@ const RECORD_KINDS = new Set([
   'ClassTemplateSpecializationDecl',
   'ClassTemplatePartialSpecializationDecl',
 ]);
+const NAMESPACE_KINDS = new Set(['NamespaceDecl']);
+
+interface Scope {
+  /** Unqualified name of the innermost enclosing record. */
+  owner: string;
+  /** Qualified scope path (records + namespaces), as the layout dump prints it. */
+  qualified: string;
+}
 
 interface LocState {
   file: string;
@@ -72,7 +82,7 @@ export function extractAstInfo(dumpText: string, fileName: string): AstInfo {
     } catch {
       continue;
     }
-    walk(node, '', state, fileName, out);
+    walk(node, { owner: '', qualified: '' }, state, fileName, out);
   }
   return out;
 }
@@ -82,9 +92,9 @@ export function extractFieldLocations(dumpText: string, fileName: string): Field
   return extractAstInfo(dumpText, fileName).fields;
 }
 
-function walk(node: unknown, owner: string, state: LocState, fileName: string, out: AstInfo): void {
+function walk(node: unknown, scope: Scope, state: LocState, fileName: string, out: AstInfo): void {
   if (Array.isArray(node)) {
-    for (const n of node) walk(n, owner, state, fileName, out);
+    for (const n of node) walk(n, scope, state, fileName, out);
     return;
   }
   if (!node || typeof node !== 'object') return;
@@ -93,7 +103,17 @@ function walk(node: unknown, owner: string, state: LocState, fileName: string, o
   let mine: { line: number; col: number } | null = null;
   const kind = str(n, 'kind') ?? '';
   const name = str(n, 'name');
-  const nextOwner = RECORD_KINDS.has(kind) ? (name ?? '') : owner;
+  // The scope children see: enclosing records give both an unqualified owner
+  // and the qualified path (matching the layout dump's `A::S`); namespaces
+  // extend only the qualified path.
+  let next = scope;
+  if (RECORD_KINDS.has(kind)) {
+    const nm = name ?? '';
+    next = { owner: nm, qualified: scope.qualified ? scope.qualified + '::' + nm : nm };
+  } else if (NAMESPACE_KINDS.has(kind)) {
+    const nm = name ?? '(anonymous namespace)';
+    next = { owner: scope.owner, qualified: scope.qualified ? scope.qualified + '::' + nm : nm };
+  }
 
   for (const key of Object.keys(n)) {
     const val = n[key];
@@ -104,7 +124,7 @@ function walk(node: unknown, owner: string, state: LocState, fileName: string, o
       }
       continue;
     }
-    if (val && typeof val === 'object') walk(val, nextOwner, state, fileName, out);
+    if (val && typeof val === 'object') walk(val, next, state, fileName, out);
   }
   const type = obj(n, 'type') ?? {};
   if (mine && mine.line > 0 && name) {
@@ -119,7 +139,8 @@ function walk(node: unknown, owner: string, state: LocState, fileName: string, o
   }
   if (kind === 'FieldDecl' && mine && mine.line > 0) {
     const f: FieldLocation = {
-      owner,
+      owner: scope.owner,
+      qualifiedOwner: scope.qualified,
       name: name ?? '',
       line: mine.line,
       col: mine.col,
@@ -234,9 +255,12 @@ export function matchItemsToLocations(
   items: Locatable[],
   locations: FieldLocation[],
 ): Map<number, FieldLocation> {
+  const byQualified = new Map<string, FieldLocation>();
   const byOwnerName = new Map<string, FieldLocation>();
   const byName = new Map<string, FieldLocation[]>();
   for (const f of locations) {
+    const qk = f.qualifiedOwner + '\0' + f.name;
+    if (!byQualified.has(qk)) byQualified.set(qk, f);
     const k = f.owner + '\0' + f.name;
     if (!byOwnerName.has(k)) byOwnerName.set(k, f);
     const list = byName.get(f.name) ?? [];
@@ -247,8 +271,11 @@ export function matchItemsToLocations(
   items.forEach((item, i) => {
     if (item.kind === 'special' || ('isBase' in item && item.isBase) || !item.name) return;
     const name = item.name.startsWith('(') ? '' : item.name; // anonymous member
-    const owner = unqualifiedName(item.owner || '');
-    let loc = byOwnerName.get(owner + '\0' + name);
+    // 1. Exact qualified-owner match (the layout dump's `A::S` == the AST's
+    //    qualified scope), which disambiguates same-named records in different
+    //    scopes. Then fall back to unqualified owner, then a unique-line by name.
+    let loc = byQualified.get((item.owner || '') + '\0' + name);
+    if (!loc) loc = byOwnerName.get(unqualifiedName(item.owner || '') + '\0' + name);
     if (!loc && /\((?:anon|unnamed)/.test(item.owner || '')) loc = byOwnerName.get('\0' + name);
     if (!loc && name) {
       const cands = byName.get(name);

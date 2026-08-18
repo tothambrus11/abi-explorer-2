@@ -224,16 +224,9 @@ export function flattenRows(record: RecordLayout): LayoutRow[] {
   return out;
 }
 
-const INTERNAL_RECORDS = new Set([
-  '__va_list_tag',
-  '__NSConstantString_tag',
-  '__block_descriptor',
-  '__block_literal_generic',
-]);
-
-/** True for compiler-internal records and our own probe structs. */
+/** True for our own probe structs (never shown to the user). */
 export function isInternalRecord(rec: RecordLayout): boolean {
-  return INTERNAL_RECORDS.has(rec.name) || rec.name.startsWith('__abix_');
+  return rec.name.startsWith('__abix_');
 }
 
 /**
@@ -250,7 +243,22 @@ export function anonymousLocationFilter(rec: RecordLayout, fileName: string): st
 
 /** True for anonymous records (they also appear inline in their parent). */
 export function isAnonymousRecord(rec: RecordLayout): boolean {
-  return /\((?:unnamed|anonymous|lambda) at /.test(rec.name);
+  // The record's *own* name is an anonymous spelling. Strip template arguments
+  // first so a named record with an anonymous type argument
+  // (`Box<(lambda at …)>`) is not mistaken for one.
+  return /\((?:unnamed|anonymous|lambda) at [^<>]*\)$/.test(stripTemplateArgs(rec.name));
+}
+
+/** Remove every balanced `<...>` group from a type/record name. */
+export function stripTemplateArgs(name: string): string {
+  let out = '';
+  let depth = 0;
+  for (const c of name) {
+    if (c === '<') depth++;
+    else if (c === '>') depth = Math.max(0, depth - 1);
+    else if (depth === 0) out += c;
+  }
+  return out;
 }
 
 /** Stable identity for a record within one analysis. */

@@ -80,7 +80,11 @@ describe('parseRecordLayouts', () => {
     const [d, w] = parseRecordLayouts(DUMP);
     expect(isInternalRecord(d!)).toBe(false);
     expect(isAnonymousRecord({ ...w!, name: 'X::(unnamed at t.c:1:1)' })).toBe(true);
-    expect(isInternalRecord({ ...d!, name: '__va_list_tag' })).toBe(true);
+    // Anchored to the record's own name: a named record with an anonymous type
+    // argument is NOT anonymous; a compiler builtin is NOT a probe struct.
+    expect(isAnonymousRecord({ ...d!, name: 'Box<(lambda at t.cc:2:9)>' })).toBe(false);
+    expect(isAnonymousRecord({ ...d!, name: '(anonymous namespace)::Foo' })).toBe(false);
+    expect(isInternalRecord({ ...d!, name: '__va_list_tag' })).toBe(false);
     expect(isInternalRecord({ ...d!, name: '__abix_p3' })).toBe(true);
   });
 

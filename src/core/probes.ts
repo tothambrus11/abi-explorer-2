@@ -10,7 +10,7 @@
 
 import type { ProbeResult, RecordLayout } from './types';
 import { isAnonymousRecord, isInternalRecord } from './layout-parser';
-import { escapeRegExp } from './diagnostics';
+import { parseDiagnostics } from './diagnostics';
 
 /** Static probes compiled as a second TU next to the user's code. */
 export const STATIC_PROBE_SOURCE = `
@@ -211,13 +211,9 @@ export function failingProbeIndices(
   probes: ProbeSpec[],
 ): Set<number> {
   const bad = new Set<number>();
-  const esc = escapeRegExp(fileName);
-  const re = new RegExp(
-    `(?:^|\\n)(?:[^\\n]*?)${esc}:([0-9]+):[0-9]+:(?:\\{[^}]*\\}:)?\\s*(?:fatal )?error`,
-    'g',
-  );
-  for (const m of stderr.matchAll(re)) {
-    const idx = Number(m[1]) - firstProbeLine;
+  for (const d of parseDiagnostics(stderr, fileName)) {
+    if (d.severity !== 'error' && d.severity !== 'fatal error') continue;
+    const idx = d.line - firstProbeLine;
     const p = probes[idx];
     if (p) bad.add(p.index);
   }

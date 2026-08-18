@@ -84,10 +84,10 @@ class Store {
     return a.userRecords.filter(
       (r) =>
         this.showInternal ||
-        (!r.name.startsWith('__') &&
-          // Nested anonymous records are shown inline in their parent; top-level
-          // ones from the user's file (`typedef struct { … } T;`) are records of their own.
-          (!isAnonymousRecord(r) || anonymousLocationFilter(r, mainFile) !== null)),
+        // Nested anonymous records are shown inline in their parent; top-level
+        // ones from the user's file (`typedef struct { … } T;`) are records of their own.
+        !isAnonymousRecord(r) ||
+        anonymousLocationFilter(r, mainFile) !== null,
     );
   });
 
