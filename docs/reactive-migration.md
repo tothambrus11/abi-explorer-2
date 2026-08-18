@@ -11,13 +11,14 @@ preserves behavior; the existing suite is the guardrail.
 
 ## Phase 0 — reactive foundation (behavior-preserving)
 
-- [ ] **0.1 `asyncResource`** — an `AsyncRunner` (debounce + dedup-by-key +
-      AbortController cancel, reactive `value`/`status`/`error`) plus a
+- [x] **0.1 `asyncResource`** — an `AsyncRunner` (debounce + dedup-by-key +
+      AbortController cancel + `force`, reactive `value`/`status`/`error`) plus a
       `bindResource(inputs, runner)` reactive binding. New files, unit-tested in
-      isolation with fake timers. _No wiring yet._
-- [ ] **0.2 Port compile** onto the resource; `store.status` becomes `$derived`
-      of `(resource.status, resource.value, visibleRecords)` instead of being set
-      imperatively in `run()`.
+      isolation with fake timers (9 tests). _No wiring yet._
+- [x] **0.2 Port compile** onto the resource; `run()`/`schedule()` and the
+      manual abort/timer/lastInputKey bookkeeping are gone. `store.status` is
+      pushed from the pure `computeAnalysisStatus(resource, analysis, visibleCount)`
+      (6 tests); `store.analysis` mirrors `resource.value`.
 - [ ] **0.3 Port AST-locate** onto a second resource; drop `locateAbort` and the
       manual result-map resets.
 - [ ] **0.4 Derived hover** — setters record _intent_ only

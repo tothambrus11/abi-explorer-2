@@ -3,7 +3,8 @@
 // The UI never talks to the compiler directly.
 
 import { Analyzer, type Analysis } from '$compiler/Analyzer';
-import { CompileCancelled, type Compiler } from '$compiler/Compiler';
+import type { Compiler } from '$compiler/Compiler';
+import type { CompileOptions } from '$core/options';
 import type { DeclLocation, FieldLocation } from '$core/ast-locations';
 import { matchItemsToLocations, unqualifiedName } from '$core/ast-locations';
 import { isAnonymousRecord, recordKey } from '$core/layout-parser';
@@ -12,6 +13,13 @@ import { findRecord } from '$core/probes';
 import type { Group, Leaf, RecordLayout, RenderModel } from '$core/types';
 import { decodeShareState, encodeShareState, type ShareState } from '$core/url-state';
 import { store, type MemberRef } from './store.svelte';
+import { AsyncRunner } from './async-resource.svelte';
+import { computeAnalysisStatus } from './status';
+
+interface CompileInput {
+  source: string;
+  options: CompileOptions;
+}
 
 /** Everything the editor needs to know about one source line. */
 export interface LineInfo {
@@ -37,13 +45,31 @@ const HASH_DEBOUNCE_MS = 400;
 
 export class Session {
   readonly analyzer: Analyzer;
-  private abort: AbortController | null = null;
   private locateAbort: AbortController | null = null;
-  private timer: ReturnType<typeof setTimeout> | null = null;
-  private lastOptionsKey = '';
-  /** options + source of the last scheduled compile (see the recompile effect). */
-  private lastInputKey: string | null = null;
   private cleanup: (() => void) | null = null;
+
+  /**
+   * The compile as a reactive resource: debounced (source edits) or immediate
+   * (option changes / first run), deduped by input, and cancelling. `value` is
+   * the latest Analysis; `store.analysis`/`store.status` mirror it (see start()).
+   */
+  private readonly compile = new AsyncRunner<CompileInput, Analysis>(
+    (input, signal) => {
+      // A stale AST-locate pass must not sit ahead of this compile in the
+      // single worker's queue.
+      this.locateAbort?.abort();
+      return this.analyzer.analyze(input.source, input.options, signal);
+    },
+    {
+      key: (i) => JSON.stringify(i.options) + '\n' + i.source,
+      // Option changes (and the very first compile) apply immediately; source
+      // edits debounce so we don't recompile on every keystroke.
+      debounce: (i, prev) =>
+        !prev || JSON.stringify(prev.options) !== JSON.stringify(i.options)
+          ? 0
+          : SOURCE_DEBOUNCE_MS,
+    },
+  );
 
   /** line -> LineInfo across all visible records. */
   lines: Map<number, LineInfo> = $state.raw(new Map<number, LineInfo>());
@@ -84,22 +110,23 @@ export class Session {
     void this.compiler.start().catch(() => {});
 
     const stopRoot = $effect.root(() => {
-      // Recompile on source/options changes.
+      // Drive the compile resource from source/options. Dedup-by-input means the
+      // compiler flipping back to 'ready' after a restart does not re-run the
+      // same input (a timed-out compile would otherwise retry to exhaustion).
       $effect(() => {
-        const source = store.source;
-        const optionsKey = JSON.stringify(store.options);
-        const ready = store.compiler.state === 'ready';
-        if (!ready) return;
-        // Only *input* changes schedule a compile. The compiler flipping back
-        // to 'ready' after a restart must not re-run the same input: a compile
-        // that timed out would otherwise be retried until the restart budget
-        // is exhausted and the compiler is marked failed for good.
-        const inputKey = optionsKey + '\n' + source;
-        if (inputKey === this.lastInputKey) return;
-        const optionsChanged = optionsKey !== this.lastOptionsKey;
-        this.lastOptionsKey = optionsKey;
-        this.lastInputKey = inputKey;
-        this.schedule(optionsChanged ? 0 : SOURCE_DEBOUNCE_MS);
+        const input: CompileInput = { source: store.source, options: { ...store.options } };
+        if (store.compiler.state === 'ready') this.compile.trigger(input);
+      });
+      // Mirror the resource into the store; status is derived from both.
+      $effect(() => {
+        store.analysis = this.compile.value;
+      });
+      $effect(() => {
+        store.status = computeAnalysisStatus(
+          this.compile,
+          store.analysis,
+          store.visibleRecords.length,
+        );
       });
       // Resolve locations whenever the analysis / visible records change.
       $effect(() => {
@@ -125,9 +152,8 @@ export class Session {
     this.cleanup = () => {
       offStatus();
       stopRoot();
-      this.abort?.abort();
+      this.compile.dispose();
       this.locateAbort?.abort();
-      if (this.timer) clearTimeout(this.timer);
     };
     return this.cleanup;
   }
@@ -161,44 +187,9 @@ export class Session {
     return location.href;
   }
 
-  private schedule(delay: number): void {
-    if (this.timer) clearTimeout(this.timer);
-    this.timer = setTimeout(() => void this.run(), delay);
-  }
-
-  /** Force a compile now (e.g. Ctrl+Enter). */
+  /** Force a compile now (e.g. Ctrl+Enter), even if the input is unchanged. */
   compileNow(): void {
-    this.schedule(0);
-  }
-
-  private async run(): Promise<void> {
-    this.abort?.abort();
-    this.locateAbort?.abort(); // stale location dumps must not queue ahead of this compile
-    const ac = new AbortController();
-    this.abort = ac;
-    store.status = { kind: 'running' };
-    const source = store.source;
-    const options = { ...store.options };
-    try {
-      const analysis = await this.analyzer.analyze(source, options, ac.signal);
-      if (ac.signal.aborted) return;
-      store.analysis = analysis;
-      // Anonymous records are not shown on their own, so they don't count as output.
-      const nUser = store.visibleRecords.length; // same notion of 'shown' as the results pane
-      if (analysis.code !== 0 && nUser === 0) {
-        store.status = { kind: 'error', message: 'compilation failed — see diagnostics' };
-      } else if (analysis.code !== 0) {
-        store.status = {
-          kind: 'error',
-          message: 'compiled with errors — layouts may be incomplete',
-        };
-      }
-      // Any stderr counts (driver warnings and header diagnostics have no main-file prefix).
-      else store.status = { kind: 'ok', warnings: analysis.diagnosticsText.length > 0 };
-    } catch (e) {
-      if (e instanceof CompileCancelled || ac.signal.aborted) return;
-      store.status = { kind: 'error', message: (e as Error).message || String(e) };
-    }
+    this.compile.trigger({ source: store.source, options: { ...store.options } }, { force: true });
   }
 
   // ------------------------------------------------------ locations ----

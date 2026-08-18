@@ -36,15 +36,19 @@ export class AsyncRunner<I, T> {
     this.key = opts.key ?? ((i) => JSON.stringify(i));
   }
 
-  /** Request a run for `input`. Deduped by key, debounced, and cancelling. */
-  trigger(input: I): void {
+  /**
+   * Request a run for `input`. Deduped by key, debounced, and cancelling.
+   * `force` re-runs even when the input is unchanged and skips the debounce
+   * (for an explicit "run now").
+   */
+  trigger(input: I, opts: { force?: boolean } = {}): void {
     const key = this.key(input);
-    if (key === this.lastKey) return;
+    if (!opts.force && key === this.lastKey) return;
     const prev = this.lastInput;
     this.lastKey = key;
     this.lastInput = input;
     const d = this.opts.debounce ?? 0;
-    const delay = typeof d === 'function' ? d(input, prev) : d;
+    const delay = opts.force ? 0 : typeof d === 'function' ? d(input, prev) : d;
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(() => {
       this.timer = null;

@@ -143,6 +143,19 @@ describe('AsyncRunner', () => {
     expect(run).toHaveBeenCalledTimes(2);
   });
 
+  it('force re-runs an unchanged input and skips the debounce', async () => {
+    const run = vi.fn((n: number) => Promise.resolve(n));
+    const r = new AsyncRunner(run, { debounce: 500, key: (n: number) => String(n) });
+
+    r.trigger(1);
+    await vi.advanceTimersByTimeAsync(500);
+    expect(run).toHaveBeenCalledTimes(1);
+
+    r.trigger(1, { force: true }); // same key, would normally dedup
+    await vi.advanceTimersByTimeAsync(0); // and would normally wait 500ms
+    expect(run).toHaveBeenCalledTimes(2);
+  });
+
   it('dispose() cancels a pending run and aborts an in-flight one', async () => {
     const d = deferred<string>();
     const run = vi.fn<(n: number, s: AbortSignal) => Promise<string>>(() => d.promise);
