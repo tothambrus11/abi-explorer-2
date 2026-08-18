@@ -41,7 +41,7 @@ test.describe('ABI Explorer', () => {
     await waitReady(page);
     await expect(page.locator('.estimate-note')).toHaveCount(0);
     const aligns = await page.locator('.field-table tbody tr td:nth-child(6)').allTextContents();
-    expect(aligns.slice(0, 6)).toEqual(['1', '4', '1', '8', '1', '8']);
+    expect(aligns.slice(0, 6)).toEqual(['1 B', '4 B', '1 B', '8 B', '1 B', '8 B']);
   });
 
   test('gutter dots, line hover, inlay and type hover popup', async ({ page }) => {
@@ -50,7 +50,7 @@ test.describe('ABI Explorer', () => {
     await hoverWord(page, 'uint64_t id;', 'id');
     await expect(page.locator('.field-table tr.hovered .fname')).toHaveText(['id']);
     await expect(page.locator('.monaco-editor .member-inlay')).toHaveText(
-      /offset 16 · 8 B · align 8/,
+      /offset 16 B · 8 B · align 8 B/,
     );
     await expect(page.locator('.abix-tip.rich')).toHaveCount(0); // no grid/table bubble for editor hovers
 
@@ -86,7 +86,7 @@ test.describe('ABI Explorer', () => {
     await hoverWord(page, 'struct Header hdr;', 'hdr');
     await expect(page.locator('.field-table tr.hovered .fname')).toHaveText(['hdr', 'kind', 'len']);
     await expect(page.locator('.monaco-editor .member-inlay')).toHaveText(
-      /offset 0 · 4 B · align 2/,
+      /offset 0 B · 4 B · align 2 B/,
     );
     await hoverWord(page, 'union Payload payload;', 'payload');
     await expect(page.locator('.field-table tr.hovered .fname')).toHaveText([

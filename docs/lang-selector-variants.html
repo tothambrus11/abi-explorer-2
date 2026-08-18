@@ -320,10 +320,10 @@
   <div class="demo">
     <select class="input combo" aria-label="Language and standard">
       <optgroup label="C">
-        <option>C · c89</option><option>C · c99</option><option>C · c11</option><option selected>C · c17</option><option>C · c23</option>
+        <option>C · c17</option><option selected>C · gnu17</option><option>C · c23</option><option>C · gnu23</option>
       </optgroup>
       <optgroup label="C++">
-        <option>C++ · c++11</option><option>C++ · c++14</option><option>C++ · c++17</option><option>C++ · c++20</option><option>C++ · c++23</option><option>C++ · c++26</option>
+        <option>C++ · c++17</option><option>C++ · gnu++17</option><option>C++ · c++20</option><option>C++ · gnu++20</option><option>C++ · c++23</option><option>C++ · gnu++23</option><option>C++ · c++26</option>
       </optgroup>
       <optgroup label="Hylo">
         <option>Hylo</option>
@@ -370,12 +370,12 @@
     </div>
     <div class="field">
       <span class="prefix">-std=</span>
-      <input list="stds" value="c17" spellcheck="false" aria-label="Standard" />
+      <input list="stds" value="gnu17" spellcheck="false" aria-label="Standard" />
     </div>
     <datalist id="langs"><option value="c"><option value="c++"><option value="hylo"></datalist>
     <datalist id="stds">
-      <option value="c89"><option value="c99"><option value="c11"><option value="c17"><option value="c23">
-      <option value="c++11"><option value="c++14"><option value="c++17"><option value="c++20"><option value="c++23"><option value="c++26">
+      <option value="c11"><option value="gnu11"><option value="c17"><option value="gnu17"><option value="c23"><option value="gnu23">
+      <option value="c++17"><option value="gnu++17"><option value="c++20"><option value="gnu++20"><option value="c++23"><option value="gnu++23"><option value="c++26">
     </datalist>
   </div>
   <p class="note">Flag-shaped free-text inputs (mono, <code>--page</code> background, accent focus ring) with datalist autocomplete — mirrors the "Extra flags" field.</p>
@@ -399,12 +399,12 @@
   <h2>12 · Split button + menu</h2>
   <div class="demo">
     <div class="split">
-      <button type="button" id="splitLabel">C · c17</button>
+      <button type="button" id="splitLabel">C · gnu17</button>
       <button type="button" aria-label="Choose language" onclick="document.getElementById('splitMenu').hidden = !document.getElementById('splitMenu').hidden">▾</button>
     </div>
     <div class="menu" id="splitMenu" role="menu">
-      <button aria-current="true">C <span>c17</span></button>
-      <button>C++ <span>c++20</span></button>
+      <button aria-current="true">C <span>gnu17</span></button>
+      <button>C++ <span>gnu++20</span></button>
       <button>Hylo <span></span></button>
       <hr />
       <button>Change standard…</button>
@@ -431,10 +431,10 @@
 
 <script>
   const STDS = {
-    c: ['c89', 'c99', 'c11', 'c17', 'c23'],
-    'c++': ['c++11', 'c++14', 'c++17', 'c++20', 'c++23', 'c++26'],
+    c: ['c89','gnu89','c99','gnu99','c11','gnu11','c17','gnu17','c23','gnu23'],
+    'c++': ['c++98','gnu++98','c++03','gnu++03','c++11','gnu++11','c++14','gnu++14','c++17','gnu++17','c++20','gnu++20','c++23','gnu++23','c++26','gnu++26'],
   };
-  const DEF = { c: 'c17', 'c++': 'c++20' };
+  const DEF = { c: 'gnu17', 'c++': 'gnu++20' };
   document.querySelectorAll('select[data-std]').forEach((s) => {
     const l = s.dataset.std;
     s.innerHTML = STDS[l].map((x) => `<option${x === DEF[l] ? ' selected' : ''}>${x}</option>`).join('');

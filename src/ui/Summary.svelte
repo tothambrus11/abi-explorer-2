@@ -9,11 +9,15 @@
   );
   const extras = $derived.by(() => {
     const out: string[] = [];
-    if (rec.dsize !== undefined && rec.dsize !== rec.sizeBytes) out.push(`dsize ${rec.dsize}`);
-    if (rec.nvsize !== undefined && rec.nvsize !== rec.sizeBytes) out.push(`nvsize ${rec.nvsize}`);
-    if (rec.nvalign !== undefined && rec.nvalign !== rec.align) out.push(`nvalign ${rec.nvalign}`);
+    if (rec.dsize !== undefined && rec.dsize !== rec.sizeBytes) out.push(`dsize ${rec.dsize} B`);
+    if (rec.nvsize !== undefined && rec.nvsize !== rec.sizeBytes) {
+      out.push(`nvsize ${rec.nvsize} B`);
+    }
+    if (rec.nvalign !== undefined && rec.nvalign !== rec.align) {
+      out.push(`nvalign ${rec.nvalign} B`);
+    }
     if (rec.preferredalign !== undefined && rec.preferredalign !== rec.align) {
-      out.push(`preferred align ${rec.preferredalign}`);
+      out.push(`preferred align ${rec.preferredalign} B`);
     }
     return out;
   });

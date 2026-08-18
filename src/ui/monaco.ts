@@ -4,6 +4,7 @@
 import * as monaco from './monaco-slim';
 import EditorWorker from 'monaco-editor/editor/editor.worker.js?worker';
 import type { Diagnostic } from '$core/types';
+import type { Language } from '$core/options';
 import { THEMES, type Theme } from './themes';
 
 (self as unknown as { MonacoEnvironment: unknown }).MonacoEnvironment = {
@@ -36,7 +37,7 @@ export interface MemberDot {
 export interface EditorHandle {
   getValue(): string;
   setValue(text: string): void;
-  setLanguage(lang: 'c' | 'c++'): void;
+  setLanguage(lang: Language): void;
   setDiagnostics(diags: Diagnostic[]): void;
   setMemberDots(dots: MemberDot[]): void;
   highlightLine(line: number | null): void;
@@ -58,7 +59,7 @@ export interface EditorHandle {
 export interface CreateEditorOptions {
   value: string;
   theme: string;
-  language: 'c' | 'c++';
+  language: Language;
   typeHover: (line: number, word: WordAt) => Promise<string | null>;
 }
 

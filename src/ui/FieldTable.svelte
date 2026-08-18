@@ -90,7 +90,7 @@
             <td class="type">{leaf.kind === 'special' ? '—' : leaf.type}</td>
             <td class="num">{fmtOffset(leaf.offsetBits)}</td>
             <td class="num" class:est={leaf.estimated}>{fmtSize(leaf)}</td>
-            <td class="num">{leaf.align ?? ''}</td>
+            <td class="num">{leaf.align ? `${leaf.align} B` : ''}</td>
             <td class="num pad">{padAfter.has(node.ref) ? `+${padAfter.get(node.ref)} B` : ''}</td>
           </tr>
         {:else}
@@ -128,7 +128,7 @@
             <td class="type">{group.type}</td>
             <td class="num">{fmtOffset(node.offsetBits)}</td>
             <td class="num">{fmtGroupSize(node.sizeBits)}</td>
-            <td class="num">{node.align ?? ''}</td>
+            <td class="num">{node.align ? `${node.align} B` : ''}</td>
             <td class="num"></td>
           </tr>
         {/if}
@@ -143,7 +143,7 @@
               >
             </td>
             <td class="type"></td><td class="num">{fmtOffset(m.offsetBits)}</td><td class="num"
-              >0</td
+              >0 b</td
             ><td class="num"></td><td class="num"></td>
           </tr>
         {/if}

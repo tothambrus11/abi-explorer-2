@@ -10,7 +10,7 @@ import {
   DEFAULT_TRIPLE,
 } from './targets';
 
-export type Language = 'c' | 'c++';
+export type Language = 'c' | 'c++' | 'hylo';
 
 export interface CompileOptions {
   lang: Language;
@@ -53,16 +53,17 @@ export interface PassSpec {
   measure?: boolean;
 }
 
+// Hylo is a placeholder for now: no standards, no compiler backend yet.
 export function standardsFor(lang: Language): readonly string[] {
-  return lang === 'c++' ? CXX_STANDARDS : C_STANDARDS;
+  return lang === 'c++' ? CXX_STANDARDS : lang === 'hylo' ? [] : C_STANDARDS;
 }
 
 export function defaultStdFor(lang: Language): string {
-  return lang === 'c++' ? DEFAULT_CXX_STD : DEFAULT_C_STD;
+  return lang === 'c++' ? DEFAULT_CXX_STD : lang === 'hylo' ? '' : DEFAULT_C_STD;
 }
 
 export function sourceExtension(lang: Language): string {
-  return lang === 'c++' ? 'cc' : 'c';
+  return lang === 'c++' ? 'cc' : lang === 'hylo' ? 'hylo' : 'c';
 }
 
 export function driverFor(lang: Language): 'clang' | 'clang++' {
@@ -115,7 +116,7 @@ export function buildArgv(opts: CompileOptions, pass: PassSpec): string[] {
   const args = [
     '--target=' + opts.triple,
     '-x' + (isCxx ? 'c++' : 'c'),
-    '-std=' + opts.std,
+    ...(opts.std ? ['-std=' + opts.std] : []),
     '-fsyntax-only',
   ];
   if (pass.kind === 'layout') args.push('-Xclang', '-fdump-record-layouts-complete');

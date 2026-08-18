@@ -12,7 +12,7 @@
           class={s.color === null ? '' : `c${s.color}`}>{s.text}</span
         >{/each}</pre>
   {:else}
-    <p class="empty">No diagnostics — clang is happy.</p>
+    <p class="empty">Clang is proud of you.</p>
   {/if}
 </div>
 

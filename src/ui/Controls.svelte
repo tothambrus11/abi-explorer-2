@@ -1,11 +1,16 @@
 <script lang="ts">
   import { store } from '$state/store.svelte';
   import { TARGET_GROUPS } from '$core/targets';
-  import { standardsFor, splitExtraFlags } from '$core/options';
+  import { standardsFor, splitExtraFlags, type Language } from '$core/options';
   import { isKnownTriple } from '$core/url-state';
   import { tooltip } from './tooltip';
 
   const CUSTOM = '__custom__';
+  const LANGS: { id: Language; label: string; tip: string }[] = [
+    { id: 'c', label: 'C', tip: 'Compile as C' },
+    { id: 'c++', label: 'C++', tip: 'Compile as C++' },
+    { id: 'hylo', label: 'Hylo', tip: 'Hylo (coming soon)' },
+  ];
   let selectValue = $state(isKnownTriple(store.options.triple) ? store.options.triple : CUSTOM);
   let customTriple = $state(isKnownTriple(store.options.triple) ? '' : store.options.triple);
   const stds = $derived(standardsFor(store.options.lang));
@@ -36,38 +41,31 @@
 <section class="controls">
   <div class="group">
     <div class="segmented" role="radiogroup" aria-label="Language">
-      <label use:tooltip={'Compile as C'}
-        ><input
-          type="radio"
-          name="lang"
-          value="c"
-          checked={store.options.lang === 'c'}
-          onchange={() => {
-            store.setLanguage('c');
-          }}
-        /><span>C</span></label
-      >
-      <label use:tooltip={'Compile as C++'}
-        ><input
-          type="radio"
-          name="lang"
-          value="c++"
-          checked={store.options.lang === 'c++'}
-          onchange={() => {
-            store.setLanguage('c++');
-          }}
-        /><span>C++</span></label
-      >
+      {#each LANGS as l (l.id)}
+        <label use:tooltip={l.tip}
+          ><input
+            type="radio"
+            name="lang"
+            value={l.id}
+            checked={store.options.lang === l.id}
+            onchange={() => {
+              store.setLanguage(l.id);
+            }}
+          /><span>{l.label}</span></label
+        >
+      {/each}
     </div>
-    <select
-      id="std"
-      class="input"
-      aria-label="Language standard"
-      bind:value={store.options.std}
-      use:tooltip={'Language standard (-std=)'}
-    >
-      {#each stds as s (s)}<option value={s}>{s}</option>{/each}
-    </select>
+    {#if stds.length}
+      <select
+        id="std"
+        class="input"
+        aria-label="Language standard"
+        bind:value={store.options.std}
+        use:tooltip={'Language standard (-std=)'}
+      >
+        {#each stds as s (s)}<option value={s}>{s}</option>{/each}
+      </select>
+    {/if}
   </div>
 
   <div class="group">
@@ -214,9 +212,11 @@
   }
   .segmented {
     display: inline-flex;
+    gap: 2px;
+    padding: 3px;
+    background: var(--page);
     border: 1px solid var(--border);
-    border-radius: 7px;
-    overflow: hidden;
+    border-radius: 8px;
   }
   .segmented label {
     display: contents;
@@ -227,21 +227,21 @@
     pointer-events: none;
   }
   .segmented span {
-    padding: 6px 14px;
+    padding: 4px 12px;
+    border-radius: 5px;
     cursor: pointer;
-    color: var(--text-secondary);
-    border-right: 1px solid var(--border);
+    color: var(--text-muted);
   }
-  .segmented label:last-child span {
-    border-right: none;
+  .segmented span:hover {
+    color: var(--text-secondary);
   }
   .segmented input:checked + span {
-    background: var(--accent);
-    color: var(--on-accent);
+    background: var(--baseline);
+    color: var(--text-primary);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
   }
   .segmented input:focus-visible + span {
     outline: 2px solid var(--accent);
-    outline-offset: -2px;
   }
   .more summary {
     cursor: pointer;

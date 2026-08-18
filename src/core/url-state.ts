@@ -56,7 +56,7 @@ function toWire(state: ShareState): Wire {
 
 /** Coerce untrusted wire data into a valid ShareState (unknown values fall back to defaults). */
 function fromWire(w: Partial<Wire>): ShareState {
-  const lang = w.l === 'c++' ? 'c++' : 'c';
+  const lang = w.l === 'c++' || w.l === 'hylo' ? w.l : 'c';
   const stds = standardsFor(lang);
   const std = typeof w.std === 'string' && stds.includes(w.std) ? w.std : defaultStdFor(lang);
   // Legacy v1 stored '__custom__' + ct for custom triples; v2 stores the triple itself.

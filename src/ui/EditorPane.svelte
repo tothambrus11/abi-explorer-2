@@ -54,12 +54,15 @@
     const dots = [...session.lines.values()]
       .filter((l) => l.members.some((m) => shown.has(m.record)))
       .map((l) => {
-        // A filled dot only when this line holds exactly one field in the shown
-        // record(s); a container line (several leaves) gets the neutral ring.
-        const here = l.members.filter((m) => shown.has(m.record));
-        const one = here.length === 1 ? here[0]! : null;
-        const colorClass = one
-          ? (store.models.get(one.record)?.leaves[one.leaf]?.colorClass ?? 'c-compound')
+        // Filled dot only when the line declares a single field at the source
+        // level; a container line (a group, or several fields) gets the neutral
+        // ring. `l.items` is source-truth — unlike `l.members`, it is not
+        // inflated by the same field appearing in several record models.
+        const item = l.items.length === 1 ? l.items[0]! : null;
+        const singleField = item !== null && !('leafIndexes' in item);
+        const here = l.members.find((m) => shown.has(m.record))!;
+        const colorClass = singleField
+          ? (store.models.get(here.record)?.leaves[here.leaf]?.colorClass ?? 'c-compound')
           : 'c-compound';
         return { line: l.line, colorClass };
       });

@@ -324,13 +324,13 @@ export class Session {
     const out = new Map<number, LineInfo>();
     for (const [line, cands] of byLine) {
       const primary = cands.find((c) => c.direct) ?? cands[0]!;
-      // One field on the line → its colour; a container (or several fields) → a
-      // neutral ring, since no single colour represents the whole thing.
-      const allMembers = cands.flatMap((c) => c.members);
-      const only = allMembers.length === 1 ? allMembers[0]! : null;
-      const colorClass = only
-        ? (models.get(only.record)?.leaves[only.leaf]?.colorClass ?? 'c-compound')
-        : 'c-compound';
+      // One field declared on the line → its colour; a container (a group) or
+      // several fields → a neutral ring, since no single colour represents it.
+      // Based on the declaring record's items (source-truth), not on member
+      // count across records (the same field recurs in every record it nests in).
+      const item = primary.items.length === 1 ? primary.items[0]! : null;
+      const colorClass =
+        item && !('leafIndexes' in item) ? (item.colorClass ?? 'c-compound') : 'c-compound';
       out.set(line, {
         line,
         members: cands.flatMap((c) => c.members),
@@ -501,7 +501,7 @@ export class Session {
     if (rec) return describeRecord(rec, analysis);
     const pr = await this.analyzer.probeSpelling(analysis, spelling).catch(() => null);
     if (!pr || pr.bits <= 0) return null;
-    const size = pr.bits % 8 ? `${pr.bits} bits` : `**${pr.bits / 8}** B`;
+    const size = pr.bits % 8 ? `${pr.bits} b` : `**${pr.bits / 8}** B`;
     const canon = alias && alias !== spelling ? `\n\n\`= ${alias}\`` : '';
     return `**\`${spelling}\`**${canon}\n\n| | |\n|---|---|\n| sizeof | ${size} |\n| alignof | **${pr.align}** B |`;
   }
@@ -527,7 +527,7 @@ export function describeItems(items: (Leaf | Group)[]): string {
   const it = items[0];
   if (!it) return '';
   if (one && 'kind' in it && it.kind === 'bitfield') {
-    return `offset ${fmtOffset(it.offsetBits)} · ${it.sizeBits} bit${it.sizeBits === 1 ? '' : 's'}`;
+    return `offset ${fmtOffset(it.offsetBits)} · ${it.sizeBits} b`;
   }
   const start = Math.min(...items.map((i) => i.offsetBits));
   const end = Math.max(...items.map((i) => i.offsetBits + (i.sizeBits ?? 0)));
@@ -539,11 +539,12 @@ export function describeItems(items: (Leaf | Group)[]): string {
       `${one && 'estimated' in it && it.estimated ? '≈' : ''}${Number.isInteger(sizeBytes) ? sizeBytes : sizeBytes.toFixed(1)} B`,
     );
   }
-  if (one && it.align) parts.push(`align ${it.align}`);
+  if (one && it.align) parts.push(`align ${it.align} B`);
   else if (!one) parts.unshift(`${items.length} members`);
   return parts.join(' · ');
 }
 
+/** Byte offset with an explicit unit: "12 B", or "12 B + 3 b" inside a bit-field storage unit. */
 export function fmtOffset(bits: number): string {
-  return bits % 8 === 0 ? String(bits / 8) : `${Math.floor(bits / 8)} +${bits % 8}b`;
+  return bits % 8 === 0 ? `${bits / 8} B` : `${Math.floor(bits / 8)} B + ${bits % 8} b`;
 }

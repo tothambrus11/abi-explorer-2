@@ -12,9 +12,9 @@ export function escapeHtml(s: string): string {
   );
 }
 
-/** "3 bits" for bit-fields, "≈ 4 B" for estimated members, "8 B" otherwise. */
+/** "3 b" for bit-fields, "≈ 4 B" for estimated members, "8 B" otherwise. */
 export function fmtSize(leaf: Leaf): string {
-  if (leaf.kind === 'bitfield') return `${leaf.sizeBits} bit${leaf.sizeBits === 1 ? '' : 's'}`;
+  if (leaf.kind === 'bitfield') return `${leaf.sizeBits} b`;
   return `${leaf.estimated ? '≈ ' : ''}${fmt.format(leaf.sizeBits / 8)} B`;
 }
 
