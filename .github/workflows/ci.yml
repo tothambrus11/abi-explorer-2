@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: check
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Cache the clang tarball for the integration tests
+        uses: actions/cache@v6
+        with:
+          path: .cache/yowasp
+          key: yowasp-clang-22.0.0-git20542-10
+      - name: Integration tests against the real wasm clang (Node)
+        run: ABIX_REAL_CLANG=1 npx vitest run tests/unit/analyzer.real.test.ts
+      - name: End-to-end (Playwright, production build)
+        run: PW_CHANNEL=chromium npx playwright test
+        env:
+          CI: 'true'
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report

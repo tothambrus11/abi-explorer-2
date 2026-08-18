@@ -1,0 +1,154 @@
+// Integration test against the real wasm clang (Node). Skipped unless
+// ABIX_REAL_CLANG=1 (downloads ~27 MB once into .cache/).
+import { describe, it, expect, beforeAll } from 'vitest';
+import { Analyzer } from '$compiler/Analyzer';
+import { DEFAULT_OPTIONS } from '$core/options';
+import { buildRenderModel } from '$core/model';
+import { matchItemsToLocations, unqualifiedName } from '$core/ast-locations';
+import type { Compiler } from '$compiler/Compiler';
+
+const enabled = process.env['ABIX_REAL_CLANG'] === '1';
+
+describe.skipIf(!enabled)('Analyzer with real clang', () => {
+  let analyzer: Analyzer;
+  beforeAll(async () => {
+    const { createNodeCompiler } = await import('../../tools/node-clang.mjs');
+    analyzer = new Analyzer((await createNodeCompiler()) as Compiler);
+  }, 300_000);
+
+  it('probes are immune to packing state left open at the end of the TU', async () => {
+    const src = `#pragma pack(1)\nstruct S { char c; int i; long l; };`;
+    const a = await analyzer.analyze(src, {
+      ...DEFAULT_OPTIONS,
+      triple: 'x86_64-unknown-linux-gnu',
+    });
+    const m = buildRenderModel(
+      a.userRecords.find((r) => r.name === 'S')!,
+      a,
+    );
+    expect(m.leaves.map((l) => [l.name, l.sizeBits, l.align])).toEqual([
+      ['c', 8, 1],
+      ['i', 32, 4],
+      ['l', 64, 8],
+    ]);
+  }, 120_000);
+
+  it('measures members of records in anonymous namespaces (C++)', async () => {
+    const src = `namespace { struct S { char c; int i; }; }\nS s;`;
+    const a = await analyzer.analyze(src, {
+      ...DEFAULT_OPTIONS,
+      lang: 'c++',
+      std: 'gnu++20',
+      triple: 'x86_64-unknown-linux-gnu',
+    });
+    const rec = a.userRecords.find((r) => r.name.endsWith('S'))!;
+    const m = buildRenderModel(rec, a);
+    expect(m.leaves.map((l) => [l.name, l.sizeBits, l.align, l.estimated])).toEqual([
+      ['c', 8, 1, false],
+      ['i', 32, 4, false],
+    ]);
+    expect(a.unmeasured).toEqual([]);
+  }, 120_000);
+
+  it('measures every field of a C struct on x86-64 and AVR', async () => {
+    const src = `#include <stdint.h>
+typedef void (*Cb)(int);
+enum Color { RED };
+typedef struct { uint16_t x; } Point;
+struct Widget { uint8_t tag; enum Color color; Cb callback; Point pt; uint32_t big; char name[5]; };`;
+    for (const [triple, expectSize] of [
+      ['x86_64-unknown-linux-gnu', 32],
+      ['avr-unknown-unknown', 16],
+    ] as const) {
+      const a = await analyzer.analyze(src, { ...DEFAULT_OPTIONS, triple });
+      const w = a.userRecords.find((r) => r.name === 'Widget')!;
+      expect(w.sizeBytes).toBe(expectSize);
+      const m = buildRenderModel(w, a);
+      expect(m.leaves.map((l) => l.name)).toEqual(['tag', 'color', 'callback', 'x', 'big', 'name']);
+      expect(m.leaves.every((l) => !l.estimated)).toBe(true);
+      expect(a.unmeasured).toEqual([]);
+      const cb = m.leaves.find((l) => l.name === 'callback')!;
+      expect(cb.sizeBits).toBe(triple.startsWith('avr') ? 16 : 64);
+      expect(cb.align).toBe(triple.startsWith('avr') ? 1 : 8);
+    }
+  }, 120_000);
+
+  it('handles C++ private members, bases, unions, anonymous members', async () => {
+    const src = `class Secret { class Inner { char c[3]; }; Inner priv; public: int pub; };
+struct Base { virtual ~Base(); int x; };
+struct D : virtual Base { double d; };
+union Mix { char raw[13]; struct { short a; int b; } s; };
+struct Msg { struct { unsigned char lo, hi; }; Mix m; };`;
+    const a = await analyzer.analyze(src, {
+      ...DEFAULT_OPTIONS,
+      lang: 'c++',
+      std: 'gnu++20',
+      triple: 'x86_64-pc-windows-msvc',
+    });
+    expect(a.code).toBe(0);
+    const secret = buildRenderModel(
+      a.userRecords.find((r) => r.name === 'Secret')!,
+      a,
+    );
+    expect(secret.leaves.find((l) => l.name === 'c')!.estimated).toBe(false); // private, via -Dprivate=public
+    const d = buildRenderModel(
+      a.userRecords.find((r) => r.name === 'D')!,
+      a,
+    );
+    expect(d.leaves.map((l) => l.name)).toEqual([
+      'D vbtable pointer',
+      'd',
+      'Base vftable pointer',
+      'x',
+    ]);
+    expect(d.paddingBytes).toBe(4);
+    const msg = buildRenderModel(
+      a.userRecords.find((r) => r.name === 'Msg')!,
+      a,
+    );
+    expect(msg.leaves.map((l) => l.name)).toEqual(['lo', 'hi', 'raw', 'a', 'b']);
+    expect(msg.groups.map((g) => g.name)).toEqual(['(anonymous)', 's', 'm']);
+    expect(msg.groups.find((g) => g.name === 'm')!.sizeBits).toBe(16 * 8);
+    expect(a.unmeasured).toEqual([]);
+
+    const locs = (await analyzer.locate(a, ['Msg', 'Mix'])).fields;
+    const lines = matchItemsToLocations(msg.leaves, locs);
+    expect([...lines.values()].map((l) => l.line)).toEqual([5, 5, 4, 4, 4]);
+    expect(locs.find((l) => l.name === 'raw')!.qualType).toBe('char[13]');
+    expect(unqualifiedName('ns::Tpl<int>')).toBe('Tpl');
+  }, 120_000);
+
+  it('measures function-local and typedef-anonymous records through AST field types', async () => {
+    const src = `#include <stdint.h>\ntypedef struct { char c; int i; } T;\nvoid f(void) { struct L { char c; uint64_t u; } l; (void)l; }\n`;
+    const a = await analyzer.analyze(src, {
+      ...DEFAULT_OPTIONS,
+      triple: 'x86_64-unknown-linux-gnu',
+    });
+    const t = a.userRecords.find((r) => r.name.startsWith('(unnamed'))!;
+    const l = a.userRecords.find((r) => r.name === 'L')!;
+    expect(
+      buildRenderModel(t, a).leaves.map((x) => [x.name, x.sizeBits, x.align, x.estimated]),
+    ).toEqual([
+      ['c', 8, 1, false],
+      ['i', 32, 4, false],
+    ]);
+    expect(buildRenderModel(t, a).paddingBytes).toBe(3);
+    expect(
+      buildRenderModel(l, a).leaves.map((x) => [x.name, x.sizeBits, x.align, x.estimated]),
+    ).toEqual([
+      ['c', 8, 1, false],
+      ['u', 64, 8, false],
+    ]);
+    expect(a.unmeasured).toEqual([]);
+  }, 120_000);
+
+  it('probes arbitrary spellings', async () => {
+    const a = await analyzer.analyze('typedef unsigned long long ull;', {
+      ...DEFAULT_OPTIONS,
+      triple: 'i386-unknown-linux-gnu',
+    });
+    expect(await analyzer.probeSpelling(a, 'ull')).toEqual({ bits: 64, align: 4 });
+    expect(await analyzer.probeSpelling(a, 'long double')).toEqual({ bits: 96, align: 4 });
+    expect(await analyzer.probeSpelling(a, 'no_such_type')).toBeNull();
+  }, 120_000);
+});

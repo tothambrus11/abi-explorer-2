@@ -1,0 +1,44 @@
+/* Default (Glacier, light) tokens as a no-JS fallback. Themes are applied at
+   runtime by src/state/theme.svelte.ts from src/ui/themes.ts. */
+
+:root {
+  color-scheme: light;
+  --surface-1: #fcfcfb;
+  --page: #f9f9f7;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --grid-line: #e1e0d9;
+  --baseline: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.1);
+  --accent: #2a78d6;
+  --on-accent: #ffffff;
+  --error: #d03b3b;
+  --warn-ink: #8a5a00;
+  --ok-ink: #006300;
+
+  --c-1: #3b6fd4;
+  --c-2: #e0742b;
+  --c-3: #21a58a;
+  --c-4: #d9a400;
+  --c-5: #d65f9b;
+  --c-6: #4f9d2f;
+  --c-7: #6c4bc9;
+  --c-8: #d94a4a;
+  --c-special: #9a9a94;
+  --cell-ink: #ffffff;
+}
+
+:root {
+  --font-ui: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, monospace;
+  --editor-bg: #f7f9fc;
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme='light'])) {
+    --editor-bg: #0f1420;
+  }
+}
+:root[data-theme='dark'] {
+  --editor-bg: #0f1420;
+}

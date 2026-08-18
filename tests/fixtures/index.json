@@ -1,0 +1,12 @@
+[
+ "padding-basics--x86_64-unknown-linux-gnu.json",
+ "padding-basics--i386-unknown-linux-gnu.json",
+ "padding-basics--avr-unknown-unknown.json",
+ "padding-basics--x86_64-pc-windows-msvc.json",
+ "bitfields--x86_64-unknown-linux-gnu.json",
+ "bitfields--msp430-none-elf.json",
+ "nested-union-anon--x86_64-unknown-linux-gnu.json",
+ "nested-union-anon--arm-none-eabi.json",
+ "cxx-bases--x86_64-unknown-linux-gnu.json",
+ "cxx-bases--x86_64-pc-windows-msvc.json"
+]

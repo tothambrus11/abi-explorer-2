@@ -1,0 +1,200 @@
+{
+ "name": "padding-basics",
+ "lang": "c",
+ "triple": "x86_64-pc-windows-msvc",
+ "source": "#include <stdint.h>\nstruct Example { uint8_t flag; uint32_t count; uint8_t tag; uint64_t id; char name[5]; void *userdata; };\n",
+ "calls": [
+  {
+   "job": {
+    "argv0": "clang",
+    "args": [
+     "--target=x86_64-pc-windows-msvc",
+     "-xc",
+     "-std=gnu17",
+     "-fsyntax-only",
+     "-Xclang",
+     "-fdump-record-layouts-complete",
+     "-Wno-unused",
+     "-fcolor-diagnostics",
+     "-fansi-escape-codes",
+     "-fdiagnostics-print-source-range-info",
+     "abix_scalars.c"
+    ],
+    "files": {
+     "abix_scalars.c": "\nstruct __abix_s_ptr { void *v; };\nstruct __abix_s_fnptr { void (*v)(void); };\nstruct __abix_s_char { char v; };\nstruct __abix_s_int { int v; };\nstruct __abix_s_long { long v; };\n"
+    }
+   },
+   "out": {
+    "code": 0,
+    "stdout": "\n*** Dumping AST Record Layout\n         0 | struct __NSConstantString_tag\n         0 |   const int * isa\n         8 |   int flags\n        16 |   const char * str\n        24 |   long length\n           | [sizeof=32, align=8]\n\n*** Dumping AST Record Layout\n         0 | struct __abix_s_ptr\n         0 |   void * v\n           | [sizeof=8, align=8]\n\n*** Dumping AST Record Layout\n         0 | struct __abix_s_fnptr\n         0 |   void (*)(void) v\n           | [sizeof=8, align=8]\n\n*** Dumping AST Record Layout\n         0 | struct __abix_s_char\n         0 |   char v\n           | [sizeof=1, align=1]\n\n*** Dumping AST Record Layout\n         0 | struct __abix_s_int\n         0 |   int v\n           | [sizeof=4, align=4]\n\n*** Dumping AST Record Layout\n         0 | struct __abix_s_long\n         0 |   long v\n           | [sizeof=4, align=4]\n",
+    "stderr": ""
+   }
+  },
+  {
+   "job": {
+    "argv0": "clang",
+    "args": [
+     "--target=x86_64-pc-windows-msvc",
+     "-xc",
+     "-std=gnu17",
+     "-fsyntax-only",
+     "-Xclang",
+     "-fdump-record-layouts-complete",
+     "-Wno-unused",
+     "-fcolor-diagnostics",
+     "-fansi-escape-codes",
+     "-fdiagnostics-print-source-range-info",
+     "input.c"
+    ],
+    "files": {
+     "input.c": "#include <stdint.h>\nstruct Example { uint8_t flag; uint32_t count; uint8_t tag; uint64_t id; char name[5]; void *userdata; };\n"
+    }
+   },
+   "out": {
+    "code": 0,
+    "stdout": "\n*** Dumping AST Record Layout\n         0 | struct __NSConstantString_tag\n         0 |   const int * isa\n         8 |   int flags\n        16 |   const char * str\n        24 |   long length\n           | [sizeof=32, align=8]\n\n*** Dumping AST Record Layout\n         0 | struct Example\n         0 |   uint8_t flag\n         4 |   uint32_t count\n         8 |   uint8_t tag\n        16 |   uint64_t id\n        24 |   char[5] name\n        32 |   void * userdata\n           | [sizeof=40, align=8]\n",
+    "stderr": ""
+   }
+  },
+  {
+   "job": {
+    "argv0": "clang",
+    "args": [
+     "--target=x86_64-pc-windows-msvc",
+     "-xc",
+     "-std=gnu17",
+     "-fsyntax-only",
+     "-Xclang",
+     "-fdump-record-layouts-complete",
+     "-Wno-unused",
+     "-fcolor-diagnostics",
+     "-fansi-escape-codes",
+     "-fdiagnostics-print-source-range-info",
+     "-Xclang",
+     "-fno-access-control",
+     "input_probe.c"
+    ],
+    "files": {
+     "input_probe.c": "#include <stdint.h>\nstruct Example { uint8_t flag; uint32_t count; uint8_t tag; uint64_t id; char name[5]; void *userdata; };\n#pragma pack()\nstruct __abix_p0 { __typeof__(((struct Example*)0)->flag) v; };\nstruct __abix_p1 { __typeof__(((struct Example*)0)->count) v; };\nstruct __abix_p2 { __typeof__(((struct Example*)0)->tag) v; };\nstruct __abix_p3 { __typeof__(((struct Example*)0)->id) v; };\nstruct __abix_p4 { __typeof__(((struct Example*)0)->name) v; };\nstruct __abix_p5 { __typeof__(((struct Example*)0)->userdata) v; };\n"
+    }
+   },
+   "out": {
+    "code": 0,
+    "stdout": "\n*** Dumping AST Record Layout\n         0 | struct __NSConstantString_tag\n         0 |   const int * isa\n         8 |   int flags\n        16 |   const char * str\n        24 |   long length\n           | [sizeof=32, align=8]\n\n*** Dumping AST Record Layout\n         0 | struct Example\n         0 |   uint8_t flag\n         4 |   uint32_t count\n         8 |   uint8_t tag\n        16 |   uint64_t id\n        24 |   char[5] name\n        32 |   void * userdata\n           | [sizeof=40, align=8]\n\n*** Dumping AST Record Layout\n         0 | struct __abix_p0\n         0 |   typeof (((struct Example *)0)->flag) v\n           | [sizeof=1, align=1]\n\n*** Dumping AST Record Layout\n         0 | struct __abix_p1\n         0 |   typeof (((struct Example *)0)->count) v\n           | [sizeof=4, align=4]\n\n*** Dumping AST Record Layout\n         0 | struct __abix_p2\n         0 |   typeof (((struct Example *)0)->tag) v\n           | [sizeof=1, align=1]\n\n*** Dumping AST Record Layout\n         0 | struct __abix_p3\n         0 |   typeof (((struct Example *)0)->id) v\n           | [sizeof=8, align=8]\n\n*** Dumping AST Record Layout\n         0 | struct __abix_p4\n         0 |   typeof (((struct Example *)0)->name) v\n           | [sizeof=5, align=1]\n\n*** Dumping AST Record Layout\n         0 | struct __abix_p5\n         0 |   typeof (((struct Example *)0)->userdata) v\n           | [sizeof=8, align=8]\n",
+    "stderr": ""
+   }
+  },
+  {
+   "job": {
+    "argv0": "clang",
+    "args": [
+     "--target=x86_64-pc-windows-msvc",
+     "-xc",
+     "-std=gnu17",
+     "-fsyntax-only",
+     "-Xclang",
+     "-ast-dump=json",
+     "-Xclang",
+     "-ast-dump-filter=Example",
+     "-Wno-unused",
+     "-fcolor-diagnostics",
+     "-fansi-escape-codes",
+     "-fdiagnostics-print-source-range-info",
+     "input.c"
+    ],
+    "files": {
+     "input.c": "#include <stdint.h>\nstruct Example { uint8_t flag; uint32_t count; uint8_t tag; uint64_t id; char name[5]; void *userdata; };\n"
+    }
+   },
+   "out": {
+    "code": 0,
+    "stdout": "{\n  \"id\": \"0x1290800\",\n  \"kind\": \"RecordDecl\",\n  \"loc\": {\n    \"offset\": 27,\n    \"file\": \"input.c\",\n    \"line\": 2,\n    \"col\": 8,\n    \"tokLen\": 7\n  },\n  \"range\": {\n    \"begin\": {\n      \"offset\": 20,\n      \"col\": 1,\n      \"tokLen\": 6\n    },\n    \"end\": {\n      \"offset\": 123,\n      \"col\": 104,\n      \"tokLen\": 1\n    }\n  },\n  \"name\": \"Example\",\n  \"tagUsed\": \"struct\",\n  \"completeDefinition\": true,\n  \"inner\": [\n    {\n      \"id\": \"0x1290870\",\n      \"kind\": \"FieldDecl\",\n      \"loc\": {\n        \"offset\": 45,\n        \"col\": 26,\n        \"tokLen\": 4\n      },\n      \"range\": {\n        \"begin\": {\n          \"offset\": 37,\n          \"col\": 18,\n          \"tokLen\": 7\n        },\n        \"end\": {\n          \"offset\": 45,\n          \"col\": 26,\n          \"tokLen\": 4\n        }\n      },\n      \"name\": \"flag\",\n      \"type\": {\n        \"desugaredQualType\": \"unsigned char\",\n        \"qualType\": \"uint8_t\",\n        \"typeAliasDeclId\": \"0x123b348\"\n      }\n    },\n    {\n      \"id\": \"0x12908c0\",\n      \"kind\": \"FieldDecl\",\n      \"loc\": {\n        \"offset\": 60,\n        \"col\": 41,\n        \"tokLen\": 5\n      },\n      \"range\": {\n        \"begin\": {\n          \"offset\": 51,\n          \"col\": 32,\n          \"tokLen\": 8\n        },\n        \"end\": {\n          \"offset\": 60,\n          \"col\": 41,\n          \"tokLen\": 5\n        }\n      },\n      \"name\": \"count\",\n      \"type\": {\n        \"desugaredQualType\": \"unsigned int\",\n        \"qualType\": \"uint32_t\",\n        \"typeAliasDeclId\": \"0x123af48\"\n      }\n    },\n    {\n      \"id\": \"0x1290910\",\n      \"kind\": \"FieldDecl\",\n      \"loc\": {\n        \"offset\": 75,\n        \"col\": 56,\n        \"tokLen\": 3\n      },\n      \"range\": {\n        \"begin\": {\n          \"offset\": 67,\n          \"col\": 48,\n          \"tokLen\": 7\n        },\n        \"end\": {\n          \"offset\": 75,\n          \"col\": 56,\n          \"tokLen\": 3\n        }\n      },\n      \"name\": \"tag\",\n      \"type\": {\n        \"desugaredQualType\": \"unsigned char\",\n        \"qualType\": \"uint8_t\",\n        \"typeAliasDeclId\": \"0x123b348\"\n      }\n    },\n    {\n      \"id\": \"0x1290960\",\n      \"kind\": \"FieldDecl\",\n      \"loc\": {\n        \"offset\": 89,\n        \"col\": 70,\n        \"tokLen\": 2\n      },\n      \"range\": {\n        \"begin\": {\n          \"offset\": 80,\n          \"col\": 61,\n          \"tokLen\": 8\n        },\n        \"end\": {\n          \"offset\": 89,\n          \"col\": 70,\n          \"tokLen\": 2\n        }\n      },\n      \"name\": \"id\",\n      \"type\": {\n        \"desugaredQualType\": \"unsigned long long\",\n        \"qualType\": \"uint64_t\",\n        \"typeAliasDeclId\": \"0x123ad50\"\n      }\n    },\n    {\n      \"id\": \"0x1290a10\",\n      \"kind\": \"FieldDecl\",\n      \"loc\": {\n        \"offset\": 98,\n        \"col\": 79,\n        \"tokLen\": 4\n      },\n      \"range\": {\n        \"begin\": {\n          \"offset\": 93,\n          \"col\": 74,\n          \"tokLen\": 4\n        },\n        \"end\": {\n          \"offset\": 104,\n          \"col\": 85,\n          \"tokLen\": 1\n        }\n      },\n      \"name\": \"name\",\n      \"type\": {\n        \"qualType\": \"char[5]\"\n      }\n    },\n    {\n      \"id\": \"0x1290a60\",\n      \"kind\": \"FieldDecl\",\n      \"loc\": {\n        \"offset\": 113,\n        \"col\": 94,\n        \"tokLen\": 8\n      },\n      \"range\": {\n        \"begin\": {\n          \"offset\": 107,\n          \"col\": 88,\n          \"tokLen\": 4\n        },\n        \"end\": {\n          \"offset\": 113,\n          \"col\": 94,\n          \"tokLen\": 8\n        }\n      },\n      \"name\": \"userdata\",\n      \"type\": {\n        \"qualType\": \"void *\"\n      }\n    }\n  ]\n}\n",
+    "stderr": ""
+   }
+  },
+  {
+   "job": {
+    "argv0": "clang",
+    "args": [
+     "--target=x86_64-pc-windows-msvc",
+     "-xc",
+     "-std=gnu17",
+     "-fsyntax-only",
+     "-Xclang",
+     "-fdump-record-layouts-complete",
+     "-Wno-unused",
+     "-fcolor-diagnostics",
+     "-fansi-escape-codes",
+     "-fdiagnostics-print-source-range-info",
+     "-Xclang",
+     "-fno-access-control",
+     "input_probe.c"
+    ],
+    "files": {
+     "input_probe.c": "#include <stdint.h>\nstruct Example { uint8_t flag; uint32_t count; uint8_t tag; uint64_t id; char name[5]; void *userdata; };\n#pragma pack()\nstruct __abix_p0 { __typeof__(uint64_t) v; };\n"
+    }
+   },
+   "out": {
+    "code": 0,
+    "stdout": "\n*** Dumping AST Record Layout\n         0 | struct __NSConstantString_tag\n         0 |   const int * isa\n         8 |   int flags\n        16 |   const char * str\n        24 |   long length\n           | [sizeof=32, align=8]\n\n*** Dumping AST Record Layout\n         0 | struct Example\n         0 |   uint8_t flag\n         4 |   uint32_t count\n         8 |   uint8_t tag\n        16 |   uint64_t id\n        24 |   char[5] name\n        32 |   void * userdata\n           | [sizeof=40, align=8]\n\n*** Dumping AST Record Layout\n         0 | struct __abix_p0\n         0 |   typeof(uint64_t) v\n           | [sizeof=8, align=8]\n",
+    "stderr": ""
+   }
+  },
+  {
+   "job": {
+    "argv0": "clang",
+    "args": [
+     "--target=x86_64-pc-windows-msvc",
+     "-xc",
+     "-std=gnu17",
+     "-fsyntax-only",
+     "-Xclang",
+     "-fdump-record-layouts-complete",
+     "-Wno-unused",
+     "-fcolor-diagnostics",
+     "-fansi-escape-codes",
+     "-fdiagnostics-print-source-range-info",
+     "-Xclang",
+     "-fno-access-control",
+     "input_probe.c"
+    ],
+    "files": {
+     "input_probe.c": "#include <stdint.h>\nstruct Example { uint8_t flag; uint32_t count; uint8_t tag; uint64_t id; char name[5]; void *userdata; };\n#pragma pack()\nstruct __abix_p0 { __typeof__(long double) v; };\n"
+    }
+   },
+   "out": {
+    "code": 0,
+    "stdout": "\n*** Dumping AST Record Layout\n         0 | struct __NSConstantString_tag\n         0 |   const int * isa\n         8 |   int flags\n        16 |   const char * str\n        24 |   long length\n           | [sizeof=32, align=8]\n\n*** Dumping AST Record Layout\n         0 | struct Example\n         0 |   uint8_t flag\n         4 |   uint32_t count\n         8 |   uint8_t tag\n        16 |   uint64_t id\n        24 |   char[5] name\n        32 |   void * userdata\n           | [sizeof=40, align=8]\n\n*** Dumping AST Record Layout\n         0 | struct __abix_p0\n         0 |   typeof(long double) v\n           | [sizeof=8, align=8]\n",
+    "stderr": ""
+   }
+  },
+  {
+   "job": {
+    "argv0": "clang",
+    "args": [
+     "--target=x86_64-pc-windows-msvc",
+     "-xc",
+     "-std=gnu17",
+     "-fsyntax-only",
+     "-Xclang",
+     "-fdump-record-layouts-complete",
+     "-Wno-unused",
+     "-fcolor-diagnostics",
+     "-fansi-escape-codes",
+     "-fdiagnostics-print-source-range-info",
+     "-Xclang",
+     "-fno-access-control",
+     "input_probe.c"
+    ],
+    "files": {
+     "input_probe.c": "#include <stdint.h>\nstruct Example { uint8_t flag; uint32_t count; uint8_t tag; uint64_t id; char name[5]; void *userdata; };\n#pragma pack()\nstruct __abix_p0 { __typeof__(no_such_type) v; };\n"
+    }
+   },
+   "out": {
+    "code": 1,
+    "stdout": "\n*** Dumping AST Record Layout\n         0 | struct __NSConstantString_tag\n         0 |   const int * isa\n         8 |   int flags\n        16 |   const char * str\n        24 |   long length\n           | [sizeof=32, align=8]\n\n*** Dumping AST Record Layout\n         0 | struct Example\n         0 |   uint8_t flag\n         4 |   uint32_t count\n         8 |   uint8_t tag\n        16 |   uint64_t id\n        24 |   char[5] name\n        32 |   void * userdata\n           | [sizeof=40, align=8]\n",
+    "stderr": "\u001b[1minput_probe.c:4:31:{4:31-4:43}: \u001b[0m\u001b[0;1;31merror: \u001b[0m\u001b[1muse of undeclared identifier 'no_such_type'\u001b[0m\n    4 | \u001b[0;34m struc\u001b[0mt __abix_p0 {\u001b[0;34m __typeof_\u001b[0m_(no_such_type) v; };\u001b[0m\n      | \u001b[0;1;32m                               ^~~~~~~~~~~~\n\u001b[0m1 error generated.\n"
+   }
+  }
+ ]
+}

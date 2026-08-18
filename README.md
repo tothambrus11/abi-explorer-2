@@ -1,118 +1,86 @@
-# Struct Layout Explorer
+# ABI Explorer
 
 Visualize how C and C++ compilers lay out structs — field offsets, sizes,
 alignment, and padding — for **any target LLVM supports**, computed by the
 real thing: **clang compiled to WebAssembly**, running entirely in your
-browser. No server, no build step; every file here is static.
+browser. Static site, works offline (PWA), no server. Live at
+<https://abiexplorer.org>.
 
 ![screenshot](docs/screenshot.png)
 
-## What it does
+## Features
 
-- Paste a struct/class/union declaration (C or C++), pick a target triple,
-  and get the exact memory layout clang would use on that target:
-  per-field offsets, sizes, the record's `sizeof`/alignment, C++ details
-  (`dsize`, `nvsize`, vtable pointers, base subobjects), and every byte of
-  padding, drawn as a byte-grid memory map with bit-level rendering for
-  bit-fields.
+- Paste a struct/class/union (C or C++), pick a target triple, get the exact
+  layout clang uses on that target: offsets, sizes, `sizeof`/alignment,
+  C++ details (`dsize`, `nvsize`, vtable pointers, base subobjects), and every
+  byte of padding — drawn as a byte grid with bit-level cells for bit-fields.
 - ~40 curated targets (x86-64 SysV & MSVC, AArch64 incl. Apple & Windows,
   Arm32, RISC-V, wasm32/64, PowerPC incl. AIX, MIPS, s390x, SPARC, LoongArch,
-  AVR, MSP430, m68k, Hexagon, Xtensa, BPF, NVPTX, AMDGCN, …) plus a
-  free-form custom-triple input. Since layout is computed by clang's own
-  frontend, every ABI quirk (i386 vs MSVC `long double`, AVR's byte
-  alignment, `arm64_32`'s ILP32 pointers, MSVC vs Itanium C++ object model,
-  AIX preferred alignment…) is authentic.
-- Options: C vs C++ (each with selectable standard version, C89→C23,
-  C++03→C++26), `#pragma pack`-style max field alignment (`-fpack-struct`),
-  MS bit-field layout (`-mms-bitfields`), `-fshort-enums`, `-fshort-wchar`,
-  `-Wpadded` diagnostics, plus an escape hatch for arbitrary extra flags.
-- Freestanding headers (`<stdint.h>`, `<stddef.h>`, `<limits.h>`, …) resolve
-  for every target; libc++ headers are available in C++ mode; WASI libc
-  headers can optionally be mapped in for other targets.
-- Monaco editor (self-hosted, JetBrains Mono, custom “Glacier” light and
-  “Nocturne” dark themes that follow your OS setting) with clang's
-  diagnostics shown inline as squiggles.
-- Records can be shown one at a time (tabs) or all stacked below each
-  other — toggle with the icon at the top of the results pane (remembered).
-- Share button encodes the source + all options into the URL fragment.
-- Installable PWA: after the first visit the app shell, editor, fonts and
-  the clang runtime are cached, so it keeps working fully offline (a
-  “✓ available offline” badge appears in the footer once everything is
-  cached).
+  AVR, MSP430, m68k, Hexagon, Xtensa, BPF, NVPTX, AMDGCN, …) plus a custom
+  triple. Every ABI quirk is authentic because clang's own frontend computes it.
+- Options: C/C++ (each with a standard version), `-fpack-struct`,
+  `-mms-bitfields`, `-fshort-enums`, `-fshort-wchar`, `-Wpadded`, extra flags.
+- Editor (Monaco, JetBrains Mono): colored gutter dots per member, hovering a
+  line highlights its members in the grid/table (and vice versa), an inline
+  `offset · size · align` hint, a documentation popup for any type name,
+  clang's colored diagnostics, and squiggles for errors.
+- Panels (Code / Layout / Diagnostics) are dockable and resizable (dockview);
+  themes: six presets plus a theme editor for your own (light/dark switch
+  flips between your last-used ones).
+- Share button encodes source + options in the URL; installable PWA that keeps
+  working offline once clang has been downloaded.
 
 ## How it works
 
-1. [`@yowasp/clang`](https://github.com/YoWASP/clang) provides clang 22
-   compiled to WebAssembly/WASI. It runs in a Web Worker with a virtual
-   filesystem — used as a library, not a CLI. The worker fetches the
-   package's ~27 MB gzipped tarball straight from the npm registry (CORS
-   allows it), unpacks it in memory, and caches it with the Cache API; run
-   `tools/vendor-clang.sh` to vendor the assets into `vendor/clang/`
-   instead, which the worker prefers, making the site fully
-   self-contained with no third-party requests.
-2. The app compiles your code with
+Everything type-related is answered by clang; the app only reads its outputs.
+
+1. [`@yowasp/clang`](https://github.com/YoWASP/clang) provides clang 22 as
+   WebAssembly/WASI. A Web Worker downloads its npm tarball (~27 MB) straight
+   from the registry once (Cache API), unpacks it in memory, and runs clang as
+   a library. `tools/vendor-clang.sh` can vendor the assets into
+   `public/vendor/clang/` instead for fully self-hosted deployments.
+2. **Layout pass** — the user's TU compiled with
    `-fsyntax-only -Xclang -fdump-record-layouts-complete` for the chosen
-   `--target`. Layout is computed by clang's frontend, which supports every
-   target's ABI regardless of which LLVM backends exist in the build.
-3. A second tiny TU of probe structs measures the target's scalar sizes
-   (`sizeof(long)`, pointer size, …); if a field's type still can't be
-   sized (odd typedefs, enums with custom underlying types), one more pass
-   compiles `struct probe { T v; };` per unknown type. That yields exact
-   extents for every field so padding can be drawn byte-accurately.
-4. `js/layout-parser.js` parses the dump (Itanium & Microsoft C++ ABIs,
-   bit-fields, virtual bases, anonymous members); `js/render.js` draws the
-   byte grid and field table.
+   `--target`, plus a tiny probe TU for pointer size.
+3. **Field probes** — one `struct __abix_pN { __typeof__(((struct S*)0)->f) v; };`
+   per member (by access path, so nested/anonymous/typedef'd members work);
+   clang reports each member's exact size and alignment. C++ private members
+   are reachable through `-Xclang -fno-access-control` in this
+   measurement-only pass.
+4. **Locations** — a filtered `-ast-dump=json` per record gives member source
+   lines and declared types (for gutter dots, hover linking, and the type
+   popup, which probes any spelling with `__typeof__(<spelling>)`).
 
-## Deployment
-
-Hosted on **Cloudflare Pages** via its Git integration: every push to `main`
-is deployed as-is (framework *None*, no build command, output directory `/`).
-`_headers` sets long-lived caching for `vendor/`; `.assetsignore` keeps
-VCS/tooling files out of the upload.
-
-## Running locally
-
-Any static file server works:
+## Development
 
 ```sh
-python3 -m http.server 8000
-# open http://localhost:8000
+npm install
+npm run dev          # Vite dev server
+npm test             # unit tests (fixture-backed; no clang download)
+npm run e2e          # Playwright against the production build (downloads clang once)
+npm run check        # svelte-check + tsc (strict)
+npm run lint         # eslint (strict, type-checked)
+npm run fixtures     # re-capture clang output fixtures with the real wasm clang
+ABIX_REAL_CLANG=1 npx vitest run tests/unit/analyzer.real.test.ts   # integration
 ```
-
-(Serving from `file://` won't work — the app uses ES modules and a worker.)
 
 ## Repository layout
 
 ```
-index.html          app shell
-css/style.css       theme (light/dark) + layout
-js/app.js           orchestration, options, URL state
-js/clang-worker.js  Web Worker owning the wasm clang instance
-js/layout-parser.js -fdump-record-layouts text → structured records
-js/size-resolver.js scalar probe table + type-spelling → size resolution
-js/model.js         render model: leaf extents, padding runs, stats
-js/render.js        summary tiles, byte grid, field table, tooltips
-js/targets.js       curated targets, standards, examples
-js/editor.js        Monaco setup: themes, diagnostics → markers, gutter dots
-js/ast-locations.js -ast-dump=json → member source lines (for gutter dots)
-sw.js               service worker (offline app shell)
-manifest.webmanifest, icons/  PWA metadata
-tools/vendor-clang.sh  optional: vendor the wasm assets for offline hosting
-tools/build-monaco.sh  rebuilds vendor/monaco + vendor/fonts (output is committed)
-vendor/clang/       YoWASP runtime (bundle.js) — see NOTICE.md for licensing
-vendor/monaco/      Monaco editor bundle (MIT)
-vendor/fonts/       JetBrains Mono (OFL-1.1)
-_headers            Cloudflare Pages response headers (caching)
+src/core/         pure, unit-tested: layout-parser, probes, model, ast-locations,
+                  diagnostics, ansi, options (argv), url-state, targets
+src/compiler/     typed worker protocol, clang.worker (wasm host), ClangClient
+                  (queue, cancel, timeout, watchdog/respawn), Analyzer (pipeline),
+                  Compiler interface + FixtureCompiler for tests
+src/state/        store (Svelte 5 runes), session (orchestration, hover, type docs), theme
+src/ui/           Svelte components, Monaco setup, dockview integration, themes
+tests/unit/       vitest (fixtures in tests/fixtures), tests/e2e/ Playwright
+tools/            node-clang.mjs (clang in Node), vendor-clang.sh
+public/vendor/    YoWASP JS runtime for clang (see NOTICE.md)
 ```
 
-## Caveats
+## Deployment
 
-- Templates must be instantiated (e.g. `Pair<double> p;`) to appear — the
-  dump only contains completed record layouts.
-- Hosted libc headers (`<stdio.h>`, …) only exist natively for the
-  `wasm32-wasip1` target; the "WASI libc headers" toggle maps them in for
-  other targets with the caveat that libc-internal types then reflect
-  wasi-libc rather than the target's real libc. Freestanding and libc++
-  headers are fine everywhere.
-- A few exotic field sizes fall back to estimates (marked with ≈) when a
-  type can be neither measured nor matched to a dumped record.
+Cloudflare Pages via Git integration: build command `npm run build`, output
+directory `dist`. CI (`.github/workflows/ci.yml`) runs lint, type-check, unit
+tests, build, the real-clang integration test and the Playwright suite.

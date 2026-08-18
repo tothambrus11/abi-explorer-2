@@ -1,0 +1,233 @@
+// Reads member source locations (and declared types) out of clang's
+// `-ast-dump=json` output as produced with `-ast-dump-filter=<record name>`.
+//
+// The JSON dumper omits "file"/"line" from a location when unchanged from the
+// previously *written* location, so we replay the document in key order and
+// keep running state. Locations appear under "loc", "range.begin/end",
+// "spellingLoc" and "expansionLoc".
+
+import type { Leaf, Group } from './types';
+
+export interface FieldLocation {
+  /** Unqualified name of the innermost enclosing record ('' for anonymous). */
+  owner: string;
+  /** Field name ('' for anonymous struct/union members). */
+  name: string;
+  line: number;
+  /** 1-based column of the field name. */
+  col: number;
+  /** Declared type as clang prints it (e.g. "uint64_t", "struct Header"). */
+  qualType: string;
+  /** Canonical type, when different (e.g. "unsigned long"). */
+  desugaredType?: string;
+}
+
+/** A named declaration whose name is written at (line, col): records and typedefs. */
+export interface DeclLocation {
+  kind: 'record' | 'typedef';
+  name: string;
+  line: number;
+  col: number;
+  /** For typedefs: the aliased type as clang prints it. */
+  qualType?: string;
+}
+
+export interface AstInfo {
+  fields: FieldLocation[];
+  decls: DeclLocation[];
+}
+
+const LOC_KEYS = new Set(['loc', 'begin', 'end', 'spellingLoc', 'expansionLoc']);
+const RECORD_KINDS = new Set([
+  'RecordDecl',
+  'CXXRecordDecl',
+  'ClassTemplateSpecializationDecl',
+  'ClassTemplatePartialSpecializationDecl',
+]);
+
+interface LocState {
+  file: string;
+  line: number;
+  col: number;
+}
+
+type JsonNode = Record<string, unknown>;
+const str = (o: JsonNode, k: string): string | undefined =>
+  typeof o[k] === 'string' ? o[k] : undefined;
+const num = (o: JsonNode, k: string): number | undefined =>
+  typeof o[k] === 'number' ? o[k] : undefined;
+const obj = (o: JsonNode, k: string): JsonNode | undefined =>
+  o[k] && typeof o[k] === 'object' ? (o[k] as JsonNode) : undefined;
+
+/** Extract field and decl locations in `fileName` from a (possibly concatenated) JSON dump. */
+export function extractAstInfo(dumpText: string, fileName: string): AstInfo {
+  const out: AstInfo = { fields: [], decls: [] };
+  const state: LocState = { file: '', line: 0, col: 0 };
+  for (const doc of splitJsonDocuments(dumpText)) {
+    let node: unknown;
+    try {
+      node = JSON.parse(doc);
+    } catch {
+      continue;
+    }
+    walk(node, '', state, fileName, out);
+  }
+  return out;
+}
+
+/** Convenience: only the field locations. */
+export function extractFieldLocations(dumpText: string, fileName: string): FieldLocation[] {
+  return extractAstInfo(dumpText, fileName).fields;
+}
+
+function walk(node: unknown, owner: string, state: LocState, fileName: string, out: AstInfo): void {
+  if (Array.isArray(node)) {
+    for (const n of node) walk(n, owner, state, fileName, out);
+    return;
+  }
+  if (!node || typeof node !== 'object') return;
+  const n = node as JsonNode;
+
+  let mine: { line: number; col: number } | null = null;
+  const kind = str(n, 'kind') ?? '';
+  const name = str(n, 'name');
+  const nextOwner = RECORD_KINDS.has(kind) ? (name ?? '') : owner;
+
+  for (const key of Object.keys(n)) {
+    const val = n[key];
+    if (LOC_KEYS.has(key) && val && typeof val === 'object') {
+      applyLoc(val as JsonNode, state);
+      if (key === 'loc' && state.file.endsWith(fileName)) {
+        mine = { line: state.line, col: state.col };
+      }
+      continue;
+    }
+    if (val && typeof val === 'object') walk(val, nextOwner, state, fileName, out);
+  }
+  const type = obj(n, 'type') ?? {};
+  if (mine && mine.line > 0 && name) {
+    if (RECORD_KINDS.has(kind)) {
+      out.decls.push({ kind: 'record', name, line: mine.line, col: mine.col });
+    } else if (kind === 'TypedefDecl' || kind === 'TypeAliasDecl') {
+      const d: DeclLocation = { kind: 'typedef', name, line: mine.line, col: mine.col };
+      const qt = str(type, 'qualType');
+      if (qt !== undefined) d.qualType = qt;
+      out.decls.push(d);
+    }
+  }
+  if (kind === 'FieldDecl' && mine && mine.line > 0) {
+    const f: FieldLocation = {
+      owner,
+      name: name ?? '',
+      line: mine.line,
+      col: mine.col,
+      qualType: str(type, 'qualType') ?? '',
+    };
+    const ds = str(type, 'desugaredQualType');
+    if (ds !== undefined) f.desugaredType = ds;
+    out.fields.push(f);
+  }
+}
+
+function applyLoc(loc: JsonNode, state: LocState): void {
+  const spelling = obj(loc, 'spellingLoc');
+  const expansion = obj(loc, 'expansionLoc');
+  if (spelling || expansion) {
+    if (spelling) applyLoc(spelling, state);
+    if (expansion) applyLoc(expansion, state);
+    return;
+  }
+  const file = str(loc, 'file');
+  const line = num(loc, 'line');
+  const col = num(loc, 'col');
+  if (file !== undefined) state.file = file;
+  if (line !== undefined) state.line = line;
+  if (col !== undefined) state.col = col;
+}
+
+/** Split concatenated top-level JSON objects (skipping "Dumping X:" lines). */
+export function splitJsonDocuments(text: string): string[] {
+  const docs: string[] = [];
+  let depth = 0;
+  let start = -1;
+  let inStr = false;
+  let esc = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === '\\') esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') {
+      if (depth > 0) inStr = true;
+      continue;
+    }
+    if (c === '{') {
+      if (depth === 0) start = i;
+      depth++;
+    } else if (c === '}') {
+      depth--;
+      if (depth === 0 && start >= 0) {
+        docs.push(text.slice(start, i + 1));
+        start = -1;
+      }
+    }
+  }
+  return docs;
+}
+
+// ------------------------------------------------------------- matching --
+
+/** "ns::Outer::Inner<int>" -> "Inner"; anonymous -> "". */
+export function unqualifiedName(name: string): string {
+  if (/\((?:anonymous|unnamed|lambda)/.test(name)) return '';
+  // Drop every balanced <...> group (not just a trailing one) so a record
+  // nested in a specialization, `Outer<int>::Inner`, resolves to `Inner`.
+  let n = '';
+  let depth = 0;
+  for (const ch of name) {
+    if (ch === '<') depth++;
+    else if (ch === '>') depth--;
+    else if (depth === 0) n += ch;
+  }
+  const i = n.lastIndexOf('::');
+  return i >= 0 ? n.slice(i + 2) : n;
+}
+
+export type Locatable =
+  Pick<Leaf, 'kind' | 'name' | 'owner'> | Pick<Group, 'kind' | 'name' | 'owner' | 'isBase'>;
+
+/**
+ * Map render-model items (leaves or groups) to source locations.
+ * Returns Map itemIndex -> FieldLocation.
+ */
+export function matchItemsToLocations(
+  items: Locatable[],
+  locations: FieldLocation[],
+): Map<number, FieldLocation> {
+  const byOwnerName = new Map<string, FieldLocation>();
+  const byName = new Map<string, FieldLocation[]>();
+  for (const f of locations) {
+    const k = f.owner + '\0' + f.name;
+    if (!byOwnerName.has(k)) byOwnerName.set(k, f);
+    const list = byName.get(f.name) ?? [];
+    list.push(f);
+    byName.set(f.name, list);
+  }
+  const result = new Map<number, FieldLocation>();
+  items.forEach((item, i) => {
+    if (item.kind === 'special' || ('isBase' in item && item.isBase) || !item.name) return;
+    const name = item.name.startsWith('(') ? '' : item.name; // anonymous member
+    const owner = unqualifiedName(item.owner || '');
+    let loc = byOwnerName.get(owner + '\0' + name);
+    if (!loc && /\((?:anon|unnamed)/.test(item.owner || '')) loc = byOwnerName.get('\0' + name);
+    if (!loc && name) {
+      const cands = byName.get(name);
+      if (cands && new Set(cands.map((c) => c.line)).size === 1) loc = cands[0];
+    }
+    if (loc) result.set(i, loc);
+  });
+  return result;
+}

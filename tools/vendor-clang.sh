@@ -6,7 +6,7 @@ set -eu
 
 VERSION="22.0.0-git20542-10"
 URL="https://registry.npmjs.org/@yowasp/clang/-/clang-${VERSION}.tgz"
-DEST="vendor/clang"
+DEST="public/vendor/clang"
 
 echo "Downloading @yowasp/clang ${VERSION}..."
 tmp=$(mktemp -d)

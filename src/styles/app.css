@@ -1,0 +1,301 @@
+@import './tokens.css';
+@import '@fontsource-variable/inter/index.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/400-italic.css';
+@import '@fontsource/jetbrains-mono/700.css';
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text-primary);
+  font: 14px/1.45 var(--font-ui);
+  font-feature-settings: 'cv11', 'ss01';
+}
+.mono,
+code,
+pre {
+  font-family: var(--font-mono);
+}
+a {
+  color: var(--accent);
+}
+
+/* Shared form controls */
+.input {
+  padding: 6px 8px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--page);
+  color: var(--text-primary);
+  font: inherit;
+  max-width: 340px;
+}
+.input.small {
+  padding: 4px 6px;
+  font-size: 12.5px;
+}
+.input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.btn {
+  padding: 6px 14px;
+  border-radius: 7px;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+.btn:hover {
+  border-color: var(--baseline);
+}
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.icon-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 7px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--page);
+  color: var(--text-secondary);
+}
+.icon-btn:hover {
+  border-color: var(--baseline);
+  color: var(--text-primary);
+}
+.icon-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Themed tooltip (use:tooltip action and the grid/table tooltip) */
+.abix-tip {
+  position: fixed;
+  z-index: 100;
+  max-width: 320px;
+  background: var(--tip-bg, var(--text-primary));
+  color: var(--tip-fg, var(--page));
+  padding: 6px 9px;
+  border-radius: 7px;
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+  animation: tip-in 0.12s ease-out;
+}
+@keyframes tip-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .abix-tip {
+    animation: none;
+  }
+}
+
+/* Native controls follow the theme */
+input[type='checkbox'],
+input[type='radio'] {
+  accent-color: var(--accent);
+}
+select.input,
+input.input {
+  color-scheme: inherit;
+}
+
+/* Categorical member colors (grid cells, chips, gutter dots) */
+.c-1 {
+  background-color: var(--c-1);
+}
+.c-2 {
+  background-color: var(--c-2);
+}
+.c-3 {
+  background-color: var(--c-3);
+}
+.c-4 {
+  background-color: var(--c-4);
+}
+.c-5 {
+  background-color: var(--c-5);
+}
+.c-6 {
+  background-color: var(--c-6);
+}
+.c-7 {
+  background-color: var(--c-7);
+}
+.c-8 {
+  background-color: var(--c-8);
+}
+.c-special {
+  background-color: var(--c-special);
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0 5px,
+    rgba(255, 255, 255, 0.35) 5px 7px
+  );
+}
+.member-c-1 {
+  --dot: var(--c-1);
+}
+.member-c-2 {
+  --dot: var(--c-2);
+}
+.member-c-3 {
+  --dot: var(--c-3);
+}
+.member-c-4 {
+  --dot: var(--c-4);
+}
+.member-c-5 {
+  --dot: var(--c-5);
+}
+.member-c-6 {
+  --dot: var(--c-6);
+}
+.member-c-7 {
+  --dot: var(--c-7);
+}
+.member-c-8 {
+  --dot: var(--c-8);
+}
+.member-c-special {
+  --dot: var(--c-special);
+}
+
+/* Monaco decorations (global: rendered outside component scope) */
+.monaco-editor .member-dot {
+  cursor: pointer;
+}
+.monaco-editor .member-dot::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: var(--dot, var(--text-muted));
+  box-shadow: 0 0 0 1.5px var(--editor-bg);
+  transition: transform 0.12s;
+}
+.monaco-editor .member-dot:hover::before {
+  transform: scale(1.3);
+}
+.monaco-editor .member-line-hovered {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.monaco-editor .member-inlay {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-style: italic;
+  font-size: 11.5px;
+  line-height: 21px;
+  padding: 0 6px;
+  margin-left: 12px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--text-muted) 12%, transparent);
+  white-space: pre;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .monaco-editor .member-dot::before {
+    transition: none;
+  }
+}
+
+/* ---- dockview theme (variables follow the app tokens) ---- */
+.dockview-theme-abix {
+  --dv-paneview-active-outline-color: var(--accent);
+  --dv-tabs-and-actions-container-font-size: 12.5px;
+  --dv-tabs-and-actions-container-height: 34px;
+  --dv-tab-font-size: inherit;
+  --dv-drag-over-background-color: color-mix(in srgb, var(--accent) 18%, transparent);
+  --dv-drag-over-border-color: transparent;
+  --dv-drag-over-border: none;
+  --dv-edge-dock-indicator-color: color-mix(in srgb, var(--accent) 80%, transparent);
+  --dv-tabs-container-scrollbar-color: var(--baseline);
+  --dv-icon-hover-background-color: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  --dv-overlay-z-index: 999;
+  --dv-border-radius: 10px;
+  --dv-tab-border-radius: 3px;
+  --dv-tab-margin: 4px 2px;
+  --dv-spacing-padding: 0px;
+  --dv-sash-border-radius: 3px;
+  --dv-dropdown-border-radius: 8px;
+  --dv-tab-close-icon-size: 14px;
+  --dv-sash-color: transparent;
+  --dv-active-sash-color: var(--accent);
+  --dv-active-sash-transition-duration: 0.1s;
+  --dv-active-sash-transition-delay: 0.3s;
+  --dv-group-view-background-color: var(--surface-1);
+  --dv-tabs-and-actions-container-background-color: var(--page);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--surface-1);
+  --dv-activegroup-hiddenpanel-tab-background-color: transparent;
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--surface-1);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: transparent;
+  --dv-tab-divider-color: transparent;
+  --dv-activegroup-visiblepanel-tab-color: var(--text-primary);
+  --dv-activegroup-hiddenpanel-tab-color: var(--text-muted);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--text-secondary);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--text-muted);
+  --dv-separator-border: transparent;
+  --dv-paneview-header-border-color: var(--border);
+  --dv-scrollbar-background-color: color-mix(in srgb, var(--text-primary) 25%, transparent);
+  --dv-floating-box-shadow: 0 16px 48px rgba(0, 0, 0, 0.28);
+  --dv-floating-border: 1px solid var(--border);
+  --dv-floating-group-border: 1px solid var(--border);
+  --dv-floating-group-dragging-opacity: 0.6;
+  --dv-floating-titlebar-height: 22px;
+  --dv-floating-titlebar-background-color: var(--page);
+  --dv-floating-titlebar-border-bottom: 1px solid var(--border);
+  --dv-tab-group-color-grey: var(--text-muted);
+  --dv-tab-group-color-blue: var(--c-1);
+  --dv-tab-group-color-red: var(--c-8);
+  --dv-tab-group-color-yellow: var(--c-4);
+  --dv-tab-group-color-green: var(--c-6);
+  --dv-tab-group-color-pink: var(--c-5);
+  --dv-tab-group-color-purple: var(--c-7);
+  --dv-tab-group-color-cyan: var(--c-3);
+  --dv-tab-group-color-orange: var(--c-2);
+  --dv-tab-group-chip-padding: 4px 8px;
+  --dv-tab-group-chip-border-radius: 6px;
+  --dv-tab-group-chip-font-size: 11px;
+  --dv-tab-group-line-height: 2px;
+  --dv-tab-group-line-opacity: 0.6;
+  font-family: var(--font-ui);
+}
+.dockview-theme-abix .dv-groupview {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.dockview-theme-abix .dv-tab {
+  font-weight: 500;
+}
+.dock-panel {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}

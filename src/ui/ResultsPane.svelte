@@ -1,0 +1,188 @@
+<script lang="ts">
+  import { store } from '$state/store.svelte';
+  import type { Session } from '$state/session.svelte';
+  import { recordKey } from '$core/layout-parser';
+  import RecordSection from './RecordSection.svelte';
+  import Rows3 from '@lucide/svelte/icons/rows-3';
+  import PanelTop from '@lucide/svelte/icons/panel-top';
+  import { tooltip } from './tooltip';
+
+  const { session }: { session: Session } = $props();
+  const loading = $derived(store.compiler.state !== 'ready');
+  const stacked = $derived(store.view === 'stack');
+  const empty = $derived(store.analysis !== null && store.visibleRecords.length === 0);
+  const loadText = $derived.by(() => {
+    const c = store.compiler;
+    switch (c.state) {
+      case 'idle':
+        return 'Starting…';
+      case 'loading': {
+        const pct = c.total ? Math.round((100 * c.done) / c.total) : 0;
+        if (c.phase === 'download') {
+          return `Downloading clang (wasm)… ${pct}% of ${(c.total / 1048576).toFixed(0)} MB`;
+        }
+        if (c.phase === 'unpack') return 'Unpacking…';
+        return `Preparing clang… ${pct}%`;
+      }
+      case 'ready':
+        return '';
+      case 'restarting':
+        return `Compiler restarted (${c.reason}) — retrying…`;
+      case 'failed':
+        return `Failed to load clang: ${c.message}`;
+    }
+  });
+  const loadPct = $derived(
+    store.compiler.state === 'loading' && store.compiler.total
+      ? Math.round((100 * store.compiler.done) / store.compiler.total)
+      : 0,
+  );
+</script>
+
+<section class="pane">
+  {#if loading}
+    <div class="loading" class:failed={store.compiler.state === 'failed'}>
+      <div class="track"><div class="fill" style:width="{loadPct}%"></div></div>
+      <p id="load-text">{loadText}</p>
+      <p class="note">~27 MB on first visit, then served from browser cache.</p>
+    </div>
+  {:else if !store.analysis}
+    <!-- No analysis yet: idle/running (first compile pending) or the first compile failed outright. -->
+    {#if store.status.kind === 'error'}
+      <p class="empty" id="empty-note">{store.status.message}</p>
+    {:else}
+      <div class="loading"><p>Compiling…</p></div>
+    {/if}
+  {:else if empty}
+    <p class="empty" id="empty-note">
+      {store.analysis?.code === 0
+        ? 'No struct/class/union definitions found. Define one in the editor — and make sure templates are instantiated.'
+        : 'Compilation failed — fix the errors below.'}
+    </p>
+  {:else if store.analysis}
+    <div id="results">
+      <div class="bar">
+        <div id="record-chips" class="chips" role="tablist" hidden={stacked}>
+          {#each store.visibleRecords as rec (recordKey(rec))}
+            {@const key = recordKey(rec)}
+            <button
+              class="chip"
+              class:selected={key === store.activeRecordKey}
+              role="tab"
+              aria-selected={key === store.activeRecordKey}
+              onclick={() => (store.selectedRecord = key)}
+              ><span class="kind">{rec.kind}</span>
+              {rec.name} <span class="size">{rec.sizeBytes} B</span></button
+            >
+          {/each}
+        </div>
+        <button
+          id="view-toggle"
+          class="icon-btn"
+          type="button"
+          aria-pressed={stacked}
+          use:tooltip={stacked ? 'Show one record at a time (tabs)' : 'Show all records stacked'}
+          aria-label="Toggle between tabs and stacked view"
+          onclick={() => {
+            store.toggleView();
+          }}
+        >
+          {#if stacked}<PanelTop size={16} />{:else}<Rows3 size={16} />{/if}
+        </button>
+      </div>
+      <div id="sections">
+        {#each store.sections as section (section.key)}
+          <RecordSection {section} {session} />
+        {/each}
+      </div>
+    </div>
+  {/if}
+</section>
+
+<style>
+  .pane {
+    height: 100%;
+    overflow: auto;
+    background: var(--surface-1);
+    padding: 12px 14px;
+    box-sizing: border-box;
+  }
+  .loading {
+    padding: 48px 24px;
+    text-align: center;
+    color: var(--text-secondary);
+  }
+  .loading.failed {
+    color: var(--error);
+  }
+  .track {
+    height: 8px;
+    border-radius: 4px;
+    background: var(--grid-line);
+    overflow: hidden;
+    max-width: 420px;
+    margin: 0 auto 14px;
+  }
+  .fill {
+    height: 100%;
+    width: 0;
+    background: var(--accent);
+    transition: width 0.2s;
+  }
+  .note {
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+  .empty {
+    color: var(--text-secondary);
+    padding: 24px 8px;
+  }
+  .bar {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    flex: 1;
+  }
+  .chips[hidden] {
+    display: none;
+  }
+  .chip {
+    font: inherit;
+    font-size: 12.5px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--page);
+    color: var(--text-primary);
+  }
+  .chip .kind {
+    color: var(--text-muted);
+  }
+  .chip .size {
+    color: var(--text-secondary);
+  }
+  .chip.selected {
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--accent);
+  }
+  .chip.selected .kind {
+    color: var(--accent);
+  }
+  .chip:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  #sections > :global(section + section) {
+    margin-top: 28px;
+    padding-top: 22px;
+    border-top: 1px solid var(--grid-line);
+  }
+</style>

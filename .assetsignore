@@ -1,7 +1,0 @@
-.git
-node_modules
-tools
-docs
-README.md
-.gitignore
-.nojekyll
