@@ -18,8 +18,8 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: `npm run build && npm run preview -- --port ${port} --strictPort`,
-    port,
+    command: `npm run build && npm run preview -- --host 127.0.0.1 --port ${port} --strictPort`,
+    url: `http://127.0.0.1:${port}/`,
     reuseExistingServer: !process.env['CI'],
     timeout: 180_000,
   },
