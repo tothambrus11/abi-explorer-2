@@ -275,7 +275,7 @@ export function matchItemsToLocations(
     //    qualified scope), which disambiguates same-named records in different
     //    scopes. Then fall back to unqualified owner, then a unique-line by name.
     let loc = byQualified.get((item.owner || '') + '\0' + name);
-    if (!loc) loc = byOwnerName.get(unqualifiedName(item.owner || '') + '\0' + name);
+    loc ??= byOwnerName.get(unqualifiedName(item.owner || '') + '\0' + name);
     if (!loc && /\((?:anon|unnamed)/.test(item.owner || '')) loc = byOwnerName.get('\0' + name);
     if (!loc && name) {
       const cands = byName.get(name);

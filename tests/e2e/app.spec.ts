@@ -78,19 +78,45 @@ test.describe('ABI Explorer', () => {
     await waitReady(page);
     await page.selectOption('#example', '2');
     await expect(page.locator('#record-chips .chip')).toHaveCount(3);
+    // Hovering a compound member in code lights up its parent (group) row plus
+    // each of its leaves in the grouped table.
     await hoverWord(page, 'struct Header hdr;', 'hdr');
-    await expect(page.locator('.field-table tr.hovered .fname')).toHaveText(['kind', 'len']);
+    await expect(page.locator('.field-table tr.hovered .fname')).toHaveText(['hdr', 'kind', 'len']);
     await expect(page.locator('.monaco-editor .member-inlay')).toHaveText(
       /offset 0 · 4 B · align 2/,
     );
     await hoverWord(page, 'union Payload payload;', 'payload');
     await expect(page.locator('.field-table tr.hovered .fname')).toHaveText([
+      'payload',
       'raw',
       'word',
       'number',
     ]);
+    // The union parent carries a tag; its children are flagged as overlapping.
+    await expect(page.locator('.field-table tr.group.hovered .tag.union')).toBeVisible();
     await hoverWord(page, 'crc_lo, crc_hi', 'crc_lo');
-    await expect(page.locator('.field-table tr.hovered .fname')).toHaveText(['crc_lo', 'crc_hi']);
+    await expect(page.locator('.field-table tr.hovered .fname')).toHaveText([
+      '(anonymous)',
+      'crc_lo',
+      'crc_hi',
+    ]);
+  });
+
+  test('grouped table: hovering a parent row and collapsing it', async ({ page }) => {
+    await waitReady(page);
+    await page.selectOption('#example', '2');
+    const hdr = page.locator('.field-table tr.group', { hasText: 'hdr' }).first();
+    // Hovering the parent row highlights its declaration line in the editor and
+    // shows the group tooltip.
+    await hdr.hover();
+    await expect(page.locator('.monaco-editor .member-line-hovered')).toHaveCount(1);
+    await expect(page.locator('[role=tooltip]')).toBeVisible();
+    // Collapsing the parent hides its leaf rows.
+    await expect(page.locator('.field-table tr.hovered .fname')).toHaveText(['hdr', 'kind', 'len']);
+    await hdr.locator('.twist').click();
+    await expect(page.locator('.field-table .fname', { hasText: 'kind' })).toHaveCount(0);
+    await hdr.locator('.twist').click();
+    await expect(page.locator('.field-table .fname', { hasText: 'kind' })).toHaveCount(1);
   });
 
   test('C++: virtual bases on MSVC and Itanium, private members measured', async ({ page }) => {

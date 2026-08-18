@@ -44,6 +44,8 @@ export class Session {
   lines: Map<number, LineInfo> = $state.raw(new Map<number, LineInfo>());
   /** recordKey -> (leaf index -> location) */
   private leafLocations = new Map<string, Map<number, FieldLocation>>();
+  /** recordKey -> (group index -> location) */
+  private groupLocations = new Map<string, Map<number, FieldLocation>>();
   /** Record/typedef name locations from the AST (for the type hover). */
   private decls: DeclLocation[] = [];
   /** Type spellings clang reported (field types, typedef/record names): the only bare words we probe on hover. */
@@ -51,9 +53,15 @@ export class Session {
   /** Hover sources: pointer over the editor, the text cursor, pointer over grid/table. */
   private mouseLine: number | null = null;
   private cursorLine: number | null = null;
-  /** ref === null: pointer over a padding cell (tooltip only, no member). */
+  /**
+   * A resolved grid/table hover: the members to highlight, the editor line
+   * their declaration sits on, and the items to summarise in the inlay. An
+   * empty `members` with a tooltip is a padding cell (tooltip only).
+   */
   private memberHover: {
-    ref: MemberRef | null;
+    members: MemberRef[];
+    line: number | null;
+    items: (Leaf | Group)[];
     tooltip: { html: string; x: number; y: number } | null;
   } | null = null;
   /** Last input wins: after keyboard cursor movement the cursor beats the (still) hovered line until the mouse moves again. */
@@ -197,6 +205,7 @@ export class Session {
     this.locateAbort?.abort();
     this.lines = new Map();
     this.leafLocations = new Map();
+    this.groupLocations = new Map();
     // A grid/table hover refers to a leaf *index* of the previous models; it
     // would point at an arbitrary member now (the pointer gets a fresh
     // mouseenter as soon as it moves).
@@ -269,6 +278,7 @@ export class Session {
       const leafLocs = matchItemsToLocations(model.leaves, locs);
       const groupLocs = matchItemsToLocations(model.groups, locs);
       this.leafLocations.set(key, leafLocs);
+      this.groupLocations.set(key, groupLocs);
       const local = new Map<
         number,
         { items: (Leaf | Group)[]; members: Set<number>; loc: FieldLocation; direct: boolean }
@@ -355,7 +365,43 @@ export class Session {
    * the hover.
    */
   hoverMember(ref: MemberRef | null, tooltip: { html: string; x: number; y: number } | null): void {
-    this.memberHover = ref || tooltip ? { ref, tooltip } : null;
+    if (!ref) {
+      this.memberHover = tooltip ? { members: [], line: null, items: [], tooltip } : null;
+      this.applyHover();
+      return;
+    }
+    const leaf = store.models.get(ref.record)?.leaves[ref.leaf];
+    if (!leaf) {
+      this.memberHover = null;
+    } else {
+      const loc = this.leafLocations.get(ref.record)?.get(ref.leaf);
+      this.memberHover = { members: [ref], line: loc?.line ?? null, items: [leaf], tooltip };
+    }
+    this.applyHover();
+  }
+
+  /**
+   * Table hover on a parent (group) row: highlight all the group's leaves and
+   * point to the group's own declaration line. The group summarises its extent
+   * (offset/size/align) in the inlay.
+   */
+  hoverGroup(
+    record: string,
+    groupIndex: number,
+    tooltip: { html: string; x: number; y: number } | null,
+  ): void {
+    const group = store.models.get(record)?.groups[groupIndex];
+    if (!group) {
+      this.memberHover = null;
+    } else {
+      const loc = this.groupLocations.get(record)?.get(groupIndex);
+      this.memberHover = {
+        members: group.leafIndexes.map((leaf) => ({ record, leaf })),
+        line: loc?.line ?? null,
+        items: [group],
+        tooltip,
+      };
+    }
     this.applyHover();
   }
 
@@ -367,22 +413,11 @@ export class Session {
    */
   private applyHover(): void {
     if (this.memberHover) {
-      const { ref, tooltip } = this.memberHover;
-      if (!ref) {
-        store.setHover({ tooltip });
-        return;
-      }
-      const model = store.models.get(ref.record);
-      const leaf = model?.leaves[ref.leaf];
-      if (!model || !leaf) {
-        store.setHover(null);
-        return;
-      }
-      const loc = this.leafLocations.get(ref.record)?.get(ref.leaf);
+      const { members, line, items, tooltip } = this.memberHover;
       store.setHover({
-        members: [ref],
-        line: loc?.line ?? null,
-        inlay: loc ? describeItems([leaf]) : null,
+        members,
+        line,
+        inlay: items.length ? describeItems(items) : null,
         tooltip,
       });
       return;

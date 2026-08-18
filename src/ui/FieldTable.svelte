@@ -1,14 +1,26 @@
 <script lang="ts">
   import type { RenderModel } from '$core/types';
+  import { buildLayoutTree, flattenVisible } from '$core/tree';
   import { store } from '$state/store.svelte';
   import { fmtOffset, type Session } from '$state/session.svelte';
-  import { fmtSize, memberTooltipHtml } from './format';
+  import { fmtSize, fmtGroupSize, memberTooltipHtml, groupTooltipHtml } from './format';
 
   const { model, record, session }: { model: RenderModel; record: string; session: Session } =
     $props();
+
+  const tree = $derived(buildLayoutTree(model));
+  // Collapsed node ids (default: everything expanded). Reassigned on toggle so
+  // the derived flat list recomputes.
+  let collapsed = $state(new Set<string>());
+  const rows = $derived(flattenVisible(tree, collapsed));
+
   const hovered = $derived(
     new Set(store.hover.members.filter((m) => m.record === record).map((m) => m.leaf)),
   );
+  /** A node is highlighted when all the leaves it covers are hovered. */
+  function isHovered(indexes: number[]): boolean {
+    return indexes.length > 0 && indexes.every((li) => hovered.has(li));
+  }
 
   /** Padding run attributed to the leaf ending closest before it. */
   const padAfter = $derived.by(() => {
@@ -28,10 +40,23 @@
     return out;
   });
 
-  function enter(li: number, e: Event) {
+  function toggle(id: string) {
+    const next = new Set(collapsed);
+    if (!next.delete(id)) next.add(id);
+    collapsed = next;
+  }
+
+  function anchor(e: Event): { x: number; y: number } {
     const r = (e.currentTarget as Element).getBoundingClientRect();
-    const html = memberTooltipHtml(model.leaves[li]!);
-    session.hoverMember({ record, leaf: li }, { html, x: r.left + r.width / 2, y: r.top });
+    return { x: r.left + r.width / 2, y: r.top };
+  }
+  function enterLeaf(li: number, e: Event) {
+    const { x, y } = anchor(e);
+    session.hoverMember({ record, leaf: li }, { html: memberTooltipHtml(model.leaves[li]!), x, y });
+  }
+  function enterGroup(gi: number, e: Event) {
+    const { x, y } = anchor(e);
+    session.hoverGroup(record, gi, { html: groupTooltipHtml(model.groups[gi]!), x, y });
   }
   const leave = () => {
     session.hoverMember(null, null);
@@ -48,39 +73,80 @@
       ></thead
     >
     <tbody onmouseleave={leave}>
-      {#each model.leaves as leaf, li (li)}
-        <tr
-          class:hovered={hovered.has(li)}
-          onmouseenter={(e) => {
-            enter(li, e);
-          }}
-        >
-          <td class="chip-col"><span class="chip {leaf.colorClass}"></span></td>
-          <td class="name" style:padding-left="{8 + leaf.depth * 16}px">
-            {#if leaf.path.length}<span class="crumb">{leaf.path.join(' » ')} » </span>{/if}<span
-              class="fname">{leaf.name}</span
-            >
-          </td>
-          <td class="type">{leaf.kind === 'special' ? '—' : leaf.type}</td>
-          <td class="num">{fmtOffset(leaf.offsetBits)}</td>
-          <td class="num" class:est={leaf.estimated}>{fmtSize(leaf)}</td>
-          <td class="num">{leaf.align ?? ''}</td>
-          <td class="num pad">{padAfter.has(li) ? `+${padAfter.get(li)} B` : ''}</td>
-        </tr>
+      {#each rows as { node, depth } (node.id)}
+        {@const indent = 8 + depth * 16}
+        {#if node.kind === 'leaf'}
+          {@const leaf = model.leaves[node.ref]!}
+          <tr
+            class:hovered={hovered.has(node.ref)}
+            onmouseenter={(e) => {
+              enterLeaf(node.ref, e);
+            }}
+          >
+            <td class="chip-col"><span class="chip {leaf.colorClass}"></span></td>
+            <td class="name" style:padding-left="{indent}px">
+              <span class="twist-gap"></span><span class="fname">{leaf.name}</span>
+            </td>
+            <td class="type">{leaf.kind === 'special' ? '—' : leaf.type}</td>
+            <td class="num">{fmtOffset(leaf.offsetBits)}</td>
+            <td class="num" class:est={leaf.estimated}>{fmtSize(leaf)}</td>
+            <td class="num">{leaf.align ?? ''}</td>
+            <td class="num pad">{padAfter.has(node.ref) ? `+${padAfter.get(node.ref)} B` : ''}</td>
+          </tr>
+        {:else}
+          {@const group = model.groups[node.ref]!}
+          {@const canCollapse = node.children.length > 0}
+          <tr
+            class="group"
+            class:hovered={isHovered(node.leafIndexes)}
+            onmouseenter={(e) => {
+              enterGroup(node.ref, e);
+            }}
+          >
+            <td class="chip-col"></td>
+            <td class="name" style:padding-left="{indent}px">
+              {#if canCollapse}
+                <button
+                  type="button"
+                  class="twist"
+                  aria-expanded={!collapsed.has(node.id)}
+                  onclick={(e) => {
+                    e.stopPropagation();
+                    toggle(node.id);
+                  }}>{collapsed.has(node.id) ? '▸' : '▾'}</button
+                >
+              {:else}
+                <span class="twist-gap"></span>
+              {/if}
+              <span class="fname gname">{group.name}</span>
+              {#if group.isBase}<span class="tag">base</span>{/if}
+              {#if group.isUnion}<span class="tag union">union</span>{/if}
+              {#if node.overlaps}<span class="tag overlap" title="shares bytes with a sibling"
+                  >overlaps</span
+                >{/if}
+            </td>
+            <td class="type">{group.type}</td>
+            <td class="num">{fmtOffset(node.offsetBits)}</td>
+            <td class="num">{fmtGroupSize(node.sizeBits)}</td>
+            <td class="num">{node.align ?? ''}</td>
+            <td class="num"></td>
+          </tr>
+        {/if}
       {/each}
       {#each model.markers as m, i (i)}
-        <tr class="marker">
-          <td class="chip-col"></td>
-          <td class="name" style:padding-left="{8 + m.path.length * 16}px">
-            <span class="fname muted"
-              >{m.kind === 'empty-base'
-                ? `${m.name} (empty base)`
-                : `${m.type ?? ''} :0 (unit break)`}</span
-            >
-          </td>
-          <td class="type"></td><td class="num">{fmtOffset(m.offsetBits)}</td><td class="num">0</td
-          ><td class="num"></td><td class="num"></td>
-        </tr>
+        {#if m.kind === 'zero-bitfield'}
+          <tr class="marker">
+            <td class="chip-col"></td>
+            <td class="name" style:padding-left="{8 + m.path.length * 16}px">
+              <span class="twist-gap"></span><span class="fname muted"
+                >{m.type ?? ''} :0 (unit break)</span
+              >
+            </td>
+            <td class="type"></td><td class="num">{fmtOffset(m.offsetBits)}</td><td class="num"
+              >0</td
+            ><td class="num"></td><td class="num"></td>
+          </tr>
+        {/if}
       {/each}
     </tbody>
   </table>
@@ -112,6 +178,9 @@
   tr.hovered td {
     background: color-mix(in srgb, var(--accent) 12%, transparent);
   }
+  tr.group .gname {
+    font-weight: 600;
+  }
   .chip-col {
     width: 20px;
   }
@@ -121,12 +190,49 @@
     height: 12px;
     border-radius: 3px;
   }
-  .crumb {
+  .name {
+    white-space: nowrap;
+  }
+  .twist,
+  .twist-gap {
+    display: inline-block;
+    width: 14px;
+    text-align: center;
     color: var(--text-muted);
-    font-size: 12px;
+  }
+  .twist {
+    border: none;
+    background: none;
+    padding: 0;
+    font-size: 10px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .twist:hover {
+    color: var(--text);
   }
   .fname {
     font-family: var(--font-mono);
+  }
+  .tag {
+    margin-left: 6px;
+    padding: 0 5px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    background: color-mix(in srgb, var(--text-muted) 16%, transparent);
+    vertical-align: 1px;
+  }
+  .tag.union {
+    color: var(--c-3);
+    background: color-mix(in srgb, var(--c-3) 18%, transparent);
+  }
+  .tag.overlap {
+    color: var(--c-2);
+    background: color-mix(in srgb, var(--c-2) 18%, transparent);
   }
   .type {
     color: var(--text-secondary);

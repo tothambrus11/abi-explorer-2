@@ -77,6 +77,8 @@ export interface Group {
   align: number | null;
   leafIndexes: number[];
   isBase: boolean;
+  /** The member is a union (its fields share storage / overlap). */
+  isUnion: boolean;
 }
 
 export interface Marker {

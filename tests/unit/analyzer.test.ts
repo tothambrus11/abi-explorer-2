@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { Analyzer } from '$compiler/Analyzer';
 import { buildRenderModel } from '$core/model';
+import { buildLayoutTree, flattenVisible } from '$core/tree';
 import { matchItemsToLocations, unqualifiedName } from '$core/ast-locations';
 import { loadFixture, fixtureCompiler, optionsFor } from './helpers';
 import { DEFAULT_OPTIONS } from '$core/options';
@@ -102,6 +103,10 @@ describe('Analyzer (fixture-backed)', () => {
     const info = await analyzer.locate(analysis, owners);
     const locs = matchItemsToLocations(m.leaves, info.fields);
     expect([...locs.values()].map((l) => l.line)).toEqual([2, 2, 3, 3, 3, 5, 5, 4]);
+    // Groups (hdr, payload, anonymous, pt) map to their declaration in Message
+    // (all on line 5): this is what drives table→code hover for parent rows.
+    const groupLocs = matchItemsToLocations(m.groups, info.fields);
+    expect(m.groups.map((_, i) => groupLocs.get(i)?.line ?? null)).toEqual([5, 5, 5, 5]);
     expect(info.fields.find((f) => f.name === 'raw')!.qualType).toBe('uint8_t[10]');
     expect(info.decls.filter((d) => d.kind === 'record').map((d) => d.name)).toContain('Message');
     expect(info.decls.find((d) => d.kind === 'typedef' && d.name === 'Point')?.qualType).toMatch(
@@ -161,6 +166,58 @@ describe('Analyzer (fixture-backed)', () => {
     ]);
     const derived = ms.analysis.userRecords.find((r) => r.name === 'Derived')!;
     expect(derived.sizeBytes).toBe(40); // MSVC does not reuse tail padding
+  });
+
+  it('builds a containment tree matching the nested/union/anonymous layout', async () => {
+    const { analysis } = await analyze('nested-union-anon', 'x86_64-unknown-linux-gnu');
+    const msg = buildRenderModel(
+      analysis.userRecords.find((r) => r.name === 'Message')!,
+      analysis,
+    );
+    const tree = buildLayoutTree(msg);
+    const shape = (ns: ReturnType<typeof buildLayoutTree>): unknown =>
+      ns.map((n) => {
+        const label = n.kind === 'leaf' ? msg.leaves[n.ref]!.name : msg.groups[n.ref]!.name;
+        return n.children.length ? { [label]: shape(n.children) } : label;
+      });
+    // struct Message { Header hdr; Payload payload(union); struct{crc_lo,crc_hi}(anon); Point pt; }
+    expect(shape(tree)).toEqual([
+      { hdr: ['kind', 'len'] },
+      { payload: ['raw', 'word', 'number'] },
+      { '(anonymous)': ['crc_lo', 'crc_hi'] },
+      { pt: ['x'] },
+    ]);
+    // payload is a union: its children overlap; nothing at top level overlaps.
+    const payload = tree[1]!;
+    expect(payload.isUnion).toBe(true);
+    expect(payload.children.every((c) => c.overlaps)).toBe(true);
+    expect(tree.every((n) => !n.overlaps)).toBe(true);
+    // every leaf is reachable exactly once via the tree
+    const flat = flattenVisible(tree, new Set());
+    const leafRefs = flat
+      .filter((r) => r.node.kind === 'leaf')
+      .map((r) => r.node.ref)
+      .sort((a, b) => a - b);
+    expect(leafRefs).toEqual(msg.leaves.map((_, i) => i));
+  });
+
+  it('base subobjects nest as groups (C++ Derived : Base, Mixin)', async () => {
+    const { analysis } = await analyze('cxx-bases', 'x86_64-unknown-linux-gnu');
+    const derived = buildRenderModel(
+      analysis.userRecords.find((r) => r.name === 'Derived')!,
+      analysis,
+    );
+    const tree = buildLayoutTree(derived);
+    const groupNames = tree
+      .filter((n) => n.kind === 'group')
+      .map((n) => derived.groups[n.ref]!.name);
+    expect(groupNames).toEqual(['Base', 'Mixin']); // two base subobjects
+    expect(tree.filter((n) => n.kind === 'group').every((n) => n.isBase)).toBe(true);
+    // Base's children include its vtable pointer + int x
+    const base = tree.find((n) => n.kind === 'group')!;
+    expect(base.children.map((c) => derived.leaves[c.ref]?.name)).toContain('x');
+    const flat = flattenVisible(tree, new Set());
+    expect(flat.filter((r) => r.node.kind === 'leaf').length).toBe(derived.leaves.length);
   });
 
   it('spelling probes answer arbitrary type names (and null for non-types)', async () => {

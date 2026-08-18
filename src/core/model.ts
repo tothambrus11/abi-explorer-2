@@ -124,6 +124,7 @@ export function buildRenderModel(record: RecordLayout, inputs: ModelInputs): Ren
           align: baseRec?.align ?? null,
           leafIndexes: range(first, leaves.length),
           isBase: true,
+          isUnion: false,
         });
         continue;
       }
@@ -190,6 +191,7 @@ export function buildRenderModel(record: RecordLayout, inputs: ModelInputs): Ren
           align: own.align ?? memberRec?.align ?? null,
           leafIndexes: range(first, leaves.length),
           isBase: false,
+          isUnion: memberRec?.kind === 'union' || /^union\b/.test(row.type ?? ''),
         });
         continue;
       }
