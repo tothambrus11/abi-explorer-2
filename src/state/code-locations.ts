@@ -6,21 +6,12 @@ import type { FieldLocation } from '$core/ast-locations';
 import { matchItemsToLocations, unqualifiedName } from '$core/ast-locations';
 import { isAnonymousRecord } from '$core/layout-parser';
 import { findRecord, type RecordIndex } from '$core/probes';
+import { isNameable } from '$core/model';
 import type { Group, Leaf, RenderModel } from '$core/types';
 import type { MemberRef } from './store.svelte';
 
 /** No colour could be resolved for a mark (should not normally happen). */
 export const COMPOUND = 'c-compound';
-
-/**
- * Is a member with this path directly nameable on the record itself? Direct
- * fields are, and so are fields injected by anonymous aggregates (`msg.crc_lo`),
- * but a field of a named compound member is reached through it (`msg.hdr.kind`).
- */
-const ANON = '(anonymous)';
-export function nameable(path: readonly string[]): boolean {
-  return path.every((p) => p === ANON);
-}
 
 /**
  * One declarator written on a line: `uint8_t lo, hi;` has two marks, a nested
@@ -201,7 +192,7 @@ export function buildLineIndex(
       const cell = cellAt(loc);
       for (const li of g.leafIndexes) cell.leaves.add(li);
       cell.items.push(g);
-      if (nameable(g.path)) cell.direct = true;
+      if (isNameable(g.path)) cell.direct = true;
     }
     for (const [li, loc] of leafLocs) {
       // A group already covering this leaf *at this declarator* subsumes it, so
@@ -216,7 +207,7 @@ export function buildLineIndex(
       const cell = cellAt(loc);
       cell.leaves.add(li);
       cell.items.push(leaf);
-      if (nameable(leaf.path)) cell.direct = true;
+      if (isNameable(leaf.path)) cell.direct = true;
     }
   }
 

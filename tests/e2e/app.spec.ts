@@ -156,6 +156,32 @@ test.describe('ABI Explorer', () => {
     expect(new Set(classes.filter((c) => c !== 'member-c-compound')).size).toBe(2);
   });
 
+  test('chips and the member count follow the record’s own members', async ({ page }) => {
+    await waitReady(page);
+    await page.selectOption('#example', '2');
+    await expect(page.locator('.record .title')).toContainText('Message');
+
+    // The chip marks a member of Message: `hdr` has one, its nested fields do not.
+    const hdrRow = page.locator('.field-table tr.group', { hasText: 'hdr' }).first();
+    await expect(hdrRow.locator('.chip')).toHaveCount(1);
+    const kindRow = page.locator('.field-table tr', { hasText: 'kind' }).first();
+    await expect(kindRow.locator('.chip')).toHaveCount(0);
+    // An anonymous aggregate spans several members, so it has no chip of its own
+    // while the fields it injects each do.
+    const anonRow = page.locator('.field-table tr.group', { hasText: '(anonymous)' }).first();
+    await expect(anonRow.locator('.chip')).toHaveCount(0);
+    await expect(
+      page.locator('.field-table tr', { hasText: 'crc_lo' }).first().locator('.chip'),
+    ).toHaveCount(1);
+
+    // The type popup counts members, not leaves: hdr, payload, crc_lo, crc_hi —
+    // four, though eight fields end up in the layout.
+    await hoverWord(page, 'struct Message {', 'Message');
+    const hover = page.locator('.monaco-editor .monaco-hover:not(.hidden)');
+    await expect(hover).toBeVisible({ timeout: 10_000 });
+    await expect(hover).toContainText('4 members');
+  });
+
   test('grouped table: hovering a parent row and collapsing it', async ({ page }) => {
     await waitReady(page);
     await page.selectOption('#example', '2');

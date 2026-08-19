@@ -7,7 +7,7 @@ import type { Compiler } from '$compiler/Compiler';
 import type { CompileOptions } from '$core/options';
 import type { AstInfo, DeclLocation } from '$core/ast-locations';
 import { recordKey } from '$core/layout-parser';
-import { buildRenderModel } from '$core/model';
+import { buildRenderModel, directMembers } from '$core/model';
 import { findRecord } from '$core/probes';
 import type { RecordLayout } from '$core/types';
 import { decodeShareState, encodeShareState, type ShareState } from '$core/url-state';
@@ -433,7 +433,9 @@ export class Session {
 
 function describeRecord(r: RecordLayout, analysis: Analysis): string {
   const model = buildRenderModel(r, analysis);
-  const n = model.leaves.filter((l) => l.kind !== 'special').length;
+  // Members of the record itself — a compound member counts once, not once per
+  // field inside it.
+  const n = directMembers(model).filter((u) => !('kind' in u && u.kind === 'special')).length;
   const rows = [
     `| sizeof | **${r.sizeBytes}** B |`,
     `| alignof | **${r.align}** B |`,

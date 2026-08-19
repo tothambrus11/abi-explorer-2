@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { assignColors } from '$core/model';
+import { assignColors, directMembers, groupColorClass } from '$core/model';
 import type { Group, Leaf, RenderModel } from '$core/types';
 
 const leaf = (name: string, extra: Partial<Leaf> = {}): Leaf => ({
@@ -107,5 +107,56 @@ describe('assignColors (one level deep)', () => {
     const m = model(Array.from({ length: 10 }, (_, i) => leaf(`f${i}`)));
     assignColors(m, 8);
     expect(m.leaves.map((l) => l.colorClass).slice(8)).toEqual(['c-1', 'c-2']);
+  });
+});
+
+describe('directMembers', () => {
+  it('is the record’s own fields plus its compound members, one level deep', () => {
+    // struct K { Pair<double> s; } — one member, not two.
+    const m = model(
+      [leaf('first', { path: ['s'], depth: 1 }), leaf('second', { path: ['s'], depth: 1 })],
+      [group('s', [0, 1])],
+    );
+    expect(directMembers(m).map((u) => u.name)).toEqual(['s']);
+  });
+
+  it('counts anonymous-injected fields individually, not the aggregate', () => {
+    const m = model(
+      [
+        leaf('tag'),
+        leaf('lo', { path: ['(anonymous)'], depth: 1 }),
+        leaf('hi', { path: ['(anonymous)'], depth: 1, offsetBits: 8 }),
+      ],
+      [group('(anonymous)', [1, 2])],
+    );
+    expect(directMembers(m).map((u) => u.name)).toEqual(['tag', 'lo', 'hi']);
+  });
+
+  it('orders members by offset', () => {
+    const m = model([leaf('b', { offsetBits: 32 }), leaf('a', { offsetBits: 0 })]);
+    expect(directMembers(m).map((u) => u.name)).toEqual(['a', 'b']);
+  });
+});
+
+describe('groupColorClass', () => {
+  it('is the colour a named unit’s leaves share', () => {
+    const m = model(
+      [leaf('first', { path: ['s'], depth: 1 }), leaf('second', { path: ['s'], depth: 1 })],
+      [group('s', [0, 1])],
+    );
+    assignColors(m);
+    expect(groupColorClass(m, m.groups[0]!)).toBe('c-1');
+  });
+
+  it('is null for an aggregate spanning several members', () => {
+    const m = model(
+      [
+        leaf('lo', { path: ['(anonymous)'], depth: 1 }),
+        leaf('hi', { path: ['(anonymous)'], depth: 1 }),
+      ],
+      [group('(anonymous)', [0, 1])],
+    );
+    assignColors(m);
+    expect(groupColorClass(m, m.groups[0]!)).toBeNull();
   });
 });

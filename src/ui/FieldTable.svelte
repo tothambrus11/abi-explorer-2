@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { RenderModel } from '$core/types';
   import { buildLayoutTree, flattenVisible } from '$core/tree';
+  import { groupColorClass, isNameable } from '$core/model';
   import { store } from '$state/store.svelte';
   import { fmtOffset, type Session } from '$state/session.svelte';
   import { fmtSize, fmtGroupSize, memberTooltipHtml, groupTooltipHtml } from './format';
@@ -87,7 +88,11 @@
               enterLeaf(node.ref, e);
             }}
           >
-            <td class="chip-col"><span class="chip {leaf.colorClass}"></span></td>
+            <td class="chip-col">
+              <!-- A chip marks a member of *this* record; what lives inside a
+                   compound member is coloured by the unit above it. -->
+              {#if isNameable(leaf.path)}<span class="chip {leaf.colorClass}"></span>{/if}
+            </td>
             <td class="name" style:padding-left="{indent}px">
               <span class="twist-gap"></span><span class="fname">{leaf.name}</span>
             </td>
@@ -100,6 +105,7 @@
         {:else}
           {@const group = model.groups[node.ref]!}
           {@const canCollapse = node.children.length > 0}
+          {@const unitColour = isNameable(group.path) ? groupColorClass(model, group) : null}
           <tr
             class="group"
             class:hovered={isHovered(node.leafIndexes)}
@@ -110,7 +116,9 @@
               openGroup(node.ref);
             }}
           >
-            <td class="chip-col"></td>
+            <td class="chip-col">
+              {#if unitColour}<span class="chip {unitColour}"></span>{/if}
+            </td>
             <td class="name" style:padding-left="{indent}px">
               {#if canCollapse}
                 <button

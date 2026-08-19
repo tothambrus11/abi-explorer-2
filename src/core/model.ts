@@ -287,6 +287,43 @@ function estimateBits(
   return Math.max(8, parentEnd - row.offsetBits);
 }
 
+const ANON = '(anonymous)';
+
+/**
+ * Is a member with this path a member *of the record itself*? Direct fields are,
+ * and so are fields injected by an anonymous aggregate (`msg.crc_lo`), but a
+ * field of a named compound member is reached through it (`msg.hdr.kind`) and
+ * belongs to that member's own record.
+ */
+export function isNameable(path: readonly string[]): boolean {
+  return path.every((p) => p === ANON);
+}
+
+/** The members of a record: its own fields and its compound members, one level deep. */
+export function directMembers(model: RenderModel): (Leaf | Group)[] {
+  const covered = new Set<number>();
+  const units: (Leaf | Group)[] = [];
+  for (const g of model.groups) {
+    if (!isNameable(g.path) || g.name === ANON) continue; // anonymous: transparent
+    units.push(g);
+    for (const li of g.leafIndexes) covered.add(li);
+  }
+  model.leaves.forEach((leaf, li) => {
+    if (covered.has(li) || !isNameable(leaf.path)) return;
+    units.push(leaf);
+  });
+  return units.sort((a, b) => a.offsetBits - b.offsetBits);
+}
+
+/**
+ * The single colour a compound member stands for, or null when it spans several
+ * — an anonymous aggregate, whose fields are members in their own right.
+ */
+export function groupColorClass(model: RenderModel, group: Group): string | null {
+  const colours = new Set(group.leafIndexes.map((li) => model.leaves[li]?.colorClass));
+  return colours.size === 1 ? ([...colours][0] ?? null) : null;
+}
+
 /**
  * Assign categorical colour slots one level deep: a colour identifies a *direct
  * member* of this record. A compound member (nested record, base, anonymous
@@ -303,7 +340,7 @@ export function assignColors(model: RenderModel, paletteSize = 8): void {
   // An anonymous aggregate is transparent — its fields are nameable on the
   // record itself (`msg.crc_lo`), so they are members in their own right.
   for (const g of model.groups) {
-    if (g.path.length > 0 || g.name === '(anonymous)') continue;
+    if (g.path.length > 0 || g.name === ANON) continue;
     const colour = slot(next++);
     for (const li of g.leafIndexes) {
       const leaf = model.leaves[li];
