@@ -167,7 +167,7 @@ test.describe('ABI Explorer', () => {
       const lines = [...document.querySelectorAll('.monaco-editor .view-line')]
         .map((e) => ({
           top: parseFloat((e as HTMLElement).style.top || '0'),
-          text: (e.textContent ?? '').replace(/\u00a0/g, ' '),
+          text: e.textContent.replace(/\u00a0/g, ' '),
         }))
         .sort((a, b) => a.top - b.top);
       return String(lines.findIndex((l) => l.text.includes('struct Header')) + 1);

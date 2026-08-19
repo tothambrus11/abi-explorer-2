@@ -149,6 +149,13 @@ describe('Analyzer (fixture-backed)', () => {
     );
     expect(ebo.record.sizeBytes).toBe(1);
     expect(ebo.markers.map((k) => k.kind)).toEqual(['empty-base']);
+    // An empty base takes no storage (EBO): sizeof is 1 only because a complete
+    // object cannot be zero-sized. Giving it 1 byte would also make it falsely
+    // overlap the first real member.
+    const emptyBase = ebo.groups.find((g) => g.isBase)!;
+    expect(emptyBase.sizeBits).toBe(0);
+    const eboTree = buildLayoutTree(ebo);
+    expect(eboTree.every((n) => !n.overlaps)).toBe(true);
     expect(it_.analysis.userRecords.map((r) => r.name)).toEqual(
       expect.arrayContaining(['Pair<double>', 'Pair<char>']),
     );

@@ -118,9 +118,11 @@ export function buildRenderModel(record: RecordLayout, inputs: ModelInputs): Ren
           owner: ownerRec.name,
           path,
           offsetBits: row.offsetBits,
-          // A base subobject occupies its non-virtual size (tail padding is
-          // reused by the derived class), not its full sizeof.
-          sizeBits: baseRec ? (baseRec.nvsize ?? baseRec.sizeBytes) * 8 : null,
+          // An empty base occupies no storage at all (empty base optimization):
+          // sizeof is 1 only because a *complete* object cannot be zero-sized.
+          // Otherwise a base subobject occupies its non-virtual size, since the
+          // derived class may reuse its tail padding — not its full sizeof.
+          sizeBits: row.isEmpty ? 0 : baseRec ? (baseRec.nvsize ?? baseRec.sizeBytes) * 8 : null,
           align: baseRec?.align ?? null,
           leafIndexes: range(first, leaves.length),
           isBase: true,
