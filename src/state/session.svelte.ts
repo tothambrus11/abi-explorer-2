@@ -2,7 +2,7 @@
 // cancellation, resolves member source locations, and answers hover queries.
 // The UI never talks to the compiler directly.
 
-import { Analyzer, type Analysis } from '$compiler/Analyzer';
+import { Analyzer, type Analysis, type LayoutAnalyzer } from '$compiler/Analyzer';
 import type { Compiler } from '$compiler/Compiler';
 import type { CompileOptions } from '$core/options';
 import type { AstInfo, DeclLocation } from '$core/ast-locations';
@@ -56,7 +56,7 @@ const SOURCE_DEBOUNCE_MS = 500;
 const HASH_DEBOUNCE_MS = 400;
 
 export class Session {
-  readonly analyzer: Analyzer;
+  readonly analyzer: LayoutAnalyzer;
   private cleanup: (() => void) | null = null;
 
   /**
@@ -140,8 +140,17 @@ export class Session {
   /** Record owning the hovered line, for record-follows-cursor in tabs mode. */
   private readonly hoverPrimary: string | null = $derived(hoveredPrimary(this.hoverInputs));
 
-  constructor(private readonly compiler: Compiler) {
-    this.analyzer = new Analyzer(compiler);
+  /**
+   * `analyzer` overrides the default text-parsing pipeline — the app passes the
+   * library-backed one when a clang-abi-wasm build is available. The compiler
+   * is still required either way: it owns the download gate and the status the
+   * UI reports.
+   */
+  constructor(
+    private readonly compiler: Compiler,
+    analyzer?: LayoutAnalyzer,
+  ) {
+    this.analyzer = analyzer ?? new Analyzer(compiler);
   }
 
   /**

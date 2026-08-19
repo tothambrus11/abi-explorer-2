@@ -35,7 +35,7 @@ interface Shape {
   sizeBytes: number;
   align: number;
   paddingBytes: number;
-  members: [name: string, offsetBits: number, sizeBits: number][];
+  members: [name: string, offsetBits: number, sizeBits: number, align: number | null][];
 }
 
 function shapeOf(model: RenderModel): Shape {
@@ -45,7 +45,10 @@ function shapeOf(model: RenderModel): Shape {
     paddingBytes: model.paddingBytes,
     members: model.leaves
       .filter((l) => l.kind !== 'special')
-      .map((l) => [l.name, l.offsetBits, l.sizeBits] as [string, number, number])
+      // Alignment included deliberately: it is reported in bytes here and bits
+      // by the library, and comparing only sizes let a factor-of-eight slip
+      // through to the alignment column.
+      .map((l) => [l.name, l.offsetBits, l.sizeBits, l.align] as [string, number, number, number | null])
       .sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0])),
   };
 }

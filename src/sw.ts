@@ -35,3 +35,13 @@ registerRoute(
     /\/vendor\/clang\/(llvm\.core\d*\.wasm|llvm-resources\.tar)$/.test(url.pathname),
   new CacheFirst({ cacheName: 'abix-local-clang-v1' }),
 );
+
+// The clang-abi-wasm module: ~28 MB of wasm plus a ~20 MB header pack, far past
+// what precaching should carry, so it is cached on first successful fetch
+// instead. That is what makes the *second* visit work offline — which is the
+// promise the app makes, and it is not kept by caching the shell alone.
+registerRoute(
+  ({ url }) =>
+    url.origin === self.location.origin && /\/vendor\/abi\/[^/]+$/.test(url.pathname),
+  new CacheFirst({ cacheName: 'abix-abi-module-v1' }),
+);

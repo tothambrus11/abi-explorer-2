@@ -16,9 +16,14 @@ import type { CompileOptions } from '$core/options';
 import type { AstInfo } from '$core/ast-locations';
 import type { ProbeResult } from '$core/types';
 import { toAnalysis, toAstInfo, type AbiResponse } from './AbiAdapter';
-import type { Analysis } from './Analyzer';
+import type { Analysis, LayoutAnalyzer } from './Analyzer';
 
-/** What this needs from clang-abi-wasm; the module supplies it. */
+/**
+ * What this needs from clang-abi-wasm. Async because the production path is a
+ * worker: the module is 28 MB and a query over libc++ takes hundreds of
+ * milliseconds, neither of which belongs on the main thread. An in-process
+ * module satisfies it too — see `fromSyncModule`.
+ */
 export interface AbiModule {
   query(request: {
     source: string;
@@ -27,9 +32,22 @@ export interface AbiModule {
     std?: string;
     flags?: string[];
     includeSystemRecords?: boolean;
-  }): AbiResponse;
+  }): Promise<AbiResponse>;
+  targets(): Promise<string[]>;
+  version(): Promise<string>;
+}
+
+/** Wrap a synchronous in-process module (tests, Node) as an async one. */
+export function fromSyncModule(m: {
+  query(request: unknown): AbiResponse;
   targets(): string[];
   version(): string;
+}): AbiModule {
+  return {
+    query: (r) => Promise.resolve(m.query(r)),
+    targets: () => Promise.resolve(m.targets()),
+    version: () => Promise.resolve(m.version()),
+  };
 }
 
 /** One analysis and the response it came from, so `locate` needs no second call. */
@@ -38,100 +56,94 @@ interface Entry {
   ast: AstInfo;
 }
 
-export class AbiAnalyzer {
-  private readonly cache = new Map<string, Entry>();
-  private readonly spellingCache = new Map<string, ProbeResult | null>();
+export class AbiAnalyzer implements LayoutAnalyzer {
+  private readonly cache = new Map<string, Promise<Entry>>();
+  private readonly spellingCache = new Map<string, Promise<ProbeResult | null>>();
 
   constructor(private readonly module: AbiModule) {}
 
   /** The clang the module was built from, for the status bar. */
-  version(): string {
+  version(): Promise<string> {
     return this.module.version();
   }
 
   /** Every triple this build can lay out — not a curated list. */
-  targets(): string[] {
+  targets(): Promise<string[]> {
     return this.module.targets();
   }
 
-  analyze(source: string, options: CompileOptions, signal?: AbortSignal): Promise<Analysis> {
-    // The call is synchronous, but the interface is async so a worker-backed
-    // implementation can slot in without changing any caller.
-    return new Promise((resolve, reject) => {
-      if (signal?.aborted) {
-        reject(new DOMException('aborted', 'AbortError'));
-        return;
-      }
-      try {
-        resolve(this.entryFor(source, options).analysis);
-      } catch (e) {
-        reject(e instanceof Error ? e : new Error(String(e)));
-      }
-    });
+  async analyze(source: string, options: CompileOptions, signal?: AbortSignal): Promise<Analysis> {
+    const entry = await this.entryFor(source, options);
+    if (signal?.aborted) throw new DOMException('aborted', 'AbortError');
+    return entry.analysis;
   }
 
   /**
    * Source locations for the given records. The owner set is ignored: the
    * response already carries every location, so there is nothing to narrow and
-   * nothing to re-parse. The parameter stays for interface compatibility.
+   * nothing to re-parse. The parameter stays for interface compatibility, and
+   * because `Session` derives it from the models either way.
    */
-  locate(analysis: Analysis, _owners: Iterable<string>, _signal?: AbortSignal): Promise<AstInfo> {
-    const entry = this.cache.get(this.key(analysis.source, analysis.options));
-    return Promise.resolve(entry ? entry.ast : { fields: [], decls: [] });
+  async locate(analysis: Analysis, _owners: Iterable<string>): Promise<AstInfo> {
+    const pending = this.cache.get(this.key(analysis.source, analysis.options));
+    if (!pending) return { fields: [], decls: [] };
+    return (await pending).ast;
   }
 
   /** Size and alignment of an arbitrary type spelling, in the user's context. */
-  probeSpelling(
-    analysis: Analysis,
-    spelling: string,
-    _signal?: AbortSignal,
-  ): Promise<ProbeResult | null> {
+  probeSpelling(analysis: Analysis, spelling: string): Promise<ProbeResult | null> {
     const key = this.key(analysis.source, analysis.options) + '\0' + spelling;
     const hit = this.spellingCache.get(key);
-    if (hit !== undefined) return Promise.resolve(hit);
+    if (hit) return hit;
 
-    // One probe struct, the same trick as before — but against the user's own
-    // source so the spelling resolves in its context, and without the retry
-    // rounds, because a failure is now just an error in the response.
-    const probeSource = `${analysis.source}\n#pragma pack()\nstruct __abix_probe { __typeof__(${spelling}) v; };\n`;
-    let result: ProbeResult | null = null;
-    try {
-      const response = this.module.query({
-        source: probeSource,
+    // One probe struct, the same trick as before — but without the retry
+    // rounds, because a failure is now an error in the response rather than
+    // something to be inferred from an exit code.
+    const probe = this.module
+      .query({
+        source: `${analysis.source}\n#pragma pack()\nstruct __abix_probe { __typeof__(${spelling}) v; };\n`,
         triple: analysis.options.triple,
         lang: analysis.options.lang === 'c++' ? 'c++' : 'c',
         ...(analysis.options.std ? { std: analysis.options.std } : {}),
-      });
-      const probe = response.records.find((r) => r.name === '__abix_probe');
-      const field = probe?.fields[0];
-      if (field && field.sizeBits > 0) {
-        result = { bits: field.sizeBits, align: field.alignBits / 8 };
-      }
-    } catch {
-      result = null;
-    }
+      })
+      .then((response) => {
+        const field = response.records.find((r) => r.name === '__abix_probe')?.fields[0];
+        return field && field.sizeBits > 0
+          ? { bits: field.sizeBits, align: field.alignBits / 8 }
+          : null;
+      })
+      .catch(() => null);
+
     if (this.spellingCache.size > 512) this.spellingCache.clear();
-    this.spellingCache.set(key, result);
-    return Promise.resolve(result);
+    this.spellingCache.set(key, probe);
+    return probe;
   }
 
-  private entryFor(source: string, options: CompileOptions): Entry {
+  /**
+   * Cached by input, and cached as the *promise* — two edits that settle on the
+   * same text must not both reach the module while the first is in flight.
+   */
+  private entryFor(source: string, options: CompileOptions): Promise<Entry> {
     const key = this.key(source, options);
     const hit = this.cache.get(key);
     if (hit) return hit;
 
-    const response = this.module.query({
-      source,
-      triple: options.triple,
-      lang: options.lang === 'c++' ? 'c++' : 'c',
-      ...(options.std ? { std: options.std } : {}),
-      ...(options.extraFlags ? { flags: options.extraFlags.split(/\s+/).filter(Boolean) } : {}),
-    });
-    const entry: Entry = {
-      analysis: toAnalysis(response, source, options),
-      ast: toAstInfo(response),
-    };
-    // Bounded: one entry per keystroke-debounced edit adds up over a session.
+    const entry = this.module
+      .query({
+        source,
+        triple: options.triple,
+        lang: options.lang === 'c++' ? 'c++' : 'c',
+        ...(options.std ? { std: options.std } : {}),
+        ...(options.extraFlags ? { flags: options.extraFlags.split(/\s+/).filter(Boolean) } : {}),
+      })
+      .then((response) => ({
+        analysis: toAnalysis(response, source, options),
+        ast: toAstInfo(response),
+      }));
+
+    // A failed query must not poison the cache: the next attempt should retry.
+    void entry.catch(() => this.cache.delete(key));
+    // Bounded: one entry per debounced edit adds up over a session.
     if (this.cache.size > 32) this.cache.clear();
     this.cache.set(key, entry);
     return entry;

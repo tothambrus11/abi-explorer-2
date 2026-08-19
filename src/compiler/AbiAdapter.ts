@@ -268,8 +268,16 @@ function collectMemberSizes(
     const path = prefix + f.name;
     if (f.name) {
       sizes.set(memberKey(layout, path), {
+        // `bits` is bits and `align` is *bytes* — the old model's convention,
+        // and the one place the two unit systems meet. The library reports both
+        // in bits, so the alignment converts here.
+        //
+        // The *type's* alignment, deliberately: an `alignas` on the declaration
+        // is carried by `toAstInfo` as `alignAttr` and applied by
+        // `buildRenderModel`, which already knows the rule. Folding it in here
+        // as well would put that rule in two places, to disagree later.
         bits: f.sizeBits,
-        align: Math.max(f.alignBits, f.explicitAlignBits ?? 0),
+        align: f.alignBits / 8,
       });
     }
     const target = f.recordId === null ? undefined : byId.get(f.recordId);

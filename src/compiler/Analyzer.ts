@@ -63,7 +63,22 @@ const MAIN_FILE = (o: CompileOptions) => 'input.' + sourceExtension(o.lang);
 const PROBE_TU = (o: CompileOptions) => 'abix_scalars.' + sourceExtension(o.lang);
 const FIELD_PROBE_FILE = (o: CompileOptions) => 'input_probe.' + sourceExtension(o.lang);
 
-export class Analyzer {
+/**
+ * What `Session` needs from an analysis pipeline. Both the text-parsing
+ * `Analyzer` and the library-backed `AbiAnalyzer` satisfy it, which is what
+ * lets the app run on either without the orchestration knowing which.
+ */
+export interface LayoutAnalyzer {
+  analyze(source: string, options: CompileOptions, signal?: AbortSignal): Promise<Analysis>;
+  locate(analysis: Analysis, owners: Iterable<string>, signal?: AbortSignal): Promise<AstInfo>;
+  probeSpelling(
+    analysis: Analysis,
+    spelling: string,
+    signal?: AbortSignal,
+  ): Promise<ProbeResult | null>;
+}
+
+export class Analyzer implements LayoutAnalyzer {
   private locationCache = new Map<string, AstInfo>();
   private spellingCache = new Map<string, ProbeResult | null>();
   private baselineCache = new Map<string, Baseline>();

@@ -11,3 +11,6 @@ public/vendor/clang/llvm.core*.wasm
 public/vendor/clang/llvm-resources.tar
 # fixture capture cache
 .cache/
+# Local clang-abi-wasm build, linked in by that repo's scripts/dev-link.sh.
+# The real deployment fetches a release; this is a symlink to a working copy.
+public/vendor/abi

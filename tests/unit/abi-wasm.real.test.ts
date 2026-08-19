@@ -15,7 +15,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { Analyzer } from '$compiler/Analyzer';
-import { AbiAnalyzer, type AbiModule } from '$compiler/AbiAnalyzer';
+import { AbiAnalyzer, fromSyncModule } from '$compiler/AbiAnalyzer';
 import { DEFAULT_OPTIONS, defaultStdFor, type CompileOptions } from '$core/options';
 import { EXAMPLES } from '$core/targets';
 import { assignColors, buildRenderModel, directMembers } from '$core/model';
@@ -35,7 +35,7 @@ const enabled = existsSync(path.join(DIST, 'abi_query.mjs'));
 function membersOf(model: RenderModel) {
   return directMembers(model)
     .filter((u) => !('kind' in u && u.kind === 'special'))
-    .map((u) => [u.name, u.offsetBits, u.sizeBits] as const)
+    .map((u) => [u.name, u.offsetBits, u.sizeBits, u.align] as const)
     .sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0]));
 }
 
@@ -53,7 +53,7 @@ function membersOf(model: RenderModel) {
 function leavesOf(model: RenderModel) {
   return model.leaves
     .filter((l) => l.kind !== 'special')
-    .map((l) => [l.name, l.offsetBits, l.sizeBits] as const)
+    .map((l) => [l.name, l.offsetBits, l.sizeBits, l.align] as const)
     .sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0]));
 }
 
@@ -76,19 +76,19 @@ describe.skipIf(!enabled)('clang-abi-wasm end to end', () => {
 
   beforeAll(async () => {
     const { load } = (await import(/* @vite-ignore */ path.join(DIST, 'index.mjs'))) as {
-      load: (o: { baseUrl: string }) => Promise<AbiModule>;
+      load: (o: { baseUrl: string }) => Promise<Parameters<typeof fromSyncModule>[0]>;
     };
-    abi = new AbiAnalyzer(await load({ baseUrl: DIST }));
+    abi = new AbiAnalyzer(fromSyncModule(await load({ baseUrl: DIST })));
     const { createNodeCompiler } = await import('../../tools/node-clang.mjs');
     old = new Analyzer((await createNodeCompiler()) as Compiler);
   }, 300_000);
 
-  it('reports the clang it was built from', () => {
-    expect(abi.version()).toMatch(/clang version \d+/);
+  it('reports the clang it was built from', async () => {
+    expect(await abi.version()).toMatch(/clang version \d+/);
   });
 
-  it('enumerates far more targets than any curated list', () => {
-    const targets = abi.targets();
+  it('enumerates far more targets than any curated list', async () => {
+    const targets = await abi.targets();
     // The app ships ~40 curated triples; the build knows every architecture
     // clang has a TargetInfo for, which is the list no flag exposes.
     expect(targets.length).toBeGreaterThan(20);
