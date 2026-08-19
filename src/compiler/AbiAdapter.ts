@@ -25,6 +25,7 @@
 import type { Analysis } from './Analyzer';
 import type { CompileOptions } from '$core/options';
 import type { Diagnostic, LayoutRow, RecordKind, RecordLayout, RowKind } from '$core/types';
+import type { AstInfo, DeclLocation, FieldLocation } from '$core/ast-locations';
 import { buildRecordIndex, memberKey, type MemberSizes, type ScalarTable } from '$core/probes';
 
 // The subset of clang-abi-wasm's schema this adapter reads. Declared here
@@ -88,6 +89,7 @@ export interface AbiRecord {
   isEmpty: boolean;
   isUserCode: boolean;
   location: AbiLocation | null;
+  range: AbiRange | null;
   sizeBits: number;
   alignBits: number;
   dataSizeBits: number;
@@ -152,6 +154,13 @@ function rowsFor(
   depth: number,
   /** Guards against a record reaching itself through a member. */
   open: Set<number>,
+  /**
+   * These rows are a base subobject's, expanded inside a derived class. A
+   * virtual base belongs to the *most derived* object and is laid out once, at
+   * that level — expanding it again under each intermediate base would show one
+   * `A` inside `B`, another inside `C`, and a third at the bottom.
+   */
+  asBaseSubobject = false,
 ): LayoutRow[] {
   const rows: LayoutRow[] = [];
 
@@ -172,6 +181,7 @@ function rowsFor(
   }
 
   for (const base of rec.bases) {
+    if (asBaseSubobject && base.isVirtual) continue;
     const target = byId.get(base.recordId);
     rows.push({
       rowKind: BASE_KIND(base),
@@ -186,7 +196,10 @@ function rowsFor(
       depth,
       children:
         target && !base.isEmpty && !open.has(target.id)
-          ? shift(rowsFor(target, byId, depth + 1, new Set(open).add(target.id)), base.offsetBits)
+          ? shift(
+              rowsFor(target, byId, depth + 1, new Set(open).add(target.id), true),
+              base.offsetBits,
+            )
           : [],
     });
   }
@@ -293,6 +306,48 @@ function toDiagnostic(d: AbiDiagnostic): Diagnostic | null {
     out.endColumn = d.location.endCol;
   }
   return out;
+}
+
+/**
+ * The source locations the editor needs, from the same response.
+ *
+ * The text pipeline fetched these with a separate `-ast-dump=json` per record —
+ * one full re-parse each — and then matched them back to layout rows by name.
+ * Here they arrive attached to the fields they belong to.
+ */
+export function toAstInfo(response: AbiResponse): AstInfo {
+  const fields: FieldLocation[] = [];
+  const decls: DeclLocation[] = [];
+
+  for (const rec of response.records) {
+    if (rec.location?.isMainFile && rec.name) {
+      const d: DeclLocation = {
+        kind: 'record',
+        name: rec.name,
+        line: rec.location.line,
+        col: rec.location.col,
+      };
+      if (rec.range) d.span = { begin: rec.range.line, end: rec.range.endLine };
+      decls.push(d);
+    }
+    for (const f of rec.fields) {
+      if (!f.location?.isMainFile) continue;
+      const loc: FieldLocation = {
+        owner: rec.name,
+        qualifiedOwner: rec.qualifiedName,
+        name: f.name,
+        line: f.location.line,
+        col: f.location.col,
+        qualType: f.typeSpelling,
+      };
+      if (f.canonicalTypeSpelling !== f.typeSpelling) {
+        loc.desugaredType = f.canonicalTypeSpelling;
+      }
+      if (f.explicitAlignBits !== null) loc.alignAttr = f.explicitAlignBits / 8;
+      fields.push(loc);
+    }
+  }
+  return { fields, decls };
 }
 
 /** Project one response into the Analysis the model layer consumes. */
