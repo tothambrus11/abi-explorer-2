@@ -248,6 +248,33 @@ struct WithPlain { Empty e; int i; };`,
     ]);
   }, 180_000);
 
+  it('an empty union member keeps its own byte, and one nested in a union does not', async () => {
+    const a = await analyze(
+      `struct Empty {};
+union U { Empty e; int i; };
+struct Inner { [[no_unique_address]] Empty e; int i; };
+union V { Inner in; char c; };`,
+      'c++',
+      'x86_64-unknown-linux-gnu',
+    );
+    // Every union member shares offset 0, so "it shares an address" says
+    // nothing about `e` in particular — it keeps sizeof(Empty).
+    const u = modelOf(a, 'U');
+    expect(u.record.sizeBytes).toBe(4);
+    expect(u.leaves.map((l) => [l.name, l.sizeBits])).toEqual([
+      ['e', 8],
+      ['i', 32],
+    ]);
+    // …but a struct nested in a union lays its members out side by side again,
+    // so the no_unique_address member inside it really does occupy nothing.
+    const v = modelOf(a, 'V');
+    expect(v.leaves.map((l) => [l.name, l.sizeBits])).toEqual([
+      ['e', 0],
+      ['i', 32],
+      ['c', 8],
+    ]);
+  }, 180_000);
+
   it('libc++ containers: the compressed allocator occupies nothing', async () => {
     const a = await analyze(
       `#include <vector>

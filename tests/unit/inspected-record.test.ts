@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { inspectedRecord, recordsAtLine } from '$state/inspected-record';
+import { recordsAtLine } from '$state/inspected-record';
 import type { DeclLocation } from '$core/ast-locations';
 import type { RenderModel } from '$core/types';
 
@@ -55,49 +55,5 @@ describe('recordsAtLine', () => {
     const decls = [rec('Pair', 1, 3)];
     const m = models(['struct Pair<int>', 'Pair<int>'], ['struct Pair<char>', 'Pair<char>']);
     expect(recordsAtLine(2, decls, m).sort()).toEqual(['struct Pair<char>', 'struct Pair<int>']);
-  });
-});
-
-describe('inspectedRecord', () => {
-  const base = { decls: nested, models: nestedModels, previous: null, selected: null, line: null };
-
-  it('follows the cursor into the innermost record', () => {
-    expect(inspectedRecord({ ...base, line: 4 })).toBe('struct Inner');
-    expect(inspectedRecord({ ...base, line: 6 })).toBe('struct Outer');
-  });
-
-  it('an explicit selection outranks the cursor (issue #3)', () => {
-    expect(inspectedRecord({ ...base, line: 4, selected: 'struct Outer' })).toBe('struct Outer');
-  });
-
-  it('a selection that no longer exists falls back to the cursor', () => {
-    expect(inspectedRecord({ ...base, line: 4, selected: 'struct Gone' })).toBe('struct Inner');
-  });
-
-  it('holds the previous record where the cursor is in no declaration', () => {
-    expect(inspectedRecord({ ...base, line: 9, previous: 'struct Inner' })).toBe('struct Inner');
-  });
-
-  it('keeps the shown instantiation when templates share a span', () => {
-    const decls = [rec('Pair', 1, 3)];
-    const m = models(['struct Pair<int>', 'Pair<int>'], ['struct Pair<char>', 'Pair<char>']);
-    // Already showing Pair<char>: cursoring inside the template must not flip.
-    expect(
-      inspectedRecord({ decls, models: m, line: 2, selected: null, previous: 'struct Pair<char>' }),
-    ).toBe('struct Pair<char>');
-    // With nothing shown yet, pick deterministically (declaration order).
-    expect(inspectedRecord({ decls, models: m, line: 2, selected: null, previous: null })).toBe(
-      'struct Pair<int>',
-    );
-  });
-
-  it('falls back to a record when there is no cursor at all', () => {
-    expect(inspectedRecord({ ...base })).toBe('struct Outer');
-  });
-
-  it('is null when there is nothing to show', () => {
-    expect(
-      inspectedRecord({ decls: [], models: new Map(), line: 3, selected: 'x', previous: 'y' }),
-    ).toBeNull();
   });
 });

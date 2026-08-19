@@ -127,6 +127,13 @@
           {@const unitColour = isNameable(group.path) ? groupColorClass(model, group) : null}
           {@const full = group.typeSizeBits}
           {@const short = full !== null && node.sizeBits !== null && node.sizeBits < full}
+          <!-- Why it is short: an empty base is elided entirely (empty base
+               optimization); anything else lost its tail padding to what follows. -->
+          {@const shortWhy = short
+            ? node.sizeBits === 0
+              ? `Occupies no bytes here: it is empty, so it shares its address with the rest of the object — sizeof(${group.type || group.name}) is ${full / 8} B only because a complete object cannot be zero-sized.`
+              : `Occupies ${(node.sizeBits ?? 0) / 8} B here, though sizeof(${group.type || group.name}) is ${full / 8} B — the bytes after it are reused.`
+            : null}
           <tr
             class="group"
             class:hovered={isHovered(node.leafIndexes)}
@@ -171,12 +178,8 @@
             </td>
             <td class="type">{group.type}</td>
             <td class="num">{fmtOffset(node.offsetBits)}</td>
-            <td
-              class="num"
-              class:noted={short}
-              use:tooltip={short
-                ? `Occupies ${(node.sizeBits ?? 0) / 8} B here, though sizeof(${group.type || group.name}) is ${full / 8} B — the bytes after it are reused.`
-                : null}>{fmtGroupSize(node.sizeBits)}{short ? ' *' : ''}</td
+            <td class="num" class:noted={short} use:tooltip={shortWhy}
+              >{fmtGroupSize(node.sizeBits)}{short ? ' *' : ''}</td
             >
             <td class="num">{node.align ? `${node.align} B` : ''}</td>
             <td class="num"></td>

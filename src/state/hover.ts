@@ -6,7 +6,8 @@
 // happens against whatever the models are now, so a hover cannot survive into a
 // later analysis pointing at some unrelated member.
 
-import type { FieldLocation } from '$core/ast-locations';
+import type { DeclLocation, FieldLocation } from '$core/ast-locations';
+import { recordsAtLine } from './inspected-record';
 import type { Group, Leaf, RenderModel } from '$core/types';
 import { markAtColumn, type LineInfo } from './code-locations';
 import type { Hover, MemberRef } from './store.svelte';
@@ -41,6 +42,10 @@ export interface HoverInputs {
   preferCursor: boolean;
   models: Map<string, RenderModel>;
   lines: Map<number, LineInfo>;
+  /** Record declarations, for resolving a cursor that is on no member's line. */
+  decls: DeclLocation[];
+  /** The record on screen, to break ties between instantiations sharing a span. */
+  current: string | null;
   leafLocations: Map<string, Map<number, FieldLocation>>;
   groupLocations: Map<string, Map<number, FieldLocation>>;
 }
@@ -67,7 +72,16 @@ export function effectivePos(
 export function hoveredPrimary(i: HoverInputs): string | null {
   if (i.intent) return null; // grid/table hovers never switch the tab
   const pos = effectivePos(i);
-  return (pos ? i.lines.get(pos.line)?.primary : undefined) ?? null;
+  if (!pos) return null;
+  // A line that declares a member points at that member's record…
+  const declaring = i.lines.get(pos.line)?.primary;
+  if (declaring !== undefined) return declaring;
+  // …and anywhere else inside a declaration — its first line, a blank line, the
+  // closing brace — the innermost record containing the cursor.
+  const here = recordsAtLine(pos.line, i.decls, i.models);
+  if (here.length === 0) return null;
+  // Instantiations of one template share a span; stay on the one already shown.
+  return i.current !== null && here.includes(i.current) ? i.current : (here[0] ?? null);
 }
 
 /** Resolve the effective hover. */

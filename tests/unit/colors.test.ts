@@ -75,6 +75,27 @@ describe('assignColors (one level deep)', () => {
     expect(m.leaves[0]!.colorClass).toBe('c-1');
   });
 
+  it('a compound member reached through an anonymous aggregate is still one unit', () => {
+    // struct S { union { Header hdr; int raw; }; int tail; }
+    // The anonymous union is transparent, so `hdr` is a direct member of S and
+    // must claim a single colour — the same test `directMembers` and the table
+    // chips apply.
+    const m = model(
+      [
+        leaf('kind', { path: ['(anonymous)', 'hdr'], depth: 2 }),
+        leaf('len', { path: ['(anonymous)', 'hdr'], depth: 2 }),
+        leaf('raw', { path: ['(anonymous)'], depth: 1 }),
+        leaf('tail'),
+      ],
+      [group('hdr', [0, 1], ['(anonymous)']), group('(anonymous)', [0, 1, 2])],
+    );
+    assignColors(m);
+    const [kind, len, raw, tail] = m.leaves.map((l) => l.colorClass);
+    expect(kind).toBe(len); // hdr is one unit
+    expect(groupColorClass(m, m.groups[0]!)).toBe(kind); // so the table shows its chip
+    expect(new Set([kind, raw, tail]).size).toBe(3); // three distinct members
+  });
+
   it('specials keep their hatch style wherever they sit', () => {
     const m = model(
       [

@@ -253,6 +253,24 @@ test.describe('ABI Explorer', () => {
     await expect(header).toHaveAttribute('aria-selected', 'true');
   });
 
+  test('the cursor selects the record it sits in, even where no member is declared', async ({
+    page,
+  }) => {
+    await waitReady(page);
+    await page.selectOption('#example', '2');
+    await expect(page.locator('#record-chips .chip')).toHaveCount(3, { timeout: 60_000 });
+    await expect(page.locator('.record .title')).toContainText('Message');
+
+    // The opening line of `union Payload {` declares no member, so the per-line
+    // member index knows nothing about it — the declaration's span does.
+    await hoverWord(page, 'union Payload {', 'union');
+    await expect(page.locator('.record .title')).toContainText('Payload');
+
+    // And the closing brace of a record is still inside it.
+    await hoverWord(page, 'struct Header {', 'struct');
+    await expect(page.locator('.record .title')).toContainText('Header');
+  });
+
   test('sizes say what they mean: sizeof vs bytes occupied here', async ({ page }) => {
     await waitReady(page);
     // The record summary names the C++ operators rather than vague words.

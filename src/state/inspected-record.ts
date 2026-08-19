@@ -1,27 +1,12 @@
-// Which record the user is currently inspecting.
+// Resolving the cursor to a record, from the declaration spans clang reports.
 //
-// Precedence, highest first:
-//   1. an explicit pick (a tab click) that is still valid,
-//   2. the innermost record whose source span contains the cursor,
-//   3. the last record that was shown.
-//
-// Rule 2 is what makes the code drive the panels: put the caret inside a
+// This is what makes the code drive the panels: put the caret anywhere inside a
 // declaration and that record is inspected, with the *innermost* one winning so
-// a nested record beats its enclosing one.
+// a nested record beats its enclosing one. `hover.ts` applies it; the explicit
+// pick that outranks it lives in `session`.
 
 import { unqualifiedName, type DeclLocation } from '$core/ast-locations';
 import type { RenderModel } from '$core/types';
-
-export interface InspectionInputs {
-  /** Explicit selection (tab click), or null. */
-  selected: string | null;
-  /** Effective editor line (pointer or caret), or null. */
-  line: number | null;
-  decls: DeclLocation[];
-  models: Map<string, RenderModel>;
-  /** What was inspected a moment ago; kept when the cursor is nowhere in particular. */
-  previous: string | null;
-}
 
 /**
  * Record keys whose declaration span contains `line`, innermost first.
@@ -60,26 +45,6 @@ export function recordsAtLine(
     out.push(h.key);
   }
   return out;
-}
-
-/** Resolve the inspected record key, or null when there is nothing to show. */
-export function inspectedRecord(i: InspectionInputs): string | null {
-  // 1. An explicit pick wins for as long as it exists.
-  if (i.selected !== null && i.models.has(i.selected)) return i.selected;
-  // 2. The innermost record the cursor sits in. Several candidates share a span
-  //    only for template instantiations: keep the one already shown if it is
-  //    among them, so cursoring through the template body does not flip tabs.
-  if (i.line !== null) {
-    const here = recordsAtLine(i.line, i.decls, i.models);
-    if (here.length > 0) {
-      if (i.previous !== null && here.includes(i.previous)) return i.previous;
-      return here[0]!;
-    }
-  }
-  // 3. Nothing under the cursor: hold what was there (blank lines, file scope).
-  if (i.previous !== null && i.models.has(i.previous)) return i.previous;
-  const first = i.models.keys().next();
-  return first.done ? null : first.value;
 }
 
 /**

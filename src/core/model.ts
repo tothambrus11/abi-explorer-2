@@ -71,6 +71,12 @@ export function buildRenderModel(record: RecordLayout, inputs: ModelInputs): Ren
     inUnion: boolean,
     ownerRec: RecordLayout,
     scope: ProbeScope,
+    /**
+     * These rows are a union's own members, so they all share one address by
+     * definition. Unlike `inUnion` this is not sticky: a struct nested in a
+     * union lays its own members out side by side again.
+     */
+    unionHere = false,
   ): void => {
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i]!;
@@ -177,13 +183,15 @@ export function buildRenderModel(record: RecordLayout, inputs: ModelInputs): Ren
         const childScope: ProbeScope = isAnon
           ? scope
           : { rec: scope.rec, prefix: scope.prefix + name + '.' };
+        const isUnionMember = memberRec?.kind === 'union' || /^union\b/.test(row.type ?? '');
         visit(
           row.children,
           [...path, label],
           ownBits !== null ? row.offsetBits + ownBits : parentEnd,
-          inUnion || memberRec?.kind === 'union',
+          inUnion || isUnionMember,
           memberRec ?? ownerRec,
           childScope,
+          isUnionMember,
         );
         groups.push({
           kind: 'member',
@@ -197,7 +205,7 @@ export function buildRenderModel(record: RecordLayout, inputs: ModelInputs): Ren
           leafIndexes: range(first, leaves.length),
           typeSizeBits: memberRec ? memberRec.sizeBytes * 8 : null,
           isBase: false,
-          isUnion: memberRec?.kind === 'union' || /^union\b/.test(row.type ?? ''),
+          isUnion: isUnionMember,
         });
         continue;
       }
@@ -212,7 +220,9 @@ export function buildRenderModel(record: RecordLayout, inputs: ModelInputs): Ren
         bits = estimateBits(rows, i, row, parentEnd, inUnion);
         estimated = true;
       }
-      if (row.isEmpty) emptyMembers.push(leaves.length);
+      // Inside a union every member shares the address, so "shares it with a
+      // neighbour" says nothing about this one: leave it at its own sizeof.
+      if (row.isEmpty && !unionHere) emptyMembers.push(leaves.length);
       leaves.push({
         kind: 'field',
         row,
@@ -229,7 +239,15 @@ export function buildRenderModel(record: RecordLayout, inputs: ModelInputs): Ren
     }
   };
 
-  visit(record.rows, [], sizeBits, record.kind === 'union', record, { rec: record, prefix: '' });
+  visit(
+    record.rows,
+    [],
+    sizeBits,
+    record.kind === 'union',
+    record,
+    { rec: record, prefix: '' },
+    record.kind === 'union',
+  );
   resolveEmptyMembers(leaves, emptyMembers);
 
   const paddings = computePadding(record.sizeBytes, leaves);
@@ -366,9 +384,12 @@ export function assignColors(model: RenderModel, paletteSize = 8): void {
   const assigned = new Set<number>();
   // Named compound members first: each claims one colour for all of its leaves.
   // An anonymous aggregate is transparent — its fields are nameable on the
-  // record itself (`msg.crc_lo`), so they are members in their own right.
+  // record itself (`msg.crc_lo`), so they are members in their own right, and a
+  // named member reached *through* one (`union { Header hdr; … };`) is still a
+  // direct member of this record. `isNameable` is the same test the table and
+  // the editor marks use, so all three agree on what one colour stands for.
   for (const g of model.groups) {
-    if (g.path.length > 0 || g.name === ANON) continue;
+    if (!isNameable(g.path) || g.name === ANON) continue;
     const colour = slot(next++);
     for (const li of g.leafIndexes) {
       const leaf = model.leaves[li];

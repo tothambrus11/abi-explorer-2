@@ -36,17 +36,21 @@
     return () => editor?.dispose();
   });
 
-  // state -> editor: one derived description of what Monaco should show...
-  const view = $derived({
-    value: store.source,
-    language: store.options.lang,
-    diagnostics: store.analysis?.diagnostics ?? [],
-    // Dots only for what is on screen: the active record in tabs mode, all when stacked.
-    dots: memberDots(session.lines.values(), new Set(store.sections.map((s) => s.key))),
-    highlight: store.hover.line,
-    nameRange: store.hover.nameRange,
-    inlay: store.hover.inlay,
-  });
+  // state -> editor: a derived description of what Monaco should show, one
+  // value per sink. Deliberately *not* a single object: the hover changes on
+  // every pointer column, and one object would invalidate as a whole, re-running
+  // the text/marker/decoration syncs (and `model.getValue()` over the whole
+  // document) on every mouse move.
+  const value = $derived(store.source);
+  const language = $derived(store.options.lang);
+  const diagnostics = $derived(store.analysis?.diagnostics ?? []);
+  // Dots only for what is on screen: the active record in tabs mode, all when stacked.
+  const dots = $derived(
+    memberDots(session.lines.values(), new Set(store.sections.map((s) => s.key))),
+  );
+  const highlight = $derived(store.hover.line);
+  const nameRange = $derived(store.hover.nameRange);
+  const inlay = $derived(store.hover.inlay);
 
   // ...and one effect per sink that applies it. Monaco's decoration APIs are
   // set-diffing, so handing them a derived value is all the reconciliation needed.
@@ -54,21 +58,21 @@
     setEditorTheme(theme.current);
   });
   $effect(() => {
-    editor?.setValue(view.value);
+    editor?.setValue(value);
   });
   $effect(() => {
-    editor?.setLanguage(view.language);
+    editor?.setLanguage(language);
   });
   $effect(() => {
-    editor?.setDiagnostics(view.diagnostics);
+    editor?.setDiagnostics(diagnostics);
   });
   $effect(() => {
-    editor?.setMemberDots(view.dots);
+    editor?.setMemberDots(dots);
     editor?.refreshHover();
   });
   $effect(() => {
-    editor?.highlightLine(view.highlight, view.nameRange);
-    editor?.setInlay(view.highlight, view.inlay);
+    editor?.highlightLine(highlight, nameRange);
+    editor?.setInlay(highlight, inlay);
   });
   // A one-shot navigation command (picking a record from the tab bar), not a
   // value to keep in sync — the seq makes re-picking the same record fire again.

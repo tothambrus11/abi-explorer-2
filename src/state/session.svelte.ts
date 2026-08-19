@@ -14,6 +14,7 @@ import { decodeShareState, encodeShareState, type ShareState } from '$core/url-s
 import { store, type Hover, type MemberRef } from './store.svelte';
 import {
   describeItems,
+  effectivePos,
   fmtOffset,
   hoveredPrimary,
   resolveHover,
@@ -214,23 +215,31 @@ export class Session {
         store.hover = this.hover;
       });
       // Command (deliberately *not* part of the derivation): in tabs mode,
-      // *moving* the cursor onto a record selects it. It has to react to the
-      // cursor changing rather than hold as an invariant — otherwise picking a
-      // record from the tab bar is reverted on the spot, since the cursor is
-      // still sitting in whatever record it was in.
-      let lastPrimary: string | null = null;
+      // *moving* the cursor onto a record selects it.
+      //
+      // The trigger is the cursor position changing, not the record we derive
+      // from it. Those differ twice over: the position is unchanged while an
+      // explicit tab pick is in force (so the pick must not be reverted), and
+      // it is also unchanged when source locations merely finish loading — at
+      // which point resolving the caret's record for the first time would
+      // otherwise pull the panel off the record it opened on.
+      let lastPos: EditorPos | null = null;
+      let started = false;
       $effect(() => {
+        const pos = effectivePos(this.hoverInputs);
         const primary = this.hoverPrimary;
-        // An explicit pick stands until the cursor is actually moved.
         if (this.pickedAt !== null && samePos(this.pickedAt, this.cursor)) return;
         this.pickedAt = null;
-        if (primary === lastPrimary) return;
-        lastPrimary = primary;
-        if (store.view !== 'tabs' || primary === null) return;
+        if (started && samePos(pos, lastPos)) return;
+        lastPos = pos;
+        const first = !started;
+        started = true;
+        if (first || store.view !== 'tabs' || primary === null) return;
         if (store.activeRecordKey !== primary && store.models.has(primary)) {
           store.selectedRecord = primary;
         }
       });
+
       // Keep the URL fragment in sync.
       let hashTimer: ReturnType<typeof setTimeout> | null = null;
       $effect(() => {
@@ -383,6 +392,8 @@ export class Session {
       preferCursor: this.preferCursor,
       models: store.models,
       lines: this.index.lines,
+      decls: this.decls,
+      current: store.activeRecordKey,
       leafLocations: this.index.leafLocations,
       groupLocations: this.index.groupLocations,
     };

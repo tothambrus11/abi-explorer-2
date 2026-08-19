@@ -80,6 +80,8 @@ function inputs(over: Partial<HoverInputs> = {}): HoverInputs {
     preferCursor: false,
     models: new Map([['S', m]]),
     lines,
+    decls: [],
+    current: null,
     leafLocations: new Map([
       [
         'S',
@@ -238,6 +240,31 @@ describe('resolveHover with several declarators on a line', () => {
 });
 
 describe('hoveredPrimary', () => {
+  const decl = (name: string, begin: number, end: number) => ({
+    kind: 'record' as const,
+    name,
+    line: begin,
+    col: 8,
+    span: { begin, end },
+  });
+
+  it('falls back to the record whose declaration contains the cursor', () => {
+    // Line 6 declares nothing, but it is inside `struct S { … }` (lines 4..9).
+    const i = inputs({ mouse: { line: 6, col: 1 }, decls: [decl('S', 4, 9)] });
+    expect(hoveredPrimary(i)).toBe('S');
+  });
+
+  it('prefers the record declaring a member on that line', () => {
+    // Line 7 declares S's own member, and is inside another record's span.
+    const i = inputs({ mouse: at(7), decls: [decl('Outer', 1, 20)] });
+    expect(hoveredPrimary(i)).toBe('S');
+  });
+
+  it('stays on the instantiation already shown when a span is shared', () => {
+    const i = inputs({ mouse: { line: 6, col: 1 }, decls: [decl('S', 4, 9)], current: 'S' });
+    expect(hoveredPrimary(i)).toBe('S');
+  });
+
   it('is the declaring record of the hovered line', () => {
     expect(hoveredPrimary(inputs({ mouse: at(7) }))).toBe('S');
   });

@@ -182,10 +182,6 @@ class Store {
   toggleView(): void {
     this.setView(this.view === 'stack' ? 'tabs' : 'stack');
   }
-
-  setHover(h: Partial<Hover> | null): void {
-    this.hover = h ? { ...EMPTY_HOVER, ...h } : EMPTY_HOVER;
-  }
 }
 
 function readView(): ViewMode {
