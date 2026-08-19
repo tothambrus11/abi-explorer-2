@@ -334,6 +334,21 @@ test.describe('ABI Explorer', () => {
     );
   });
 
+  test('drilling into a library type shows the layout it actually has', async ({ page }) => {
+    // The record is libc++'s, not the user's, so it is not listed as a tab —
+    // it is reached by its id from the member that uses it. Nothing in the app
+    // matches a printed type name to find it, which is the point.
+    await waitReady(page);
+    await page.selectOption('#example', '9'); // C++ standard library (libc++)
+    await expect(page.locator('.record .title')).toContainText('Probe');
+    await expect(page.locator('#record-chips .chip')).toHaveCount(1);
+
+    await page.locator('.field-table tr.group', { hasText: 's' }).first().locator('.gname').click();
+    await expect(page.locator('.record .title')).toContainText('std::string');
+    // And it is a real layout, not a stub: three pointers on this target.
+    expect((await statValues(page))[0]).toBe('24');
+  });
+
   test('the standard library resolves on every kind of target, and says how', async ({ page }) => {
     await waitReady(page);
     await page.selectOption('#example', '9'); // C++ standard library (libc++)

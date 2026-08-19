@@ -163,9 +163,9 @@
       {/if}
       <label
         class="opt check"
-        use:tooltip={'Also list library records (std::…, reserved __ names), clang-internal ones (e.g. __va_list_tag) and anonymous ones'}
+        use:tooltip={'Also list the anonymous records declared inside another one — normally drawn in their parent rather than listed beside it. A library type is not listed either way; open it by clicking the member that uses it.'}
         ><input type="checkbox" id="show-internal" bind:checked={store.showInternal} /><span
-          >Show library, compiler-internal &amp; anonymous records</span
+          >List nested anonymous records</span
         ></label
       >
     </div>
