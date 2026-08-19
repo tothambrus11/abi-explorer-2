@@ -55,7 +55,10 @@ test.describe('ABI Explorer', () => {
     await page.goto('/');
     // Nothing is fetched until the user agrees; the results pane stays gated.
     await expect(page.locator('#allow-download')).toBeVisible();
-    await expect(page.locator('#consent-text')).toContainText('27 MB');
+    // The size follows the bundle this build actually downloads — 27 MB of
+    // clang driver, or ~11 MB of layout module — so the assertion is that a
+    // size is quoted at all, not which one.
+    await expect(page.locator('#consent-text')).toContainText(/~\d+ MB/);
     await expect(page.locator('#results')).toHaveCount(0);
     // Give a stray eager start time to show itself before asserting.
     await page.waitForTimeout(2_000);

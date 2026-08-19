@@ -2,14 +2,14 @@
   import { store } from '$state/store.svelte';
   import type { Session } from '$state/session.svelte';
   import { recordKey } from '$core/layout-parser';
-  import { CLANG_DOWNLOAD_BYTES } from '$core/metered';
+  import { activeBundle } from '$state/download-gate';
   import RecordSection from './RecordSection.svelte';
   import Rows3 from '@lucide/svelte/icons/rows-3';
   import PanelTop from '@lucide/svelte/icons/panel-top';
   import { tooltip } from './tooltip';
 
   const { session }: { session: Session } = $props();
-  const DOWNLOAD_MB = Math.round(CLANG_DOWNLOAD_BYTES / 1048576);
+  const DOWNLOAD_MB = Math.round(activeBundle().bytes / 1048576);
   const loading = $derived(store.compiler.state !== 'ready');
   const stacked = $derived(store.view === 'stack');
   const empty = $derived(store.analysis !== null && store.visibleRecords.length === 0);
@@ -47,7 +47,8 @@
     <div class="loading consent">
       <p id="consent-text">
         You appear to be on a metered or slow connection. Analysing layouts needs a one-time
-        <strong>~27 MB</strong> download of clang (cached afterwards, and the app then works offline).
+        <strong>~{DOWNLOAD_MB} MB</strong> download of clang (cached afterwards, and the app then works
+        offline).
       </p>
       <button
         id="allow-download"
@@ -61,7 +62,7 @@
     <div class="loading" class:failed={store.compiler.state === 'failed'}>
       <div class="track"><div class="fill" style:width="{loadPct}%"></div></div>
       <p id="load-text">{loadText}</p>
-      <p class="note">~27 MB on first visit, then served from browser cache.</p>
+      <p class="note">~{DOWNLOAD_MB} MB on first visit, then served from browser cache.</p>
     </div>
   {:else if !store.analysis}
     <!-- No analysis yet: idle/running (first compile pending) or the first compile failed outright. -->
