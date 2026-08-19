@@ -304,6 +304,32 @@ test.describe('ABI Explorer', () => {
     await expect(page.locator('[role=tooltip]')).toContainText('sizeof');
   });
 
+  test('hovering a base lights exactly the bytes it occupies', async ({ page }) => {
+    // The thing the whole model is for. A virtual base is placed by the most
+    // derived object, after the fields declared before it, and it occupies its
+    // non-virtual size rather than its sizeof — none of which is recoverable
+    // from a list of offsets, and all of which decides which bytes light up.
+    await waitReady(page);
+    await page.selectOption('#example', '6'); // C++ virtual inheritance (diamond)
+    await expect.poll(() => page.locator('.record .title').textContent()).toContain('struct D');
+
+    await page.locator('.field-table tr.group', { hasText: 'virtual A' }).first().hover();
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          [...document.querySelectorAll('.grid .cell')]
+            .map((c, i) => (c.classList.contains('hovered') ? i : -1))
+            .filter((i) => i >= 0),
+        ),
+      )
+      // A at offset 32, occupying 12 bytes: its vtable pointer and its int.
+      .toEqual([32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43]);
+
+    // …and the editor marks the base specifier, whose source range no clang
+    // dump format emits.
+    await expect(page.locator('.monaco-editor .member-name-hovered')).toHaveCount(1);
+  });
+
   test('the byte grid brackets what a base subobject contributes', async ({ page }) => {
     await waitReady(page);
     await page.selectOption('#example', '4');

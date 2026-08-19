@@ -110,9 +110,8 @@
     aria-label="C or C++ source code editor"
   ></div>
   <p class="hint">
-    Freestanding headers (<code>&lt;stdint.h&gt;</code>, <code>&lt;stddef.h&gt;</code>, …) work for
-    every target; libc++ headers are available in C++ mode. Templates must be instantiated to
-    appear.
+    The C library (musl) and libc++ resolve for every target — see the footer for which headers
+    answered. Templates must be instantiated to appear.
   </p>
 </section>
 
