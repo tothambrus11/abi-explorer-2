@@ -81,6 +81,18 @@ export const REGRESSION_SOURCES: CorpusSource[] = [
     triples: DEFAULT_TRIPLES,
   },
   {
+    // Names for types, which the editor's hover resolves without compiling a
+    // probe — and a use of one, so the record and the name both appear.
+    name: 'regression-type-names',
+    lang: 'c++',
+    source:
+      'typedef struct { int a; long b; } Pair;\n' +
+      'using u32 = unsigned int;\n' +
+      'typedef Pair PairAlias;\n' +
+      'struct S { Pair p; u32 n; };\n',
+    triples: DEFAULT_TRIPLES,
+  },
+  {
     // Bit-fields that straddle storage units, with a zero-width break between.
     name: 'regression-bitfield-units',
     lang: 'c',

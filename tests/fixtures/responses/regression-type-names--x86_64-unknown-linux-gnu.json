@@ -1,0 +1,477 @@
+{
+ "source": "typedef struct { int a; long b; } Pair;\nusing u32 = unsigned int;\ntypedef Pair PairAlias;\nstruct S { Pair p; u32 n; };\n",
+ "options": {
+  "lang": "c++",
+  "std": "gnu++20",
+  "triple": "x86_64-unknown-linux-gnu",
+  "pack": "",
+  "msBitfields": false,
+  "shortEnums": false,
+  "shortWchar": false,
+  "warnPadded": false,
+  "extraFlags": ""
+ },
+ "response": {
+  "clangVersion": "clang version 22.1.8 (https://github.com/llvm/llvm-project.git ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)",
+  "diagnostics": [],
+  "diagnosticsText": "",
+  "error": null,
+  "exitCode": 0,
+  "headers": {
+   "cLibrary": "musl",
+   "cLibraryArch": "x86_64",
+   "cxxLibrary": "libc++",
+   "localization": true,
+   "threads": true
+  },
+  "ok": true,
+  "records": [
+   {
+    "alignBits": 64,
+    "bases": [],
+    "dataSizeBits": 128,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 32,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "int",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 22,
+       "endCol": 23,
+       "file": "input.cc",
+       "isMainFile": true,
+       "line": 1
+      },
+      "name": "a",
+      "offsetBits": 0,
+      "recordId": null,
+      "sizeBits": 32,
+      "typeSpelling": "int"
+     },
+     {
+      "access": "public",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "long",
+      "explicitAlignBits": null,
+      "id": 1,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 30,
+       "endCol": 31,
+       "file": "input.cc",
+       "isMainFile": true,
+       "line": 1
+      },
+      "name": "b",
+      "offsetBits": 64,
+      "recordId": null,
+      "sizeBits": 64,
+      "typeSpelling": "long"
+     }
+    ],
+    "id": 0,
+    "isAnonymous": true,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": true,
+    "kind": "struct",
+    "location": {
+     "col": 9,
+     "endCol": 15,
+     "file": "input.cc",
+     "isMainFile": true,
+     "line": 1
+    },
+    "name": "",
+    "nonVirtualAlignBits": 64,
+    "nonVirtualSizeBits": 128,
+    "paddingBits": 32,
+    "paddingRuns": [
+     {
+      "endBits": 64,
+      "startBits": 32
+     }
+    ],
+    "parentRecordId": null,
+    "preferredAlignBits": 64,
+    "printedName": "Pair",
+    "qualifiedName": "Pair",
+    "range": {
+     "col": 9,
+     "endCol": 34,
+     "endLine": 1,
+     "line": 1
+    },
+    "render": {
+     "groups": [],
+     "leaves": [
+      {
+       "alignBits": 32,
+       "kind": "field",
+       "location": {
+        "col": 22,
+        "endCol": 23,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 1
+       },
+       "name": "a",
+       "offsetBits": 0,
+       "ownerId": 0,
+       "ownerName": "",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 32,
+       "type": "int"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 30,
+        "endCol": 31,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 1
+       },
+       "name": "b",
+       "offsetBits": 64,
+       "ownerId": 0,
+       "ownerName": "",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "long"
+      }
+     ],
+     "markers": [],
+     "paddingBytes": 4,
+     "paddingRuns": [
+      {
+       "endBits": 64,
+       "startBits": 32
+      }
+     ],
+     "tree": [
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 0
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 1
+      }
+     ]
+    },
+    "sizeBits": 128,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 64,
+    "bases": [],
+    "dataSizeBits": 192,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "Pair",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 17,
+       "endCol": 18,
+       "file": "input.cc",
+       "isMainFile": true,
+       "line": 4
+      },
+      "name": "p",
+      "offsetBits": 0,
+      "recordId": 0,
+      "sizeBits": 128,
+      "typeSpelling": "Pair"
+     },
+     {
+      "access": "public",
+      "alignBits": 32,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "unsigned int",
+      "explicitAlignBits": null,
+      "id": 1,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 24,
+       "endCol": 25,
+       "file": "input.cc",
+       "isMainFile": true,
+       "line": 4
+      },
+      "name": "n",
+      "offsetBits": 128,
+      "recordId": null,
+      "sizeBits": 32,
+      "typeSpelling": "u32"
+     }
+    ],
+    "id": 1,
+    "isAnonymous": false,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": true,
+    "kind": "struct",
+    "location": {
+     "col": 8,
+     "endCol": 9,
+     "file": "input.cc",
+     "isMainFile": true,
+     "line": 4
+    },
+    "name": "S",
+    "nonVirtualAlignBits": 64,
+    "nonVirtualSizeBits": 192,
+    "paddingBits": 32,
+    "paddingRuns": [
+     {
+      "endBits": 192,
+      "startBits": 160
+     }
+    ],
+    "parentRecordId": null,
+    "preferredAlignBits": 64,
+    "printedName": "struct S",
+    "qualifiedName": "S",
+    "range": {
+     "col": 1,
+     "endCol": 28,
+     "endLine": 4,
+     "line": 4
+    },
+    "render": {
+     "groups": [
+      {
+       "alignBits": 64,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        0,
+        1
+       ],
+       "location": {
+        "col": 17,
+        "endCol": 18,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 4
+       },
+       "name": "p",
+       "offsetBits": 0,
+       "ownerId": 1,
+       "ownerName": "S",
+       "path": [],
+       "recordId": 0,
+       "sizeBits": 128,
+       "type": "Pair",
+       "typeSizeBits": 128
+      }
+     ],
+     "leaves": [
+      {
+       "alignBits": 32,
+       "kind": "field",
+       "location": {
+        "col": 22,
+        "endCol": 23,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 1
+       },
+       "name": "a",
+       "offsetBits": 0,
+       "ownerId": 0,
+       "ownerName": "",
+       "path": [
+        "p"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 32,
+       "type": "int"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 30,
+        "endCol": 31,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 1
+       },
+       "name": "b",
+       "offsetBits": 64,
+       "ownerId": 0,
+       "ownerName": "",
+       "path": [
+        "p"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "long"
+      },
+      {
+       "alignBits": 32,
+       "kind": "field",
+       "location": {
+        "col": 24,
+        "endCol": 25,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 4
+       },
+       "name": "n",
+       "offsetBits": 128,
+       "ownerId": 1,
+       "ownerName": "S",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 32,
+       "type": "u32"
+      }
+     ],
+     "markers": [],
+     "paddingBytes": 8,
+     "paddingRuns": [
+      {
+       "endBits": 64,
+       "startBits": 32
+      },
+      {
+       "endBits": 192,
+       "startBits": 160
+      }
+     ],
+     "tree": [
+      {
+       "children": [
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 0
+        },
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 1
+        }
+       ],
+       "kind": "group",
+       "overlaps": false,
+       "ref": 0
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 2
+      }
+     ]
+    },
+    "sizeBits": 192,
+    "vtableSlots": []
+   }
+  ],
+  "target": {
+   "charSizeBits": 8,
+   "cxxAbi": "itanium",
+   "intSizeBits": 32,
+   "isLittleEndian": true,
+   "longLongSizeBits": 64,
+   "longSizeBits": 64,
+   "normalizedTriple": "x86_64-unknown-linux-gnu",
+   "pointerAlignBits": 64,
+   "pointerSizeBits": 64,
+   "shortSizeBits": 16,
+   "triple": "x86_64-unknown-linux-gnu"
+  },
+  "typedefs": [
+   {
+    "alignBits": 64,
+    "canonicalTypeSpelling": "Pair",
+    "location": {
+     "col": 35,
+     "endCol": 39,
+     "file": "input.cc",
+     "isMainFile": true,
+     "line": 1
+    },
+    "name": "Pair",
+    "qualifiedName": "Pair",
+    "recordId": 0,
+    "sizeBits": 128,
+    "typeSpelling": "struct Pair"
+   },
+   {
+    "alignBits": 32,
+    "canonicalTypeSpelling": "unsigned int",
+    "location": {
+     "col": 7,
+     "endCol": 10,
+     "file": "input.cc",
+     "isMainFile": true,
+     "line": 2
+    },
+    "name": "u32",
+    "qualifiedName": "u32",
+    "recordId": null,
+    "sizeBits": 32,
+    "typeSpelling": "unsigned int"
+   },
+   {
+    "alignBits": 64,
+    "canonicalTypeSpelling": "Pair",
+    "location": {
+     "col": 14,
+     "endCol": 23,
+     "file": "input.cc",
+     "isMainFile": true,
+     "line": 3
+    },
+    "name": "PairAlias",
+    "qualifiedName": "PairAlias",
+    "recordId": 0,
+    "sizeBits": 128,
+    "typeSpelling": "Pair"
+   }
+  ]
+ }
+}
