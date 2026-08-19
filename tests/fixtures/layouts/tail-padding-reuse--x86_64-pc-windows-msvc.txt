@@ -1,0 +1,25 @@
+
+*** Dumping AST Record Layout
+         0 | struct __NSConstantString_tag
+         0 |   const int * isa
+         8 |   int flags
+        16 |   const char * str
+        24 |   long length
+           | [sizeof=32, align=8,
+           |  nvsize=32, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct Base
+         0 |   int i
+         4 |   char c
+           | [sizeof=8, align=4,
+           |  nvsize=8, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct Derived
+         0 |   struct Base (base)
+         0 |     int i
+         4 |     char c
+         8 |   char d
+           | [sizeof=12, align=4,
+           |  nvsize=12, nvalign=4]

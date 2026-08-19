@@ -1,0 +1,50 @@
+
+*** Dumping AST Record Layout
+         0 | struct __NSConstantString_tag
+         0 |   const int * isa
+         8 |   int flags
+        16 |   const char * str
+        24 |   long length
+           | [sizeof=32, align=8]
+
+*** Dumping AST Record Layout
+         0 | struct S::(unnamed struct)::(unnamed at input.c:2:19)
+         0 |   char b
+         1 |   char c
+           | [sizeof=2, align=1]
+
+*** Dumping AST Record Layout
+         0 | struct S::(unnamed at input.c:2:3)
+         0 |   int a
+         4 |   struct S::(unnamed struct)::(anonymous at input.c:2:19) 
+         4 |     char b
+         5 |     char c
+           | [sizeof=8, align=4]
+
+*** Dumping AST Record Layout
+         0 | struct S::(unnamed union)::(unnamed at input.c:3:19)
+         0 |   short e
+         2 |   short f
+           | [sizeof=4, align=2]
+
+*** Dumping AST Record Layout
+         0 | union S::(unnamed at input.c:3:3)
+         0 |   long d
+         0 |   struct S::(unnamed union)::(anonymous at input.c:3:19) 
+         0 |     short e
+         2 |     short f
+           | [sizeof=4, align=4]
+
+*** Dumping AST Record Layout
+         0 | struct S
+         0 |   struct S::(anonymous at input.c:2:3) 
+         0 |     int a
+         4 |     struct S::(anonymous struct)::(anonymous at input.c:2:19) 
+         4 |       char b
+         5 |       char c
+         8 |   union S::(anonymous at input.c:3:3) 
+         8 |     long d
+         8 |     struct S::(anonymous union)::(anonymous at input.c:3:19) 
+         8 |       short e
+        10 |       short f
+           | [sizeof=12, align=4]

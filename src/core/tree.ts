@@ -73,9 +73,15 @@ export function buildLayoutTree(model: RenderModel): TreeNode[] {
 
     const out: TreeNode[] = [];
     let cursor = lo;
+    // An interval belongs to exactly one parent. Containment can still be
+    // ambiguous where the label path does not separate two candidates (sibling
+    // anonymous members share a label), and a node claimed twice would be
+    // rendered twice — with the same key, which a keyed `{#each}` rejects.
+    const claimed = new Set<Interval>();
     for (const iv of top) {
       for (; cursor < iv.start; cursor++) out.push(leafNode(cursor));
-      const inside = within.filter((o) => o !== iv && contains(iv, o));
+      const inside = within.filter((o) => o !== iv && !claimed.has(o) && contains(iv, o));
+      for (const o of inside) claimed.add(o);
       out.push(groupNode(iv, buildForest(iv.start, iv.end, inside)));
       cursor = Math.max(cursor, iv.end);
     }
@@ -85,12 +91,29 @@ export function buildLayoutTree(model: RenderModel): TreeNode[] {
 
   /** Does interval `a` strictly contain `b` (b nested one or more levels in a)? */
   function contains(a: Interval, b: Interval): boolean {
-    // Identical spans (a group whose only content is one nested group): the
-    // shallower path is the outer one.
-    if (a.start === b.start && a.end === b.end) return a.depth < b.depth;
-    // A zero-width interval sits inside a wider one whose range covers its point.
-    if (b.end === b.start) return a.start <= b.start && b.start < a.end;
+    // Identical spans — a group whose only content is one nested group, or
+    // several groups that hold no leaves at all (a member whose type has nothing
+    // but an empty base). Leaf indices cannot separate these, so ask the label
+    // path, which records the actual nesting: comparing depth alone would let
+    // *every* shallower group claim *every* deeper one, and two sibling members
+    // would each adopt the other's subobjects.
+    if (a.start === b.start && a.end === b.end) return enclosesByPath(a, b);
+    // A group holding no leaves has only a point, and the point where one member
+    // ends is the point where the next begins — an empty base declared last in
+    // its own base lands exactly there, and used to be drawn inside the member
+    // that follows it. Position still bounds the search (the interval has to
+    // stay a valid range, or leaves get emitted twice), but the path decides
+    // which of the two candidates actually declares it.
+    if (b.end === b.start) return a.start <= b.start && b.start <= a.end && enclosesByPath(a, b);
     return a.start <= b.start && b.end <= a.end;
+  }
+
+  /** Is b's group written inside a's, per the label path the model recorded? */
+  function enclosesByPath(a: Interval, b: Interval): boolean {
+    const ga = groups[a.gi]!;
+    const gb = groups[b.gi]!;
+    const prefix = [...ga.path, ga.name];
+    return prefix.length <= gb.path.length && prefix.every((label, i) => gb.path[i] === label);
   }
 
   function groupNode(iv: Interval, children: TreeNode[]): TreeNode {
@@ -130,11 +153,15 @@ export function buildLayoutTree(model: RenderModel): TreeNode[] {
   }
 }
 
-/** Where an empty group (no leaves) sits: after the last leaf that ends at or before its offset. */
+/**
+ * Where a group with no leaves is drawn: after every leaf that starts strictly
+ * before it. A leaf at the *same* offset does not precede it — an empty base
+ * shares its offset with whatever follows it, and is declared first.
+ */
 function emptyGroupPosition(g: Group, leaves: Leaf[]): number {
   let pos = 0;
   for (let i = 0; i < leaves.length; i++) {
-    if (leaves[i]!.offsetBits <= g.offsetBits) pos = i + 1;
+    if (leaves[i]!.offsetBits < g.offsetBits) pos = i + 1;
   }
   return pos;
 }

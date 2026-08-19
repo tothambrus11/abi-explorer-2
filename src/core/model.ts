@@ -338,7 +338,12 @@ function estimateBits(
       if (next.offsetBits > row.offsetBits) return next.offsetBits - row.offsetBits;
     }
   }
-  return Math.max(8, parentEnd - row.offsetBits);
+  const remaining = parentEnd - row.offsetBits;
+  // A member starting at (or past) the end of its container occupies nothing
+  // there: a flexible array member sits at `sizeof`, which is exactly why it
+  // adds no size. Floor the estimate at one byte only when there is room for
+  // one, or the table would claim a byte the grid cannot draw.
+  return remaining > 0 ? Math.max(8, remaining) : 0;
 }
 
 /**

@@ -188,4 +188,29 @@ describe('buildLayoutTree', () => {
     expect(flattenVisible(t, new Set([hdrId])).map((r) => r.node.kind)).toEqual(['leaf', 'group']);
     expect(flattenVisible(t, new Set([hdrId]))[1]!.depth).toBe(0);
   });
+
+  it('gives leafless groups one parent each', () => {
+    // `struct E {}; struct W : E {}; struct S { W a; W b; int i; };`
+    // Neither `a` nor `b` contains a single leaf, so leaf indices cannot say
+    // which `E` belongs to which member — only the label path can. Deciding it
+    // by nesting depth let both members adopt both bases, and the same node was
+    // rendered twice under a key a keyed `{#each}` rejects.
+    const m = model(
+      [leaf('i', 32, 32)],
+      [
+        group('E', 0, 0, [], { path: ['a'], isBase: true, kind: 'base' }),
+        group('a', 0, 0, []),
+        group('E', 0, 0, [], { path: ['b'], isBase: true, kind: 'base' }),
+        group('b', 0, 0, []),
+      ],
+    );
+    const rows = flattenVisible(buildLayoutTree(m), new Set());
+    const ids = rows.map((r) => r.node.id);
+    expect(new Set(ids).size, 'a node is rendered twice').toBe(ids.length);
+    // Each base sits under the member that declares it.
+    const parentOf = (id: string) =>
+      rows.find((r) => r.node.children.some((c) => c.id === id))?.node.id;
+    expect(parentOf('g0')).toBe('g1');
+    expect(parentOf('g2')).toBe('g3');
+  });
 });

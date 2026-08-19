@@ -11,15 +11,14 @@
 
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
-import { readFileSync, readdirSync } from 'node:fs';
-import path from 'node:path';
 import { parseRecordLayouts, flattenRows, recordKey } from '$core/layout-parser';
 import { assignColors, buildRenderModel } from '$core/model';
 import { buildLayoutTree, flattenVisible, type TreeNode } from '$core/tree';
 import { buildArgv, DEFAULT_OPTIONS, isAllowedFlag, splitExtraFlags } from '$core/options';
 import { decodeShareState, encodeShareState, type ShareState } from '$core/url-state';
 import { C_STANDARDS, CXX_STANDARDS, TARGET_GROUPS } from '$core/targets';
-import type { LayoutRow, RecordLayout, RowKind } from '$core/types';
+import { corpus, corpusRecords, missingCaptures } from './corpus';
+import type { LayoutRow, RecordLayout, RenderModel, RowKind } from '$core/types';
 
 
 // ------------------------------------------------------------ generators --
@@ -65,6 +64,35 @@ const RECORD_NAMES = [
 ];
 
 const byteOffset = fc.integer({ min: 0, max: 255 }).map((b) => b * 8);
+
+/**
+ * An empty base occupies no storage and has no members, so clang prints it as a
+ * childless row: `struct Empty (base) (empty)`. That is the only shape in which
+ * `(empty)` appears on a base.
+ */
+function emptyBaseArb(offsetBits: fc.Arbitrary<number>): fc.Arbitrary<LayoutRow> {
+  return fc
+    .record({
+      kind: fc.constantFrom(...BASE_KINDS),
+      type: fc.constantFrom(...TYPE_SPELLINGS),
+      offsetBits,
+    })
+    .map(
+      ({ kind, type, offsetBits: off }): LayoutRow => ({
+        rowKind: kind,
+        type,
+        name: null,
+        label: null,
+        offsetBits: off,
+        bitWidth: null,
+        isBitfield: false,
+        isZeroWidth: false,
+        isEmpty: true,
+        depth: 0,
+        children: [],
+      }),
+    );
+}
 
 /** A leaf row: plain field, bit-field, zero-width bit-field, or a special. */
 function rowLeafArb(): fc.Arbitrary<LayoutRow> {
@@ -163,8 +191,40 @@ function rowLeafArb(): fc.Arbitrary<LayoutRow> {
     { weight: 2, arbitrary: bitfield },
     { weight: 1, arbitrary: zeroWidth },
     { weight: 1, arbitrary: special },
+    { weight: 1, arbitrary: emptyBaseArb(byteOffset) },
   );
 }
+
+/**
+ * A member holding nothing that occupies a byte — `struct E {}; struct W : E {};`
+ * used as `W a;`. Its group ends up with no leaf indices at all, which is the
+ * one case where leaf ranges cannot say what is nested in what. Generated
+ * explicitly because drawing one by chance takes an improbable run of choices.
+ */
+const leaflessMemberArb: fc.Arbitrary<LayoutRow> = byteOffset.chain((offsetBits) =>
+  fc.record({
+    type: fc.constantFrom(...TYPE_SPELLINGS),
+    name: fc.constantFrom(...FIELD_NAMES),
+    offsetBits: fc.constant(offsetBits),
+    // An empty base starts where the object holding it starts.
+    children: fc.array(emptyBaseArb(fc.constant(offsetBits)), { minLength: 1, maxLength: 2 }),
+  }),
+)
+  .map(
+    ({ type, name, offsetBits, children }): LayoutRow => ({
+      rowKind: 'field',
+      type,
+      name,
+      label: null,
+      offsetBits,
+      bitWidth: null,
+      isBitfield: false,
+      isZeroWidth: false,
+      isEmpty: false,
+      depth: 0,
+      children,
+    }),
+  );
 
 /** A row tree: leaves, plus compound field/base rows that nest further rows. */
 function rowArb(depth: number): fc.Arbitrary<LayoutRow> {
@@ -176,10 +236,11 @@ function rowArb(depth: number): fc.Arbitrary<LayoutRow> {
       type: fc.constantFrom(...TYPE_SPELLINGS),
       name: fc.oneof(fc.constantFrom(...FIELD_NAMES), fc.constant('')),
       offsetBits: byteOffset,
-      isEmpty: fc.boolean(),
       children: fc.array(rowArb(depth - 1), { minLength: 1, maxLength: 3 }),
     })
-    .map(({ base, baseKind, type, name, offsetBits, isEmpty, children }): LayoutRow =>
+    // A row that contains members is not `(empty)` — that marker means the type
+    // has no data members at all, which is why clang prints it without children.
+    .map(({ base, baseKind, type, name, offsetBits, children }): LayoutRow =>
       base
         ? {
             rowKind: baseKind,
@@ -190,7 +251,7 @@ function rowArb(depth: number): fc.Arbitrary<LayoutRow> {
             bitWidth: null,
             isBitfield: false,
             isZeroWidth: false,
-            isEmpty,
+            isEmpty: false,
             depth: 0,
             children,
           }
@@ -203,12 +264,16 @@ function rowArb(depth: number): fc.Arbitrary<LayoutRow> {
             bitWidth: null,
             isBitfield: false,
             isZeroWidth: false,
-            isEmpty: name === '' ? false : isEmpty,
+            isEmpty: false,
             depth: 0,
             children,
           },
     );
-  return fc.oneof({ weight: 3, arbitrary: rowLeafArb() }, { weight: 1, arbitrary: compound });
+  return fc.oneof(
+    { weight: 3, arbitrary: rowLeafArb() },
+    { weight: 1, arbitrary: compound },
+    { weight: 1, arbitrary: leaflessMemberArb },
+  );
 }
 
 interface GeneratedRecord {
@@ -217,12 +282,79 @@ interface GeneratedRecord {
   splitTrailer: boolean;
 }
 
+/** Shift a row and everything under it by `delta` bits. */
+function rebase(row: LayoutRow, delta: number): LayoutRow {
+  return {
+    ...row,
+    offsetBits: row.offsetBits + delta,
+    children: row.children.map((c) => rebase(c, delta)),
+  };
+}
+
+/**
+ * Rows as a dump orders them: ascending by offset, and every nested row at or
+ * after the row that contains it. A subobject whose members sit before it — or
+ * far past its own extent — is not a shape clang can print, and reading one as
+ * evidence about the code would be reading noise.
+ */
+function inLayoutOrder(rows: LayoutRow[]): LayoutRow[] {
+  return [...rows]
+    .sort((a, b) => a.offsetBits - b.offsetBits)
+    .map((row) => ({
+      ...row,
+      children: inLayoutOrder(row.children.map((c) => rebase(c, row.offsetBits))),
+    }));
+}
+
+/**
+ * C and C++ forbid two members of one record sharing a name, and forbid the same
+ * direct base twice. Generated siblings are made unique accordingly — without
+ * it the label path, which the render model uses to record what encloses what,
+ * would be ambiguous in a way no real record can be. Unnamed members are left
+ * alone: several anonymous aggregates in one record *is* legal, and the
+ * ambiguity that creates is real.
+ */
+function uniqueSiblings(rows: LayoutRow[]): LayoutRow[] {
+  const names = new Set<string>();
+  const types = new Set<string>();
+  return rows.map((row) => {
+    const next = { ...row, children: uniqueSiblings(row.children) };
+    const distinct = (taken: Set<string>, want: string): string => {
+      let candidate = want;
+      for (let i = 2; taken.has(candidate); i++) candidate = `${want}${i}`;
+      taken.add(candidate);
+      return candidate;
+    };
+    if (next.rowKind === 'field' && next.name) next.name = distinct(names, next.name);
+    else if (next.rowKind !== 'field' && next.rowKind !== 'special' && next.type) {
+      next.type = distinct(types, next.type);
+    }
+    return next;
+  });
+}
+
+/** The first byte past the last row, so a generated `sizeof` can cover them all. */
+function bytesSpanned(rows: LayoutRow[]): number {
+  let end = 0;
+  const visit = (rs: LayoutRow[]): void => {
+    for (const r of rs) {
+      const width = r.isBitfield ? Math.max(r.bitWidth ?? 0, 1) : 8;
+      end = Math.max(end, Math.ceil((r.offsetBits + width) / 8));
+      visit(r.children);
+    }
+  };
+  visit(rows);
+  return end;
+}
+
 const recordArb: fc.Arbitrary<GeneratedRecord> = fc
   .record({
     kind: fc.constantFrom('struct' as const, 'union' as const, 'class' as const),
     name: fc.constantFrom(...RECORD_NAMES),
     isEmpty: fc.boolean(),
-    sizeBytes: fc.integer({ min: 0, max: 512 }),
+    // Slack past the last member; the real size is derived below, because a
+    // record whose sizeof excludes its own members is not a shape clang emits.
+    sizeBytes: fc.integer({ min: 0, max: 24 }),
     align: fc.constantFrom(1, 2, 4, 8, 16),
     extras: fc.option(
       fc.record({
@@ -235,8 +367,17 @@ const recordArb: fc.Arbitrary<GeneratedRecord> = fc
     rows: fc.array(rowArb(2), { maxLength: 6 }),
     splitTrailer: fc.boolean(),
   })
-  .map(({ kind, name, isEmpty, sizeBytes, align, extras, rows, splitTrailer }) => {
-    const record: RecordLayout = { kind, name, isEmpty, sizeBytes, align, rows, ...extras };
+  .map(({ kind, name, isEmpty, sizeBytes, align, extras, rows: raw, splitTrailer }) => {
+    const rows = inLayoutOrder(uniqueSiblings(raw));
+    const record: RecordLayout = {
+      kind,
+      name,
+      isEmpty,
+      sizeBytes: bytesSpanned(rows) + sizeBytes,
+      align,
+      rows,
+      ...extras,
+    };
     return { record, splitTrailer };
   });
 
@@ -381,27 +522,19 @@ describe('layout dump parser (property)', () => {
 
   it('prints the shapes real clang prints', () => {
     // Grounding: the printer is only evidence about the parser if it emits the
-    // format clang actually emits. Re-print every recorded dump and re-parse it;
-    // a printer that had drifted would not survive its own output.
-    const dir = path.join(process.cwd(), 'tests', 'fixtures');
-    const files = readdirSync(dir).filter((f) => f.endsWith('.json') && f !== 'index.json');
-    expect(files.length).toBeGreaterThan(0);
+    // format clang actually emits. Re-print every real dump in the corpus and
+    // re-parse it; a printer that had drifted would not survive its own output.
     let checked = 0;
-    for (const file of files) {
-      const fx = JSON.parse(readFileSync(path.join(dir, file), 'utf8')) as {
-        calls: { out: { stdout: string } }[];
-      };
-      for (const call of fx.calls) {
-        const records = parseRecordLayouts(call.out.stdout);
-        if (records.length === 0) continue;
-        const reparsed = parseRecordLayouts(
-          printRecords(records.map((record) => ({ record: stripDup(record), splitTrailer: true }))),
-        );
-        expect(reparsed, file).toEqual(records);
-        checked += records.length;
-      }
+    for (const entry of corpus()) {
+      const reparsed = parseRecordLayouts(
+        printRecords(
+          entry.records.map((record) => ({ record: stripDup(record), splitTrailer: true })),
+        ),
+      );
+      expect(reparsed, entry.name).toEqual(entry.records);
+      checked += entry.records.length;
     }
-    expect(checked).toBeGreaterThan(100);
+    expect(checked).toBeGreaterThan(500);
   });
 });
 
@@ -602,17 +735,88 @@ describe('extra-flag allowlist (property)', () => {
 
 const EMPTY_INPUTS = { scalars: new Map(), recordIndex: new Map(), memberSizes: new Map() };
 
-/** A record generated as above, run through the real model builder. */
-const modelArb = recordArb.map(({ record }) => {
+function toModel(record: RecordLayout): RenderModel {
   const model = buildRenderModel(record, EMPTY_INPUTS);
   assignColors(model);
   return model;
+}
+
+/**
+ * Records to check the model/tree/padding laws against: generated ones for
+ * breadth, and real clang dumps for the shapes no generator would think of.
+ *
+ * The two are drawn from the same arbitrary so every property gets both without
+ * being written twice, and a corpus counterexample shrinks to itself — it is a
+ * constant, so fast-check reports the record that actually broke rather than a
+ * reduced version clang would never emit.
+ */
+/** How `$core/model` labels a member with no name of its own. */
+const ANON_LABEL = '(anonymous)';
+
+const CORPUS_RECORDS = corpusRecords();
+
+interface Subject {
+  /** Where this record came from, so a failure names it. */
+  label: string;
+  model: RenderModel;
+}
+
+const generatedModelArb: fc.Arbitrary<Subject> = recordArb.map(({ record }) => ({
+  label: `generated: ${recordKey(record)}`,
+  model: toModel(record),
+}));
+
+let corpusModels: Subject[] | null = null;
+function corpusSubjects(): Subject[] {
+  corpusModels ??= CORPUS_RECORDS.map(({ from, record }) => ({
+    label: `${from}: ${recordKey(record)}`,
+    model: toModel(record),
+  }));
+  return corpusModels;
+}
+
+/**
+ * Check a law against generated records *and* the corpus.
+ *
+ * The corpus is sampled by nobody: it is finite, so it is exhausted. Drawing
+ * from it randomly alongside the generator looked reasonable and was not —
+ * with >2000 real records a 300-run property touches a fraction of them, and
+ * the record worth checking is precisely the rare one (the regression source
+ * that broke the containment tree is two records out of two thousand). Random
+ * search is for the infinite space; the finite one gets read in full.
+ */
+function forEveryModel(law: (subject: Subject) => void, numRuns = 300): void {
+  fc.assert(fc.property(generatedModelArb, law), { numRuns });
+  for (const subject of corpusSubjects()) law(subject);
+}
+
+describe('corpus', () => {
+  it('covers every shipped example and regression source', () => {
+    // A source added to the site (or to REGRESSION_SOURCES) without a captured
+    // dump would silently stop being checked.
+    expect(missingCaptures(), 'run `npm run fixtures` to capture these').toEqual([]);
+  });
+
+  it('holds a broad body of real records', () => {
+    expect(corpus().length).toBeGreaterThan(20);
+    expect(CORPUS_RECORDS.length).toBeGreaterThan(500);
+    // The shapes that only real ABIs produce are actually present.
+    const names = CORPUS_RECORDS.map((r) => r.record.name);
+    expect(names.some((n) => n.startsWith('std::'))).toBe(true);
+    const rows = CORPUS_RECORDS.flatMap((r) => flattenRows(r.record));
+    expect(rows.some((r) => r.rowKind === 'primary-base')).toBe(true);
+    expect(rows.some((r) => r.rowKind === 'vbase' || r.rowKind === 'primary-vbase')).toBe(true);
+    expect(rows.some((r) => r.isBitfield && !r.isZeroWidth)).toBe(true);
+    expect(rows.some((r) => r.isZeroWidth)).toBe(true);
+    expect(rows.some((r) => r.isEmpty)).toBe(true);
+    expect(rows.some((r) => r.rowKind === 'special')).toBe(true);
+  });
 });
 
 describe('padding (property)', () => {
   it('reports exactly the bytes no member covers', () => {
-    fc.assert(
-      fc.property(modelArb, (model) => {
+    forEveryModel(({ label, model }) => {
+      {
         const size = model.record.sizeBytes;
         // Independent recomputation of the covered set.
         const covered = new Set<number>();
@@ -629,43 +833,91 @@ describe('padding (property)', () => {
           for (let b = p.start; b < p.end; b++) bytes.push(b);
           return bytes;
         });
-        expect(actual).toEqual(expected);
-        expect(model.paddingBytes).toBe(expected.length);
-      }),
-      { numRuns: 300 },
-    );
+        expect(actual, label).toEqual(expected);
+        expect(model.paddingBytes, label).toBe(expected.length);
+      }
+    });
   });
 
   it('emits runs that are non-empty, ascending, disjoint and in bounds', () => {
-    fc.assert(
-      fc.property(modelArb, (model) => {
-        let prevEnd = 0;
-        for (const run of model.paddings) {
-          expect(run.end).toBeGreaterThan(run.start);
-          expect(run.start).toBeGreaterThanOrEqual(prevEnd);
-          expect(run.end).toBeLessThanOrEqual(model.record.sizeBytes);
-          prevEnd = run.end;
-        }
-        // Adjacent runs are merged, never left as two touching runs.
-        for (let i = 1; i < model.paddings.length; i++) {
-          expect(model.paddings[i]!.start).toBeGreaterThan(model.paddings[i - 1]!.end);
-        }
-      }),
-      { numRuns: 300 },
-    );
+    forEveryModel(({ label, model }) => {
+      let prevEnd = 0;
+      for (const run of model.paddings) {
+        expect(run.end, label).toBeGreaterThan(run.start);
+        expect(run.start, label).toBeGreaterThanOrEqual(prevEnd);
+        expect(run.end, label).toBeLessThanOrEqual(model.record.sizeBytes);
+        prevEnd = run.end;
+      }
+      // Adjacent runs are merged, never left as two touching runs.
+      for (let i = 1; i < model.paddings.length; i++) {
+        expect(model.paddings[i]!.start, label).toBeGreaterThan(model.paddings[i - 1]!.end);
+      }
+    });
   });
 
-  it('gives every leaf a colour and every group a consistent one', () => {
-    fc.assert(
-      fc.property(modelArb, (model) => {
-        for (const leaf of model.leaves) expect(leaf.colorClass).toBeTruthy();
-        // A group's leaves are one unit on screen, so a group that stands for a
-        // single direct member must not be striped across several colours.
-        for (const g of model.groups) {
-          expect(g.leafIndexes.every((li) => model.leaves[li] !== undefined)).toBe(true);
+  it('gives every leaf a colour and every group real leaves', () => {
+    forEveryModel(({ label, model }) => {
+      for (const leaf of model.leaves) expect(leaf.colorClass, label).toBeTruthy();
+      for (const g of model.groups) {
+        expect(g.leafIndexes.every((li) => model.leaves[li] !== undefined), label).toBe(true);
+      }
+    });
+  });
+});
+
+/**
+ * What hovering a table row paints in the byte grid: `ByteGrid` highlights a
+ * byte when any leaf covering it is in `store.hover.members`, and a row's hover
+ * contributes exactly its own leaves (`resolveIntent` in `$state/hover`).
+ */
+function highlightedBytes(model: RenderModel, node: TreeNode): number {
+  const size = model.record.sizeBytes;
+  const bytes = new Set<number>();
+  for (const li of node.leafIndexes) {
+    const leaf = model.leaves[li];
+    if (!leaf) continue;
+    const from = Math.max(0, Math.floor(leaf.offsetBits / 8));
+    const to = Math.min(size, Math.ceil((leaf.offsetBits + leaf.sizeBits) / 8));
+    for (let b = from; b < to; b++) bytes.add(b);
+  }
+  return bytes.size;
+}
+
+describe('table and grid agree (property)', () => {
+  const rows = (model: RenderModel) =>
+    flattenVisible(buildLayoutTree(model), new Set()).map((r) => r.node);
+
+  it('a row lights up the grid exactly when it claims to occupy bytes', () => {
+    forEveryModel(({ label, model }) => {
+      for (const node of rows(model)) {
+        // A group of unknown size shows "size ?" in the table and makes no
+        // claim about its extent, so there is nothing to hold it to.
+        if (node.sizeBits === null) continue;
+        const lit = highlightedBytes(model, node);
+        expect(
+          lit > 0,
+          `${label} / ${node.kind} ${node.ref}: size ${node.sizeBits} bits, ${lit} bytes lit`,
+        ).toBe(node.sizeBits > 0);
+      }
+    }, 400);
+  });
+
+  it('never lights a byte outside the row\'s own extent', () => {
+    forEveryModel(
+      ({ label, model }) => {
+        for (const node of rows(model)) {
+          if (node.sizeBits === null) continue;
+          const lit = highlightedBytes(model, node);
+          // Bytes the row's own bit range touches — a 32-bit field starting at
+          // bit 1 straddles five bytes, not four.
+          const extent =
+            Math.ceil((node.offsetBits + node.sizeBits) / 8) - Math.floor(node.offsetBits / 8);
+          // Padding inside a compound member is covered by no leaf, so the lit
+          // count is a subset of the extent — never more than it.
+          expect(lit, label).toBeLessThanOrEqual(extent);
         }
-      }),
-      { numRuns: 200 },
+      },
+      400,
     );
   });
 });
@@ -675,57 +927,86 @@ describe('containment tree (property)', () => {
     nodes.flatMap((n) => [n, ...allNodes(n.children)]);
 
   it('partitions the leaves: each appears exactly once', () => {
-    fc.assert(
-      fc.property(modelArb, (model) => {
-        const tree = buildLayoutTree(model);
-        const refs = allNodes(tree)
-          .filter((n) => n.kind === 'leaf')
-          .map((n) => n.ref)
-          .sort((a, b) => a - b);
-        expect(refs).toEqual(model.leaves.map((_, i) => i));
-      }),
-      { numRuns: 300 },
-    );
+    forEveryModel(({ label, model }) => {
+      const refs = allNodes(buildLayoutTree(model))
+        .filter((n) => n.kind === 'leaf')
+        .map((n) => n.ref)
+        .sort((a, b) => a - b);
+      expect(refs, label).toEqual(model.leaves.map((_, i) => i));
+    });
   });
 
   it('nests groups: a subtree never escapes its parent', () => {
-    fc.assert(
-      fc.property(modelArb, (model) => {
-        const check = (nodes: TreeNode[], within: Set<number> | null): void => {
-          for (const n of nodes) {
-            if (within) {
-              for (const li of n.leafIndexes) expect(within.has(li)).toBe(true);
-            }
-            check(n.children, n.kind === 'group' ? new Set(n.leafIndexes) : null);
+    forEveryModel(({ label, model }) => {
+      const check = (nodes: TreeNode[], within: Set<number> | null): void => {
+        for (const n of nodes) {
+          if (within) {
+            for (const li of n.leafIndexes) expect(within.has(li), label).toBe(true);
           }
-        };
-        check(buildLayoutTree(model), null);
-      }),
-      { numRuns: 300 },
-    );
+          check(n.children, n.kind === 'group' ? new Set(n.leafIndexes) : null);
+        }
+      };
+      check(buildLayoutTree(model), null);
+    });
   });
 
   it('gives every node a unique id and a depth matching its nesting', () => {
-    fc.assert(
-      fc.property(modelArb, (model) => {
-        const tree = buildLayoutTree(model);
-        const ids = allNodes(tree).map((n) => n.id);
-        expect(new Set(ids).size).toBe(ids.length);
-        const check = (nodes: TreeNode[], d: number): void => {
-          for (const n of nodes) {
-            expect(n.depth).toBe(d);
-            check(n.children, d + 1);
+    forEveryModel(({ label, model }) => {
+      const tree = buildLayoutTree(model);
+      const ids = allNodes(tree).map((n) => n.id);
+      // A duplicate id is not cosmetic: the field table keys its rows by it, and
+      // a keyed `{#each}` rejects a repeat outright.
+      expect(new Set(ids).size, `${label}: a node is rendered twice`).toBe(ids.length);
+      const check = (nodes: TreeNode[], d: number): void => {
+        for (const n of nodes) {
+          expect(n.depth, label).toBe(d);
+          check(n.children, d + 1);
+        }
+      };
+      check(tree, 0);
+    });
+  });
+
+  it('indents each group under exactly the members its path names', () => {
+    // The tree is what the table renders, and `Group.path` is what the model
+    // recorded as enclosing that member. If they disagree, the table shows a
+    // subobject nested in something that does not contain it — which is what
+    // happened when leafless groups were placed by nesting depth alone, and two
+    // sibling members each adopted the other's base.
+    //
+    // Corpus only, deliberately. The law needs label paths to identify a member
+    // unambiguously, which holds for records a compiler actually emitted and
+    // not for every arrangement of rows an arbitrary can assemble; generated
+    // counterexamples here were all shapes clang cannot print. Breadth for this
+    // one comes from 2000+ real records rather than from random search.
+    for (const { label, model } of corpusSubjects()) {
+      const walk = (nodes: TreeNode[], ancestors: string[]): void => {
+        for (const n of nodes) {
+          if (n.kind !== 'group') {
+            walk(n.children, ancestors);
+            continue;
           }
-        };
-        check(tree, 0);
-      }),
-      { numRuns: 200 },
-    );
+          const g = model.groups[n.ref]!;
+          // Sibling anonymous aggregates share one label, so a path through one
+          // genuinely cannot say which — that ambiguity is in the source, not in
+          // the tree. Named members carry no such excuse.
+          const ambiguous = [...g.path, ...ancestors].includes(ANON_LABEL);
+          if (!ambiguous) {
+            expect(
+              g.path,
+              `${label}: ${g.name} is drawn inside [${ancestors.join(' :: ')}]`,
+            ).toEqual(ancestors);
+          }
+          walk(n.children, [...ancestors, g.name]);
+        }
+      };
+      walk(buildLayoutTree(model), []);
+    }
   });
 
   it('hides exactly the descendants of collapsed nodes', () => {
-    fc.assert(
-      fc.property(modelArb, fc.nat(), (model, pick) => {
+    const law = (model: RenderModel, pick: number): void => {
+      {
         const tree = buildLayoutTree(model);
         const nodes = allNodes(tree);
         // Expanded: every node, in depth-first order.
@@ -741,8 +1022,18 @@ describe('containment tree (property)', () => {
         for (const n of nodes) {
           if (!hidden.has(n.id)) expect(shown.has(n.id)).toBe(true);
         }
+      }
+    };
+    fc.assert(
+      fc.property(generatedModelArb, fc.nat(), ({ model }, pick) => {
+        law(model, pick);
       }),
       { numRuns: 200 },
     );
+    // Every collapsible node of every real record, not one sampled per record.
+    for (const { model } of corpusSubjects()) {
+      const parents = allNodes(buildLayoutTree(model)).filter((n) => n.children.length > 0);
+      for (let i = 0; i < parents.length; i++) law(model, i);
+    }
   });
 });

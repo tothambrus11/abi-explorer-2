@@ -1,0 +1,16 @@
+
+*** Dumping AST Record Layout
+         0 | struct __NSConstantString_tag
+         0 |   const int * isa
+         8 |   int flags
+        16 |   const char * str
+        24 |   long length
+           | [sizeof=32, align=8,
+           |  nvsize=32, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct S
+         0 |   int Host::* pm
+        16 |   void (Host::*)(void) pmf
+           | [sizeof=40, align=8,
+           |  nvsize=40, nvalign=8]

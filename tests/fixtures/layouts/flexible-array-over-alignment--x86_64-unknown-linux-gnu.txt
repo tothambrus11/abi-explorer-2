@@ -1,0 +1,35 @@
+
+*** Dumping AST Record Layout
+         0 | struct __va_list_tag
+         0 |   unsigned int gp_offset
+         4 |   unsigned int fp_offset
+         8 |   void * overflow_arg_area
+        16 |   void * reg_save_area
+           | [sizeof=24, align=8]
+
+*** Dumping AST Record Layout
+         0 | struct __NSConstantString_tag
+         0 |   const int * isa
+         8 |   int flags
+        16 |   const char * str
+        24 |   long length
+           | [sizeof=32, align=8]
+
+*** Dumping AST Record Layout
+         0 | struct Packet
+         0 |   uint32_t length
+         4 |   char[] data
+           | [sizeof=4, align=4]
+
+*** Dumping AST Record Layout
+         0 | struct CacheLine
+         0 |   int x
+           | [sizeof=64, align=64]
+
+*** Dumping AST Record Layout
+         0 | struct Holder
+         0 |   char c
+        64 |   struct CacheLine line
+        64 |     int x
+       128 |   char d
+           | [sizeof=192, align=64]

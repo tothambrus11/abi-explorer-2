@@ -1,0 +1,2248 @@
+
+*** Dumping AST Record Layout
+         0 | struct __NSConstantString_tag
+         0 |   const int * isa
+         8 |   int flags
+        16 |   const char * str
+        24 |   long length
+           | [sizeof=32, align=8,
+           |  nvsize=32, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::__equal_tag (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__plus_tag (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__less_tag (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__greater_tag (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__totally_ordered_less_tag (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__equal_to (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__less<void, void> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::_IfImpl<true> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::_IfImpl<false> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__empty (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::common_reference<> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__swap::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::_OrImpl<true> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::_OrImpl<false> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__nat (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::input_iterator_tag (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::output_iterator_tag (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::forward_iterator_tag (empty)
+         0 |   struct std::input_iterator_tag (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::bidirectional_iterator_tag (empty)
+         0 |   struct std::forward_iterator_tag (base) (empty)
+         0 |     struct std::input_iterator_tag (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::random_access_iterator_tag (empty)
+         0 |   struct std::bidirectional_iterator_tag (base) (empty)
+         0 |     struct std::forward_iterator_tag (base) (empty)
+         0 |       struct std::input_iterator_tag (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::contiguous_iterator_tag (empty)
+         0 |   struct std::random_access_iterator_tag (base) (empty)
+         0 |     struct std::bidirectional_iterator_tag (base) (empty)
+         0 |       struct std::forward_iterator_tag (base) (empty)
+         0 |         struct std::input_iterator_tag (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::integral_constant<_Bool, true> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::integral_constant<_Bool, false> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__identity (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__is_identity<__identity> (empty)
+         0 |   struct std::integral_constant<_Bool, true> (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__is_identity<reference_wrapper<__identity> > (empty)
+         0 |   struct std::integral_constant<_Bool, true> (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__is_identity<reference_wrapper<const __identity> > (empty)
+         0 |   struct std::integral_constant<_Bool, true> (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::identity (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__is_identity<identity> (empty)
+         0 |   struct std::integral_constant<_Bool, true> (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__is_identity<reference_wrapper<identity> > (empty)
+         0 |   struct std::integral_constant<_Bool, true> (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__is_identity<reference_wrapper<const identity> > (empty)
+         0 |   struct std::integral_constant<_Bool, true> (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct timeval
+         0 |   time_t tv_sec
+         8 |   suseconds_t tv_usec
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct timespec
+         0 |   time_t tv_sec
+         8 |   long tv_nsec
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct iovec
+         0 |   void * iov_base
+         8 |   size_t iov_len
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::__libcpp_numeric_limits<_Bool, true> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::__libcpp_numeric_limits<float, true> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::__libcpp_numeric_limits<double, true> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::__libcpp_numeric_limits<long double, true> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__struct_double
+         0 |   long double __lx
+           | [sizeof=8, align=8,
+           |  nvsize=8, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::__struct_double4
+         0 |   double[4] __lx
+           | [sizeof=32, align=8,
+           |  nvsize=32, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::_AlignedAsT<unsigned long long> (empty)
+           | [sizeof=8, align=8,
+           |  nvsize=0, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::_AlignedAsT<double> (empty)
+           | [sizeof=8, align=8,
+           |  nvsize=0, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::_AlignedAsT<long double> (empty)
+           | [sizeof=8, align=8,
+           |  nvsize=0, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::_AlignedAsT<struct std::__struct_double> (empty)
+           | [sizeof=8, align=8,
+           |  nvsize=0, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::_AlignedAsT<struct std::__struct_double4> (empty)
+           | [sizeof=8, align=8,
+           |  nvsize=0, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::_AlignedAsT<int *> (empty)
+           | [sizeof=8, align=8,
+           |  nvsize=0, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::__max_align_impl<unsigned long long, double, long double, struct std::__struct_double, struct std::__struct_double4, int *> (empty)
+         0 |   struct std::_AlignedAsT<unsigned long long> (base) (empty)
+         8 |   struct std::_AlignedAsT<double> (base) (empty)
+        16 |   struct std::_AlignedAsT<long double> (base) (empty)
+        24 |   struct std::_AlignedAsT<struct std::__struct_double> (base) (empty)
+        32 |   struct std::_AlignedAsT<struct std::__struct_double4> (base) (empty)
+        40 |   struct std::_AlignedAsT<int *> (base) (empty)
+           | [sizeof=40, align=8,
+           |  nvsize=40, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::__get_as_integer_type_impl<1> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__get_as_integer_type_impl<2> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__get_as_integer_type_impl<4> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__get_as_integer_type_impl<8> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct __mbstate_t
+         0 |   unsigned int __opaque1
+         4 |   unsigned int __opaque2
+           | [sizeof=8, align=4,
+           |  nvsize=8, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct std::_CmpUnspecifiedParam (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::partial_ordering
+         0 |   _PartialOrdResult __value_
+           | [sizeof=1, align=1,
+           |  nvsize=1, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::weak_ordering
+         0 |   _ValueT __value_
+           | [sizeof=1, align=1,
+           |  nvsize=1, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::strong_ordering
+         0 |   _ValueT __value_
+           | [sizeof=1, align=1,
+           |  nvsize=1, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::__2::(lambda at /usr/include/c++/v1/__compare/synth_three_way.h:28:65) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::piecewise_construct_t (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__get_pair<0> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__get_pair<1> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::_PairT
+         0 |   size_t first
+         8 |   size_t second
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::hash<nullptr_t> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__iter_move::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__iter_concept_concept_test (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__iter_concept_category_test (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__iter_concept_random_fallback (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__begin::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__end::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__cbegin::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__cend::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__data::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__cdata::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::view_base (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__size::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__ssize::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__distance (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__advance (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__iter_swap::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__next (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__prev (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::dangling (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__empty::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::pmr::memory_resource
+         0 |   (memory_resource vftable pointer)
+           | [sizeof=8, align=8,
+           |  nvsize=8, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::allocator_arg_t (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__ignore_type (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::compare_three_way (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__priority_tag<0> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__strong_order::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__weak_order::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__partial_order::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__compare_partial_order_fallback::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__compare_strong_order_fallback::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__compare_weak_order_fallback::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__forward_args (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__value_init (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__from_tuple (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::tuple<> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::bad_cast (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::bad_typeid (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct (unnamed at /usr/include/wasm32-wasip1/stdlib.h:76:9)
+         0 |   int quot
+         4 |   int rem
+           | [sizeof=8, align=4,
+           |  nvsize=8, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct (unnamed at /usr/include/wasm32-wasip1/stdlib.h:77:9)
+         0 |   long quot
+         4 |   long rem
+           | [sizeof=8, align=4,
+           |  nvsize=8, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | struct (unnamed at /usr/include/wasm32-wasip1/stdlib.h:78:9)
+         0 |   long long quot
+         8 |   long long rem
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::exception_ptr
+         0 |   void * __ptr1_
+         8 |   void * __ptr2_
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::nested_exception
+         0 |   (nested_exception vftable pointer)
+         8 |   class std::exception_ptr __ptr_
+         8 |     void * __ptr1_
+        16 |     void * __ptr2_
+           | [sizeof=24, align=8,
+           |  nvsize=24, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::destroying_delete_t (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::in_place_t (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::_Algorithm::__copy (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::_Algorithm::__fill_n (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::_Algorithm::__for_each (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::_RangeAlgPolicy (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::_IterOps<_RangeAlgPolicy> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::_ClassicAlgPolicy (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::_IterOps<_ClassicAlgPolicy> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | union _G_fpos64_t
+         0 |   char[16] __opaque
+         0 |   long long __lldata
+         0 |   double __align
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::char_traits<char> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::char_traits<wchar_t> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::char_traits<char8_t> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::char_traits<char16_t> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::char_traits<char32_t> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__uninitialized_tag (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::logic_error (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::runtime_error (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::domain_error (empty)
+         0 |   class std::logic_error (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::invalid_argument (empty)
+         0 |   class std::logic_error (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::length_error (empty)
+         0 |   class std::logic_error (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::out_of_range (empty)
+         0 |   class std::logic_error (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::range_error (empty)
+         0 |   class std::runtime_error (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::overflow_error (empty)
+         0 |   class std::runtime_error (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::underflow_error (empty)
+         0 |   class std::runtime_error (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__copy_impl (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__destruct_n
+         0 |   size_t __size_
+           | [sizeof=8, align=8,
+           |  nvsize=8, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::plus<> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::minus<void> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::multiplies<void> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::divides<void> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::modulus<void> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::negate<void> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::bit_and<void> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::bit_not<void> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::bit_or<void> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::bit_xor<void> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::equal_to<void> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::not_equal_to<void> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::less<void> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::less_equal<void> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::greater_equal<void> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::greater<void> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::logical_and<void> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::logical_not<void> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::logical_or<void> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__itanium_array_cookie
+         0 |   size_t __element_count
+           | [sizeof=8, align=8,
+           |  nvsize=8, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::__private_constructor_tag (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__unique_ptr_array_bounds_stateless (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__unique_ptr_array_bounds_stored
+         0 |   size_t __size_
+           | [sizeof=8, align=8,
+           |  nvsize=8, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::equal_to (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::not_equal_to (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::less (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::less_equal (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::greater (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::greater_equal (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__libcpp_random_is_valid_realtype<float> (empty)
+         0 |   struct std::integral_constant<_Bool, true> (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__libcpp_random_is_valid_realtype<double> (empty)
+         0 |   struct std::integral_constant<_Bool, true> (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__libcpp_random_is_valid_realtype<long double> (empty)
+         0 |   struct std::integral_constant<_Bool, true> (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__libcpp_random_is_valid_inttype<int8_t> (empty)
+         0 |   struct std::integral_constant<_Bool, true> (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__libcpp_random_is_valid_inttype<short> (empty)
+         0 |   struct std::integral_constant<_Bool, true> (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__libcpp_random_is_valid_inttype<int> (empty)
+         0 |   struct std::integral_constant<_Bool, true> (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__libcpp_random_is_valid_inttype<long> (empty)
+         0 |   struct std::integral_constant<_Bool, true> (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__libcpp_random_is_valid_inttype<long long> (empty)
+         0 |   struct std::integral_constant<_Bool, true> (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__libcpp_random_is_valid_inttype<uint8_t> (empty)
+         0 |   struct std::integral_constant<_Bool, true> (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__libcpp_random_is_valid_inttype<unsigned short> (empty)
+         0 |   struct std::integral_constant<_Bool, true> (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__libcpp_random_is_valid_inttype<unsigned int> (empty)
+         0 |   struct std::integral_constant<_Bool, true> (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__libcpp_random_is_valid_inttype<unsigned long> (empty)
+         0 |   struct std::integral_constant<_Bool, true> (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__libcpp_random_is_valid_inttype<unsigned long long> (empty)
+         0 |   struct std::integral_constant<_Bool, true> (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::__libcpp_debug_randomizer
+         0 |   uint_fast64_t __state_
+         8 |   uint_fast64_t __inc_
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::__unsigned_integer_of_size<1> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__unsigned_integer_of_size<2> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__unsigned_integer_of_size<4> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__unsigned_integer_of_size<8> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__low_byte_fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__unique_copy_tags::__reread_from_input_tag (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__unique_copy_tags::__reread_from_output_tag (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__unique_copy_tags::__read_from_tmp_value_tag (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__adjacent_find (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__all_of (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__any_of (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__binary_search (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__clamp (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__find_if (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__find (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__copy (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__copy_backward (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__copy_if (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__copy_n (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__count (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__count_if (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__equal (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__equal_range (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__fill (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__fill_n (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__find_end (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__find_first_of (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__find_if_not (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__for_each (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__for_each_n (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__generate (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__generate_n (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__includes (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__inplace_merge (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__is_heap (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__is_heap_until (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__is_partitioned (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__is_permutation (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__is_sorted_until (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__is_sorted (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__lexicographical_compare (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__lower_bound (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__make_heap (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__max (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__max_element (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__merge (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__min (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__min_element (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__minmax (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__minmax_element (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__mismatch (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__move (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__move_backward (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__next_permutation (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__none_of (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__nth_element (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__partial_sort (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__partial_sort_copy (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__partition (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__partition_copy (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__partition_point (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__pop_heap (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__prev_permutation (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__push_heap (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__remove_if (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__remove (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__remove_copy_if (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__remove_copy (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__replace_if (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__replace (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__replace_copy_if (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__replace_copy (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__reverse (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__reverse_copy (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__rotate (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__rotate_copy (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__sample (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__search (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__search_n (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__set_difference (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__set_intersection (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__set_symmetric_difference (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__set_union (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__shuffle (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__sort (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__sort_heap (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__stable_partition (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__stable_sort (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__swap_ranges (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__transform (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__unique (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__unique_copy (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__upper_bound (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::__ll_mul<0, 0> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::chrono::steady_clock (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct tm
+         0 |   int tm_sec
+         4 |   int tm_min
+         8 |   int tm_hour
+        12 |   int tm_mday
+        16 |   int tm_mon
+        20 |   int tm_year
+        24 |   int tm_wday
+        28 |   int tm_yday
+        32 |   int tm_isdst
+        36 |   int tm_gmtoff
+        40 |   const char * tm_zone
+        48 |   int __tm_nsec
+           | [sizeof=56, align=8,
+           |  nvsize=56, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct itimerspec
+         0 |   struct timespec it_interval
+         0 |     time_t tv_sec
+         8 |     long tv_nsec
+        16 |   struct timespec it_value
+        16 |     time_t tv_sec
+        24 |     long tv_nsec
+           | [sizeof=32, align=8,
+           |  nvsize=32, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::chrono::system_clock (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__spinning_backoff_policy (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__libcpp_timed_backoff_policy (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::default_sentinel_t (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__check_tuple_constructor_fail (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__sfinae_ctor_base<false, false> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__sfinae_ctor_base<true, false> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__sfinae_ctor_base<false, true> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__sfinae_assign_base<false, false> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__sfinae_assign_base<true, false> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__sfinae_assign_base<false, true> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::monostate (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::hash<monostate> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::bad_variant_access (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__find_detail::__find_unambiguous_index_sfinae_impl<__not_found> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__find_detail::__find_unambiguous_index_sfinae_impl<__ambiguous> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__variant_detail::__valueless_t (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__variant_detail::__access::__union (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__variant_detail::__access::__base (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__variant_detail::__access::__variant (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__variant_detail::__visitation::__base (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__variant_detail::__visitation::__variant (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__variant_detail::__no_narrowing_check (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__variant_detail::__narrowing_check (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::unreachable_sentinel_t (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__rbegin::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__crbegin::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::ranges::__rend::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__crend::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::__shared_count
+         0 |   (__shared_count vftable pointer)
+         8 |   long __shared_owners_
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::__shared_weak_count
+         0 |   class std::__shared_count (primary base)
+         0 |     (__shared_count vftable pointer)
+         8 |     long __shared_owners_
+        16 |   long __shared_weak_owners_
+           | [sizeof=24, align=8,
+           |  nvsize=24, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::__always_false (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::bad_weak_ptr (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__for_overwrite_tag (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::allocator<__shared_ptr_dummy_rebind_allocator_type> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::owner_less<void> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::__sp_mut
+         0 |   void * __lx_
+           | [sizeof=8, align=8,
+           |  nvsize=8, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__construct_at (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__destroy_at (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__destroy (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__destroy_n (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__uninitialized_default_construct (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__uninitialized_default_construct_n (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__uninitialized_value_construct (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__uninitialized_value_construct_n (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__uninitialized_fill (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__uninitialized_fill_n (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__uninitialized_copy (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__uninitialized_copy_n (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__uninitialized_move (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::__uninitialized_move_n (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::bad_optional_access (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::nullopt_t::__secret_tag (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::nullopt_t (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__optional_construct_from_invoke_tag (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__uninitialized_size_tag (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__init_with_sentinel_tag (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__padding<0> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__compose_op (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::ranges::views::__all::__fn (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct lconv
+         0 |   char * decimal_point
+         8 |   char * thousands_sep
+        16 |   char * grouping
+        24 |   char * int_curr_symbol
+        32 |   char * currency_symbol
+        40 |   char * mon_decimal_point
+        48 |   char * mon_thousands_sep
+        56 |   char * mon_grouping
+        64 |   char * positive_sign
+        72 |   char * negative_sign
+        80 |   char int_frac_digits
+        81 |   char frac_digits
+        82 |   char p_cs_precedes
+        83 |   char p_sep_by_space
+        84 |   char n_cs_precedes
+        85 |   char n_sep_by_space
+        86 |   char p_sign_posn
+        87 |   char n_sign_posn
+        88 |   char int_p_cs_precedes
+        89 |   char int_p_sep_by_space
+        90 |   char int_n_cs_precedes
+        91 |   char int_n_sep_by_space
+        92 |   char int_p_sign_posn
+        93 |   char int_n_sign_posn
+           | [sizeof=96, align=8,
+           |  nvsize=96, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::__locale::__locale_t
+         0 |   const char * __locale_str_
+         8 |   __lconv_storage * __lc_
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::once_flag
+         0 |   _State_type __state_
+           | [sizeof=4, align=4,
+           |  nvsize=4, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | class std::locale
+         0 |   __imp * __locale_
+           | [sizeof=8, align=8,
+           |  nvsize=8, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::locale::facet
+         0 |   class std::__shared_count (primary base)
+         0 |     (__shared_count vftable pointer)
+         8 |     long __shared_owners_
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::locale::id
+         0 |   struct std::once_flag __flag_
+         0 |     _State_type __state_
+         4 |   int32_t __id_
+           | [sizeof=8, align=4,
+           |  nvsize=8, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | class std::ctype_base (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::ctype<wchar_t>
+         0 |   class std::locale::facet (primary base)
+         0 |     class std::__shared_count (primary base)
+         0 |       (__shared_count vftable pointer)
+         8 |       long __shared_owners_
+        16 |   class std::ctype_base (base) (empty)
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::ctype<char>
+         0 |   class std::locale::facet (primary base)
+         0 |     class std::__shared_count (primary base)
+         0 |       (__shared_count vftable pointer)
+         8 |       long __shared_owners_
+        16 |   class std::ctype_base (base) (empty)
+        16 |   const mask * __tab_
+        24 |   _Bool __del_
+           | [sizeof=32, align=8,
+           |  nvsize=32, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::ctype_byname<char>
+         0 |   class std::ctype<char> (primary base)
+         0 |     class std::locale::facet (primary base)
+         0 |       class std::__shared_count (primary base)
+         0 |         (__shared_count vftable pointer)
+         8 |         long __shared_owners_
+        16 |     class std::ctype_base (base) (empty)
+        16 |     const mask * __tab_
+        24 |     _Bool __del_
+        32 |   class std::__locale::__locale_t __l_
+        32 |     const char * __locale_str_
+        40 |     __lconv_storage * __lc_
+           | [sizeof=48, align=8,
+           |  nvsize=48, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::ctype_byname<wchar_t>
+         0 |   class std::ctype<wchar_t> (primary base)
+         0 |     class std::locale::facet (primary base)
+         0 |       class std::__shared_count (primary base)
+         0 |         (__shared_count vftable pointer)
+         8 |         long __shared_owners_
+        16 |     class std::ctype_base (base) (empty)
+        16 |   class std::__locale::__locale_t __l_
+        16 |     const char * __locale_str_
+        24 |     __lconv_storage * __lc_
+           | [sizeof=32, align=8,
+           |  nvsize=32, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::codecvt_base (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::codecvt<char, char, mbstate_t>
+         0 |   class std::locale::facet (primary base)
+         0 |     class std::__shared_count (primary base)
+         0 |       (__shared_count vftable pointer)
+         8 |       long __shared_owners_
+        16 |   class std::codecvt_base (base) (empty)
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::codecvt<wchar_t, char, mbstate_t>
+         0 |   class std::locale::facet (primary base)
+         0 |     class std::__shared_count (primary base)
+         0 |       (__shared_count vftable pointer)
+         8 |       long __shared_owners_
+        16 |   class std::codecvt_base (base) (empty)
+        16 |   class std::__locale::__locale_t __l_
+        16 |     const char * __locale_str_
+        24 |     __lconv_storage * __lc_
+           | [sizeof=32, align=8,
+           |  nvsize=32, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::codecvt<char16_t, char, mbstate_t>
+         0 |   class std::locale::facet (primary base)
+         0 |     class std::__shared_count (primary base)
+         0 |       (__shared_count vftable pointer)
+         8 |       long __shared_owners_
+        16 |   class std::codecvt_base (base) (empty)
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::codecvt<char16_t, char8_t, mbstate_t>
+         0 |   class std::locale::facet (primary base)
+         0 |     class std::__shared_count (primary base)
+         0 |       (__shared_count vftable pointer)
+         8 |       long __shared_owners_
+        16 |   class std::codecvt_base (base) (empty)
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::codecvt<char32_t, char, mbstate_t>
+         0 |   class std::locale::facet (primary base)
+         0 |     class std::__shared_count (primary base)
+         0 |       (__shared_count vftable pointer)
+         8 |       long __shared_owners_
+        16 |   class std::codecvt_base (base) (empty)
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::codecvt<char32_t, char8_t, mbstate_t>
+         0 |   class std::locale::facet (primary base)
+         0 |     class std::__shared_count (primary base)
+         0 |       (__shared_count vftable pointer)
+         8 |       long __shared_owners_
+        16 |   class std::codecvt_base (base) (empty)
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::__narrow_to_utf8<8> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__narrow_to_utf8<16>
+         0 |   class std::codecvt<char16_t, char, mbstate_t> (primary base)
+         0 |     class std::locale::facet (primary base)
+         0 |       class std::__shared_count (primary base)
+         0 |         (__shared_count vftable pointer)
+         8 |         long __shared_owners_
+        16 |     class std::codecvt_base (base) (empty)
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::__narrow_to_utf8<32>
+         0 |   class std::codecvt<char32_t, char, mbstate_t> (primary base)
+         0 |     class std::locale::facet (primary base)
+         0 |       class std::__shared_count (primary base)
+         0 |         (__shared_count vftable pointer)
+         8 |         long __shared_owners_
+        16 |     class std::codecvt_base (base) (empty)
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::__widen_from_utf8<8> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__widen_from_utf8<16>
+         0 |   class std::codecvt<char16_t, char, mbstate_t> (primary base)
+         0 |     class std::locale::facet (primary base)
+         0 |       class std::__shared_count (primary base)
+         0 |         (__shared_count vftable pointer)
+         8 |         long __shared_owners_
+        16 |     class std::codecvt_base (base) (empty)
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::__widen_from_utf8<32>
+         0 |   class std::codecvt<char32_t, char, mbstate_t> (primary base)
+         0 |     class std::locale::facet (primary base)
+         0 |       class std::__shared_count (primary base)
+         0 |         (__shared_count vftable pointer)
+         8 |         long __shared_owners_
+        16 |     class std::codecvt_base (base) (empty)
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::messages_base (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::error_category
+         0 |   (error_category vftable pointer)
+           | [sizeof=8, align=8,
+           |  nvsize=8, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::__do_message
+         0 |   class std::error_category (primary base)
+         0 |     (error_category vftable pointer)
+           | [sizeof=8, align=8,
+           |  nvsize=8, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::is_error_condition_enum<errc> (empty)
+         0 |   struct std::integral_constant<_Bool, true> (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::error_condition
+         0 |   int __val_
+         8 |   const error_category * __cat_
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::hash<error_condition> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::error_code
+         0 |   int __val_
+         8 |   const error_category * __cat_
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::hash<error_code> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::system_error
+         0 |   class std::runtime_error (base) (empty)
+         0 |   class std::error_code __ec_
+         0 |     int __val_
+         8 |     const error_category * __cat_
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::ios_base
+         0 |   (ios_base vftable pointer)
+         8 |   fmtflags __fmtflags_
+        16 |   streamsize __precision_
+        24 |   streamsize __width_
+        32 |   iostate __rdstate_
+        36 |   iostate __exceptions_
+        40 |   void * __rdbuf_
+        48 |   void * __loc_
+        56 |   event_callback * __fn_
+        64 |   int * __index_
+        72 |   size_t __event_size_
+        80 |   size_t __event_cap_
+        88 |   long * __iarray_
+        96 |   size_t __iarray_size_
+       104 |   size_t __iarray_cap_
+       112 |   void ** __parray_
+       120 |   size_t __parray_size_
+       128 |   size_t __parray_cap_
+           | [sizeof=136, align=8,
+           |  nvsize=136, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::is_error_code_enum<io_errc> (empty)
+         0 |   struct std::integral_constant<_Bool, true> (base) (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::ios_base::failure
+         0 |   class std::system_error (base)
+         0 |     class std::runtime_error (base) (empty)
+         0 |     class std::error_code __ec_
+         0 |       int __val_
+         8 |       const error_category * __cat_
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::ios_base::Init (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::mutex
+         0 |   __libcpp_mutex_t __m_
+           | [sizeof=8, align=8,
+           |  nvsize=8, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::defer_lock_t (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::try_to_lock_t (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::adopt_lock_t (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::condition_variable
+         0 |   __libcpp_condvar_t __cv_
+           | [sizeof=8, align=8,
+           |  nvsize=8, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::__thread_id
+         0 |   __libcpp_thread_id __id_
+           | [sizeof=4, align=4,
+           |  nvsize=4, nvalign=4]
+
+*** Dumping AST Record Layout
+         0 | class std::recursive_mutex
+         0 |   __libcpp_recursive_mutex_t __m_
+           | [sizeof=40, align=8,
+           |  nvsize=40, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::timed_mutex
+         0 |   class std::mutex __m_
+         0 |     __libcpp_mutex_t __m_
+         8 |   class std::condition_variable __cv_
+         8 |     __libcpp_condvar_t __cv_
+        16 |   _Bool __locked_
+           | [sizeof=24, align=8,
+           |  nvsize=24, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::recursive_timed_mutex
+         0 |   class std::mutex __m_
+         0 |     __libcpp_mutex_t __m_
+         8 |   class std::condition_variable __cv_
+         8 |     __libcpp_condvar_t __cv_
+        16 |   size_t __count_
+        24 |   class std::__thread_id __id_
+        24 |     __libcpp_thread_id __id_
+           | [sizeof=32, align=8,
+           |  nvsize=32, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::scoped_lock<> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::money_base::pattern
+         0 |   char[4] field
+           | [sizeof=4, align=1,
+           |  nvsize=4, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::money_base (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::to_chars_result
+         0 |   char * ptr
+         8 |   errc ec
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::__to_chars_result
+         0 |   char * __ptr
+         8 |   errc __ec
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct std::__itoa::__integral<2> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__itoa::__integral<8> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__itoa::__integral<16> (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__num_get_base (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | struct std::__num_put_base (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::time_base (empty)
+           | [sizeof=1, align=1,
+           |  nvsize=0, nvalign=1]
+
+*** Dumping AST Record Layout
+         0 | class std::__time_get
+         0 |   class std::__locale::__locale_t __loc_
+         0 |     const char * __locale_str_
+         8 |     __lconv_storage * __lc_
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | class std::__time_put
+         0 |   class std::__locale::__locale_t __loc_
+         0 |     const char * __locale_str_
+         8 |     __lconv_storage * __lc_
+           | [sizeof=16, align=8,
+           |  nvsize=16, nvalign=8]

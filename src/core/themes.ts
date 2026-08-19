@@ -506,7 +506,7 @@ export const PRESET_SPECS: ThemeSpec[] = [
       annotation: '#c792ea',
     },
     {
-      bg: '#0f1420',
+      bg: '#010308',
       fg: '#d6deeb',
       lineNo: '#3b4763',
       cursor: '#80a4ff',

@@ -60,7 +60,7 @@ npm test             # unit tests (fixture-backed; no clang download)
 npm run e2e          # Playwright against the production build (downloads clang once)
 npm run check        # svelte-check + tsc (strict)
 npm run lint         # eslint (strict, type-checked)
-npm run fixtures     # re-capture clang output fixtures with the real wasm clang
+npm run fixtures     # re-capture clang output fixtures + the layout corpus
 ABIX_REAL_CLANG=1 npx vitest run tests/unit/analyzer.real.test.ts   # integration
 ```
 
@@ -75,6 +75,9 @@ src/compiler/     typed worker protocol, clang.worker (wasm host), ClangClient
 src/state/        store (Svelte 5 runes), session (orchestration, hover, type docs), theme
 src/ui/           Svelte components, Monaco setup, dockview integration, themes
 tests/unit/       vitest (fixtures in tests/fixtures), tests/e2e/ Playwright
+                  properties.test.ts checks laws against generated records *and*
+                  tests/fixtures/layouts/ — real clang dumps of every shipped
+                  example, captured by corpus.capture.test.ts (see corpus.ts)
 tools/            node-clang.mjs (clang in Node), vendor-clang.sh
 public/vendor/    YoWASP JS runtime for clang (see NOTICE.md)
 ```

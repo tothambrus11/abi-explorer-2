@@ -1,0 +1,60 @@
+
+*** Dumping AST Record Layout
+         0 | struct __va_list_tag
+         0 |   unsigned int gp_offset
+         4 |   unsigned int fp_offset
+         8 |   void * overflow_arg_area
+        16 |   void * reg_save_area
+           | [sizeof=24, dsize=24, align=8,
+           |  nvsize=24, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct __NSConstantString_tag
+         0 |   const int * isa
+         8 |   int flags
+        16 |   const char * str
+        24 |   long length
+           | [sizeof=32, dsize=32, align=8,
+           |  nvsize=32, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct A
+         0 |   (A vtable pointer)
+         8 |   int a
+           | [sizeof=16, dsize=12, align=8,
+           |  nvsize=12, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct B
+         0 |   (B vtable pointer)
+         8 |   int b
+        16 |   struct A (virtual base)
+        16 |     (A vtable pointer)
+        24 |     int a
+           | [sizeof=32, dsize=28, align=8,
+           |  nvsize=12, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct C
+         0 |   (C vtable pointer)
+         8 |   int c
+        16 |   struct A (virtual base)
+        16 |     (A vtable pointer)
+        24 |     int a
+           | [sizeof=32, dsize=28, align=8,
+           |  nvsize=12, nvalign=8]
+
+*** Dumping AST Record Layout
+         0 | struct D
+         0 |   struct B (primary base)
+         0 |     (B vtable pointer)
+         8 |     int b
+        16 |   struct C (base)
+        16 |     (C vtable pointer)
+        24 |     int c
+        28 |   int d
+        32 |   struct A (virtual base)
+        32 |     (A vtable pointer)
+        40 |     int a
+           | [sizeof=48, dsize=44, align=8,
+           |  nvsize=32, nvalign=8]
