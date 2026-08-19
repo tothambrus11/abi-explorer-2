@@ -380,7 +380,7 @@
        "type": "unsigned int"
       }
      ],
-     "paddingBits": 40,
+     "paddingBytes": 5,
      "paddingRuns": [
       {
        "endBits": 32,

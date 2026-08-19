@@ -376,7 +376,7 @@
        "type": "unsigned int"
       }
      ],
-     "paddingBits": 48,
+     "paddingBytes": 6,
      "paddingRuns": [
       {
        "endBits": 32,

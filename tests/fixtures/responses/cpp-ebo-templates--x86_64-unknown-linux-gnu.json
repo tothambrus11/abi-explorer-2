@@ -69,7 +69,7 @@
      "groups": [],
      "leaves": [],
      "markers": [],
-     "paddingBits": 8,
+     "paddingBytes": 1,
      "paddingRuns": [
       {
        "endBits": 8,
@@ -214,7 +214,7 @@
        "type": "Empty"
       }
      ],
-     "paddingBits": 0,
+     "paddingBytes": 0,
      "paddingRuns": [],
      "tree": [
       {
@@ -367,7 +367,7 @@
       }
      ],
      "markers": [],
-     "paddingBits": 56,
+     "paddingBytes": 7,
      "paddingRuns": [
       {
        "endBits": 128,
@@ -520,7 +520,7 @@
       }
      ],
      "markers": [],
-     "paddingBits": 0,
+     "paddingBytes": 0,
      "paddingRuns": [],
      "tree": [
       {

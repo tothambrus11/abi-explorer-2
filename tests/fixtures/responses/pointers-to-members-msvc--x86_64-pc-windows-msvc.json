@@ -159,7 +159,7 @@
       }
      ],
      "markers": [],
-     "paddingBits": 32,
+     "paddingBytes": 4,
      "paddingRuns": [
       {
        "endBits": 128,

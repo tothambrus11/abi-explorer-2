@@ -343,7 +343,7 @@
       }
      ],
      "markers": [],
-     "paddingBits": 104,
+     "paddingBytes": 13,
      "paddingRuns": [
       {
        "endBits": 32,

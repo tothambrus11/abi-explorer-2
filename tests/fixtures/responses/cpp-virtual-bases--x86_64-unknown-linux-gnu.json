@@ -128,7 +128,7 @@
       }
      ],
      "markers": [],
-     "paddingBits": 32,
+     "paddingBytes": 4,
      "paddingRuns": [
       {
        "endBits": 128,
@@ -262,7 +262,7 @@
       }
      ],
      "markers": [],
-     "paddingBits": 56,
+     "paddingBytes": 7,
      "paddingRuns": [
       {
        "endBits": 128,
@@ -545,7 +545,7 @@
       }
      ],
      "markers": [],
-     "paddingBits": 80,
+     "paddingBytes": 10,
      "paddingRuns": [
       {
        "endBits": 128,
@@ -788,7 +788,7 @@
       }
      ],
      "markers": [],
-     "paddingBits": 32,
+     "paddingBytes": 4,
      "paddingRuns": [
       {
        "endBits": 256,

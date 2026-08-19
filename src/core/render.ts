@@ -91,7 +91,11 @@ export interface WireRender {
   markers: WireMarker[];
   tree: WireNode[];
   paddingRuns: { startBits: number; endBits: number }[];
-  paddingBits: number | null;
+  /**
+   * Bytes those runs cover — not the record's bit-exact `paddingBits`. Null
+   * when the record was too large to scan.
+   */
+  paddingBytes: number | null;
 }
 
 export interface WireField {
@@ -228,9 +232,7 @@ export function fromWire(record: RecordLayout, wire: WireRender): RenderModel {
     tree: hydrate(wire.tree, leaves, groups, 0),
     paddings,
     sizeBits: record.sizeBytes * 8,
-    // Null means the record was too large to scan; the views show nothing
-    // rather than a confident zero.
-    paddingBytes: wire.paddingBits === null ? null : wire.paddingBits / 8,
+    paddingBytes: wire.paddingBytes,
   };
   assignColors(model);
   return model;

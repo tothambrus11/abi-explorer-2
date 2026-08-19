@@ -292,7 +292,7 @@
        "type": "unsigned int"
       }
      ],
-     "paddingBits": 72,
+     "paddingBytes": 9,
      "paddingRuns": [
       {
        "endBits": 32,

@@ -90,7 +90,7 @@
      "groups": [],
      "leaves": [],
      "markers": [],
-     "paddingBits": 8,
+     "paddingBytes": 1,
      "paddingRuns": [
       {
        "endBits": 8,
@@ -235,7 +235,7 @@
       }
      ],
      "markers": [],
-     "paddingBits": 24,
+     "paddingBytes": 3,
      "paddingRuns": [
       {
        "endBits": 32,
@@ -393,7 +393,7 @@
       }
      ],
      "markers": [],
-     "paddingBits": 24,
+     "paddingBytes": 3,
      "paddingRuns": [
       {
        "endBits": 32,
