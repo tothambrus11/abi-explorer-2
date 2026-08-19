@@ -104,7 +104,7 @@ cd ../clang-abi-wasm && scripts/build.sh wasm && scripts/dev-link.sh ../abi-expl
 - **Generated** — `properties.real.test.ts` emits random record declarations
   (bit-fields straddling storage units, virtual bases, anonymous aggregates,
   over-aligned members, packed structs), compiles them for real on three
-  targets, and checks the same laws. It generates *source*, not layouts: a
+  targets, and checks the same laws. It generates _source_, not layouts: a
   generator that invented layouts could only produce what its author already
   believed clang does.
 - **Real** — `abi.real.test.ts` drives the shipped module end to end.
@@ -130,7 +130,9 @@ public/vendor/abi  the layout module the site serves
 ## Deployment
 
 Cloudflare Pages via Git integration: build command `npm run build`, output
-directory `dist`. CI (`.github/workflows/ci.yml`) fetches the pinned
+directory `dist`. The build fetches the pinned module first — a site built
+without it loads and then cannot answer anything — and keeps going on a network
+failure only when the module is already there. CI (`.github/workflows/ci.yml`) fetches the pinned
 clang-abi-wasm release and then runs lint, type-check, the unit suites
 (including the ones that drive the real module), the build, and Playwright — all
 against the same copy of the module the site serves.

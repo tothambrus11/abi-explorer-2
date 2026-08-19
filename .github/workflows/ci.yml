@@ -16,8 +16,10 @@ jobs:
           cache: npm
       - run: npm ci
       # The layout module the site serves. Everything past this point — the
-      # build, the real-clang suites, the e2e run — uses the same copy, so a
-      # release that changed an answer fails here rather than in production.
+      # unit suites that drive it, the build, the e2e run — uses the same copy,
+      # so a release that changed an answer fails here rather than in
+      # production. `npm run build` would fetch it anyway; doing it up front
+      # means the test suites see it too.
       - name: Fetch the clang-abi-wasm release
         run: npm run abi:fetch
       - run: npm run lint
