@@ -69,7 +69,10 @@ crc_hi; };` shows a ring for the anonymous member and a colour for each
 
 ## Phase 3 — grid + tree
 
-- [ ] **3.1** base bands in the byte grid (vptr / inherited fields / base padding).
+- [x] **3.1** Base bands: the byte grid brackets the bytes a base subobject
+      contributes — its vtable pointer, its fields and its internal padding —
+      while the derived class's own fields sit outside. Drawn per cell, so a
+      band survives row wrapping; empty bases occupy nothing and get none.
 - [x] **3.2** Drilling: clicking a compound member's name in the tree inspects
       the record it is an instance of (hover still only previews). An explicitly
       selected record is always shown, so a nested anonymous member — which is

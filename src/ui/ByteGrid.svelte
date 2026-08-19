@@ -24,6 +24,23 @@
     estimated: boolean;
   }
 
+  /**
+   * Bytes belonging to a base subobject, so the grid can bracket them: the
+   * derived class's own fields sit outside the band, and what the base
+   * contributes — its vtable pointer, its fields, its internal padding — sits
+   * inside. Empty bases occupy nothing and get no band.
+   */
+  const bands = $derived.by((): Map<number, { first: boolean; last: boolean }> => {
+    const out = new Map<number, { first: boolean; last: boolean }>();
+    for (const g of model.groups) {
+      if (!g.isBase || g.path.length > 0 || !g.sizeBits) continue;
+      const from = Math.floor(g.offsetBits / 8);
+      const to = Math.ceil((g.offsetBits + g.sizeBits) / 8);
+      for (let b = from; b < to; b++) out.set(b, { first: b === from, last: b === to - 1 });
+    }
+    return out;
+  });
+
   const cells = $derived.by((): Cell[] => {
     const byByte = new Map<number, number[]>();
     const bitBytes = new Set<number>();
@@ -139,8 +156,15 @@
             <div class="cell void"></div>
           {:else}
             {@const cell = cells[b]!}
+            {@const band = bands.get(b)}
             {#if cell.bits}
-              <div class="cell bits" role="presentation">
+              <div
+                class="cell bits"
+                class:band
+                class:band-first={band?.first}
+                class:band-last={band?.last}
+                role="presentation"
+              >
                 {#each cell.bits as owner, bit (bit)}
                   <div
                     class="bit {owner === null ? 'pad' : model.leaves[owner]!.colorClass}"
@@ -156,6 +180,9 @@
             {:else if cell.leaves.length === 0}
               <div
                 class="cell pad"
+                class:band
+                class:band-first={band?.first}
+                class:band-last={band?.last}
                 role="presentation"
                 onmouseenter={(e) => {
                   enter(null, b, e);
@@ -167,6 +194,9 @@
                 class:start={cell.start}
                 class:end={cell.end}
                 class:estimated={cell.estimated}
+                class:band
+                class:band-first={band?.first}
+                class:band-last={band?.last}
                 class:hovered={hovered.has(cell.leaves[0]!)}
                 role="presentation"
                 onmouseenter={(e) => {
@@ -177,6 +207,9 @@
               <div
                 class="cell multi"
                 class:start={cell.start}
+                class:band
+                class:band-first={band?.first}
+                class:band-last={band?.last}
                 class:hovered={cell.leaves.some((li) => hovered.has(li))}
                 style:background={stripe(cell.leaves)}
                 role="presentation"
@@ -193,6 +226,33 @@
 {/if}
 
 <style>
+  /* Base subobject band: brackets the bytes a base contributes, so the vtable
+     pointer, its fields and its internal padding read as one region while the
+     derived class's own fields sit outside it. */
+  .cell.band {
+    box-shadow:
+      inset 0 2px 0 var(--band-ink),
+      inset 0 -2px 0 var(--band-ink);
+  }
+  .cell.band-first {
+    box-shadow:
+      inset 0 2px 0 var(--band-ink),
+      inset 0 -2px 0 var(--band-ink),
+      inset 2px 0 0 var(--band-ink);
+  }
+  .cell.band-last {
+    box-shadow:
+      inset 0 2px 0 var(--band-ink),
+      inset 0 -2px 0 var(--band-ink),
+      inset -2px 0 0 var(--band-ink);
+  }
+  .cell.band-first.band-last {
+    box-shadow: inset 0 0 0 2px var(--band-ink);
+  }
+  .grid {
+    --band-ink: color-mix(in srgb, var(--text-primary) 62%, transparent);
+  }
+
   .note {
     color: var(--text-secondary);
     font-size: 12.5px;

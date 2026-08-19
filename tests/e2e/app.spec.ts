@@ -227,6 +227,21 @@ test.describe('ABI Explorer', () => {
     await expect(header).toHaveAttribute('aria-selected', 'true');
   });
 
+  test('the byte grid brackets what a base subobject contributes', async ({ page }) => {
+    await waitReady(page);
+    await page.selectOption('#example', '4');
+    await expect
+      .poll(() => page.locator('.record .title').textContent())
+      .toContain('struct Diamond');
+    // Diamond is 32 B; the virtual Base occupies bytes 16..27 (its vtable
+    // pointer and `x`), so exactly those bytes are banded — the derived
+    // class's own fields sit outside.
+    const banded = page.locator('.grid .cell.band');
+    await expect(banded).toHaveCount(12);
+    await expect(page.locator('.grid .cell.band-first')).toHaveCount(1);
+    await expect(page.locator('.grid .cell.band-last')).toHaveCount(1);
+  });
+
   test('C++: virtual bases on MSVC and Itanium, private members measured', async ({ page }) => {
     await waitReady(page);
     await page.selectOption('#example', '4');
