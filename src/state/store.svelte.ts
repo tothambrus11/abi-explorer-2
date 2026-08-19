@@ -12,11 +12,17 @@ import {
   type Language,
 } from '$core/options';
 import { EXAMPLES } from '$core/targets';
-import { anonymousLocationFilter, isAnonymousRecord, recordKey } from '$core/layout-parser';
+import {
+  anonymousLocationFilter,
+  isAnonymousRecord,
+  isLibraryRecord,
+  recordKey,
+} from '$core/layout-parser';
 import { sourceExtension } from '$core/options';
 import { assignColors, buildRenderModel } from '$core/model';
 import type { RenderModel } from '$core/types';
 import type { ViewMode } from '$core/url-state';
+import { EMPTY_HOVER } from './hover';
 
 export type AnalysisStatus =
   | { kind: 'idle' }
@@ -47,14 +53,6 @@ export interface Hover {
   /** Anchor for the tooltip (grid/table hover only). */
   tooltip: { html: string; x: number; y: number } | null;
 }
-
-const EMPTY_HOVER: Hover = {
-  members: [],
-  line: null,
-  nameRange: null,
-  inlay: null,
-  tooltip: null,
-};
 
 const VIEW_KEY = 'abix-view';
 
@@ -89,19 +87,20 @@ class Store {
 
   // -------------------------------------------------------- derived ----
 
-  /** Records worth showing (no compiler-internal or anonymous ones unless asked). */
+  /** Records worth showing (no library, compiler-internal or anonymous ones unless asked). */
   visibleRecords = $derived.by(() => {
     const a = this.analysis;
     if (!a) return [];
     const mainFile = 'input.' + sourceExtension(a.options.lang);
-    return a.userRecords.filter(
-      (r) =>
-        this.showInternal ||
-        // Nested anonymous records are shown inline in their parent; top-level
-        // ones from the user's file (`typedef struct { … } T;`) are records of their own.
-        !isAnonymousRecord(r) ||
-        anonymousLocationFilter(r, mainFile) !== null,
-    );
+    return a.userRecords.filter((r) => {
+      if (this.showInternal) return true;
+      // A single `#include <string>` lays out >1000 library records; they are
+      // not what the user asked about.
+      if (isLibraryRecord(r.name)) return false;
+      // Nested anonymous records are shown inline in their parent; top-level
+      // ones from the user's file (`typedef struct { … } T;`) are records of their own.
+      return !isAnonymousRecord(r) || anonymousLocationFilter(r, mainFile) !== null;
+    });
   });
 
   /** The record shown in tabs mode (falls back to the last one). */

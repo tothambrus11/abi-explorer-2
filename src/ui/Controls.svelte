@@ -6,10 +6,12 @@
   import { tooltip } from './tooltip';
 
   const CUSTOM = '__custom__';
-  const LANGS: { id: Language; label: string; tip: string }[] = [
+  // `soon` marks a language with no backend yet: selectable would silently
+  // compile the source as C and label the result Hylo.
+  const LANGS: { id: Language; label: string; tip: string; soon?: boolean }[] = [
     { id: 'c', label: 'C', tip: 'Compile as C' },
     { id: 'c++', label: 'C++', tip: 'Compile as C++' },
-    { id: 'hylo', label: 'Hylo', tip: 'Hylo (coming soon)' },
+    { id: 'hylo', label: 'Hylo', tip: 'Hylo — not supported yet', soon: true },
   ];
   let selectValue = $state(isKnownTriple(store.options.triple) ? store.options.triple : CUSTOM);
   let customTriple = $state(isKnownTriple(store.options.triple) ? '' : store.options.triple);
@@ -42,12 +44,13 @@
   <div class="group">
     <div class="segmented" role="radiogroup" aria-label="Language">
       {#each LANGS as l (l.id)}
-        <label use:tooltip={l.tip}
+        <label use:tooltip={l.tip} class:soon={l.soon}
           ><input
             type="radio"
             name="lang"
             value={l.id}
             checked={store.options.lang === l.id}
+            disabled={l.soon}
             onchange={() => {
               store.setLanguage(l.id);
             }}
@@ -169,9 +172,9 @@
       {/if}
       <label
         class="opt check"
-        use:tooltip={'Also list clang-internal records (e.g. __va_list_tag) and anonymous ones'}
+        use:tooltip={'Also list library records (std::…, reserved __ names), clang-internal ones (e.g. __va_list_tag) and anonymous ones'}
         ><input type="checkbox" id="show-internal" bind:checked={store.showInternal} /><span
-          >Show compiler-internal &amp; anonymous records</span
+          >Show library, compiler-internal &amp; anonymous records</span
         ></label
       >
     </div>
@@ -242,6 +245,14 @@
   }
   .segmented input:focus-visible + span {
     outline: 2px solid var(--accent);
+  }
+  /* A language with no backend yet: visibly present, not choosable. */
+  .segmented input:disabled + span {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .segmented input:disabled + span:hover {
+    color: var(--text-muted);
   }
   .more summary {
     cursor: pointer;

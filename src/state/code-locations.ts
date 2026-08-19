@@ -4,7 +4,12 @@
 
 import type { FieldLocation } from '$core/ast-locations';
 import { matchItemsToLocations, unqualifiedName } from '$core/ast-locations';
-import { isAnonymousRecord, stripRecordKeyword } from '$core/layout-parser';
+import {
+  isAnonymousRecord,
+  isLibraryRecord,
+  stripAnonymousNamespace,
+  stripRecordKeyword,
+} from '$core/layout-parser';
 import { findRecord, type RecordIndex } from '$core/probes';
 import { isNameable } from '$core/model';
 import type { Group, Leaf, RenderModel } from '$core/types';
@@ -81,7 +86,8 @@ export interface LineIndex {
   groupLocations: Map<string, Map<number, FieldLocation>>;
 }
 
-const EMPTY_INDEX: LineIndex = {
+/** The index before any AST dump has arrived. */
+export const EMPTY_INDEX: LineIndex = {
   lines: new Map(),
   leafLocations: new Map(),
   groupLocations: new Map(),
@@ -98,10 +104,9 @@ export function collectLocateOwners(
   models: Map<string, RenderModel>,
   recordIndex: RecordIndex,
 ): Set<string> {
-  const isLibrary = (name: string) => /^(?:std::|__)|::__/.test(name);
   const top = (name: string) => {
-    if (isLibrary(name)) return '';
-    return unqualifiedName(name.replace(/\(anonymous namespace\)::/g, '').split('::')[0] ?? '');
+    if (isLibraryRecord(name)) return '';
+    return unqualifiedName(stripAnonymousNamespace(name).split('::')[0] ?? '');
   };
   const owners = new Set<string>();
   for (const model of models.values()) {
@@ -111,7 +116,7 @@ export function collectLocateOwners(
       owners.add(top(g.owner));
       const typeName = stripRecordKeyword(g.type);
       const rec = findRecord(typeName, recordIndex);
-      if ((!rec || isAnonymousRecord(rec)) && !isLibrary(typeName)) {
+      if ((!rec || isAnonymousRecord(rec)) && !isLibraryRecord(typeName)) {
         owners.add(unqualifiedName(typeName));
       }
     }
@@ -120,11 +125,20 @@ export function collectLocateOwners(
   return owners;
 }
 
-/** Explicit member alignments (AlignedAttr) keyed `<unqualified owner> <field>`. */
+/**
+ * Explicit member alignments (AlignedAttr), keyed `<owner> <field>` under both
+ * the qualified owner (`ns::S x`, which is how the layout dump names a record)
+ * and the unqualified one (`S x`). The qualified key is the precise one — two
+ * same-named records in different namespaces would otherwise share an entry —
+ * and the unqualified key stays as a fallback for records whose dumped name and
+ * AST scope path do not spell out the same way.
+ */
 export function collectMemberAligns(fields: FieldLocation[]): Map<string, number> {
   const aligns = new Map<string, number>();
   for (const f of fields) {
-    if (f.alignAttr !== undefined) aligns.set(f.owner + ' ' + f.name, f.alignAttr);
+    if (f.alignAttr === undefined) continue;
+    if (f.qualifiedOwner) aligns.set(f.qualifiedOwner + ' ' + f.name, f.alignAttr);
+    aligns.set(f.owner + ' ' + f.name, f.alignAttr);
   }
   return aligns;
 }

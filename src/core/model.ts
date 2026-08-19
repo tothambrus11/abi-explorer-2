@@ -32,8 +32,9 @@ export interface ModelInputs {
   memberSizes: MemberSizes;
   /**
    * Explicit member alignments (`_Alignas`/`alignas`) as evaluated by clang in
-   * the AST, keyed `<unqualified owner> <field name>`; probes measure the
-   * member's *type*, so these override when larger.
+   * the AST, keyed `<owner> <field name>` under both the qualified and the
+   * unqualified owner name; probes measure the member's *type*, so these
+   * override when larger.
    */
   memberAligns?: Map<string, number>;
 }
@@ -52,7 +53,10 @@ interface ProbeScope {
 export function buildRenderModel(record: RecordLayout, inputs: ModelInputs): RenderModel {
   const { scalars, recordIndex, memberSizes } = inputs;
   const memberAligns = inputs.memberAligns;
+  // Prefer the qualified owner (the layout dump's own spelling of the record);
+  // fall back to the unqualified name, which is ambiguous across namespaces.
   const attrAlign = (owner: RecordLayout, name: string): number | undefined =>
+    memberAligns?.get(owner.name + ' ' + name) ??
     memberAligns?.get(unqualifiedName(owner.name) + ' ' + name);
   const leaves: Leaf[] = [];
   const groups: Group[] = [];

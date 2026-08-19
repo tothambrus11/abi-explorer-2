@@ -9,10 +9,22 @@
 // type-string interpretation happens on our side.
 
 import type { ProbeResult, RecordLayout } from './types';
-import { isAnonymousRecord, isInternalRecord, stripRecordKeyword } from './layout-parser';
+import {
+  hasAnonymousSpelling,
+  isAnonymousRecord,
+  isInternalRecord,
+  stripAnonymousNamespace,
+  stripRecordKeyword,
+} from './layout-parser';
 import { parseDiagnostics } from './diagnostics';
 
-/** Static probes compiled as a second TU next to the user's code. */
+/**
+ * Static probes compiled as a second TU next to the user's code. Only `ptr` and
+ * `int` are read today (vtable/vbtable pointers, and the MS ABI's 4-byte
+ * vtordisp); the rest are kept because the TU is compiled once per option set
+ * and cached, so the marginal cost is nil, while re-adding one would invalidate
+ * every recorded fixture.
+ */
 export const STATIC_PROBE_SOURCE = `
 struct __abix_s_ptr { void *v; };
 struct __abix_s_fnptr { void (*v)(void); };
@@ -90,24 +102,20 @@ export interface ProbeSpec {
   attempt: number;
 }
 
-/**
- * How clang prints a record living in an anonymous namespace; such a record
- * is spellable in its own TU by dropping that (unnameable) prefix.
- */
-const ANON_NAMESPACE_RE = /\(anonymous namespace\)::/g;
-
 /** Can this record be named in an expression cast like `((struct X*)0)`? */
 export function isSpellableRecord(rec: RecordLayout): boolean {
   return (
     !isInternalRecord(rec) &&
     !isAnonymousRecord(rec) &&
-    !/\((?:anonymous|unnamed|lambda)/.test(rec.name.replace(ANON_NAMESPACE_RE, ''))
+    // The anonymous-namespace qualifier is dropped first: such a record *is*
+    // nameable in its own TU, unlike a genuinely unnamed type.
+    !hasAnonymousSpelling(stripAnonymousNamespace(rec.name))
   );
 }
 
 /** Spellings that may name the record in an expression, most specific first. */
 function recordSpellings(rec: RecordLayout): string[] {
-  const name = rec.name.replace(ANON_NAMESPACE_RE, '');
+  const name = stripAnonymousNamespace(rec.name);
   return [...new Set([`${rec.kind} ${name}`, name])];
 }
 
@@ -159,7 +167,7 @@ export function buildFieldProbes(records: RecordLayout[], recordIndex: RecordInd
         // Last resort for records that cannot be named at file scope (local
         // classes, an unclosed namespace while typing): the type spelling as
         // printed in the dump, which is valid for builtins/pointers/arrays.
-        if (row.type && !isRef && !/\((?:anonymous|unnamed|lambda)/.test(row.type)) {
+        if (row.type && !isRef && !hasAnonymousSpelling(row.type)) {
           decls.push(`__typeof__(${row.type}) v;`);
         }
         specs.push({ index: specs.length, key, decls, attempt: 0 });

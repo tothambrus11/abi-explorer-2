@@ -45,11 +45,21 @@ test.describe('ABI Explorer', () => {
         get: () => ({ saveData: true, effectiveType: '4g' }),
       });
     });
+    // Watch for the bundle itself, not just the prompt: the gate is only real
+    // if no byte of clang is requested before the click.
+    let tarballRequests = 0;
+    await page.route('**/registry.npmjs.org/**', (route) => {
+      tarballRequests++;
+      return route.continue();
+    });
     await page.goto('/');
     // Nothing is fetched until the user agrees; the results pane stays gated.
     await expect(page.locator('#allow-download')).toBeVisible();
     await expect(page.locator('#consent-text')).toContainText('27 MB');
     await expect(page.locator('#results')).toHaveCount(0);
+    // Give a stray eager start time to show itself before asserting.
+    await page.waitForTimeout(2_000);
+    expect(tarballRequests, 'clang requested before consent').toBe(0);
 
     await page.click('#allow-download');
     await expect(page.locator('#allow-download')).toHaveCount(0);

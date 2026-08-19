@@ -13,7 +13,12 @@ import {
   buildFieldProbes,
   buildRecordIndex,
 } from '$core/probes';
-import { parseRecordLayouts } from '$core/layout-parser';
+import {
+  hasAnonymousSpelling,
+  isLibraryRecord,
+  parseRecordLayouts,
+  stripAnonymousNamespace,
+} from '$core/layout-parser';
 import { splitJsonDocuments, unqualifiedName } from '$core/ast-locations';
 
 describe('diagnostics', () => {
@@ -237,5 +242,43 @@ describe('ast helpers', () => {
     ]);
     expect(unqualifiedName('ns::Outer::Inner<int, std::pair<a,b>>')).toBe('Inner');
     expect(unqualifiedName('X::(unnamed at f.c:1:1)')).toBe('');
+  });
+
+  it('treats an anonymous namespace as a scope, not an unnamed type', () => {
+    // The qualifier is unwritable but the record it qualifies has a real name,
+    // so it must survive `unqualifiedName` — unlike a genuinely unnamed type.
+    expect(unqualifiedName('(anonymous namespace)::Config')).toBe('Config');
+    expect(stripAnonymousNamespace('(anonymous namespace)::ns::S')).toBe('ns::S');
+    expect(hasAnonymousSpelling('(anonymous namespace)::Config')).toBe(true);
+    expect(hasAnonymousSpelling(stripAnonymousNamespace('(anonymous namespace)::Config'))).toBe(
+      false,
+    );
+    for (const spelling of [
+      '(unnamed struct at input.c:3:1)',
+      '(anonymous union at input.c:3:1)',
+      '(lambda at input.cc:9:5)',
+    ]) {
+      expect(hasAnonymousSpelling(spelling), spelling).toBe(true);
+    }
+    expect(hasAnonymousSpelling('Box<int>')).toBe(false);
+  });
+});
+
+describe('library records', () => {
+  it('recognises the standard library and reserved names at any scope', () => {
+    for (const name of [
+      'std::__1::basic_string<char>',
+      'std::__itoa::__traits<unsigned long long>',
+      '__va_list_tag',
+      'ns::__detail::Impl',
+    ]) {
+      expect(isLibraryRecord(name), name).toBe(true);
+    }
+  });
+
+  it('leaves the user\'s own records alone', () => {
+    for (const name of ['Probe', 'ns::Message', 'Packet', 'Outer::Inner']) {
+      expect(isLibraryRecord(name), name).toBe(false);
+    }
   });
 });

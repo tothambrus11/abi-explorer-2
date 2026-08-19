@@ -7,6 +7,11 @@
 // "spellingLoc" and "expansionLoc".
 
 import type { Leaf, Group } from './types';
+import {
+  hasAnonymousSpelling,
+  stripAnonymousNamespace,
+  stripTemplateArgs,
+} from './layout-parser';
 
 export interface FieldLocation {
   /** Unqualified name of the innermost enclosing record ('' for anonymous). */
@@ -253,19 +258,11 @@ export function splitJsonDocuments(text: string): string[] {
 
 /** "ns::Outer::Inner<int>" -> "Inner"; anonymous -> "". */
 export function unqualifiedName(name: string): string {
-  // A record in an anonymous namespace is still a *named* record; drop the
-  // `(anonymous namespace)::` qualifier so it resolves to its real name.
-  name = name.replace(/\(anonymous namespace\)::/g, '');
-  if (/\((?:anonymous|unnamed|lambda)/.test(name)) return '';
+  const bare = stripAnonymousNamespace(name);
+  if (hasAnonymousSpelling(bare)) return '';
   // Drop every balanced <...> group (not just a trailing one) so a record
   // nested in a specialization, `Outer<int>::Inner`, resolves to `Inner`.
-  let n = '';
-  let depth = 0;
-  for (const ch of name) {
-    if (ch === '<') depth++;
-    else if (ch === '>') depth--;
-    else if (depth === 0) n += ch;
-  }
+  const n = stripTemplateArgs(bare);
   const i = n.lastIndexOf('::');
   return i >= 0 ? n.slice(i + 2) : n;
 }
@@ -302,7 +299,7 @@ export function matchItemsToLocations(
     //    scopes. Then fall back to unqualified owner, then a unique-line by name.
     let loc = byQualified.get((item.owner || '') + '\0' + name);
     loc ??= byOwnerName.get(unqualifiedName(item.owner || '') + '\0' + name);
-    if (!loc && /\((?:anon|unnamed)/.test(item.owner || '')) loc = byOwnerName.get('\0' + name);
+    if (!loc && hasAnonymousSpelling(item.owner || '')) loc = byOwnerName.get('\0' + name);
     if (!loc && name) {
       const cands = byName.get(name);
       if (cands && new Set(cands.map((c) => c.line)).size === 1) loc = cands[0];

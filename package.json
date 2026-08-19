@@ -14,8 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
-    "fixtures": "ABIX_CAPTURE=1 vitest run tests/unit/fixtures.capture.test.ts",
-    "golden": "node tools/golden.mjs"
+    "fixtures": "ABIX_CAPTURE=1 vitest run tests/unit/fixtures.capture.test.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

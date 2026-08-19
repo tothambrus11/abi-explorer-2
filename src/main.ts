@@ -8,9 +8,12 @@ import { store } from '$state/store.svelte';
 import { setupPwa } from './pwa';
 
 const compiler = new ClangClient({ createWorker: () => new ClangWorker() });
-// Kick the (slow, DOM-independent) wasm load off before restoring state and mounting.
-void compiler.start().catch(() => {});
 const session = new Session(compiler);
+// Kick the (slow, DOM-independent) wasm load off before restoring state and
+// mounting — but through the session, which first checks whether the download
+// needs the user's consent. Starting the compiler directly here would fetch the
+// 27 MB bundle behind the consent prompt (issue #1).
+void session.boot();
 
 await session.restoreFromUrl();
 mount(App, { target: document.getElementById('app')!, props: { session } });

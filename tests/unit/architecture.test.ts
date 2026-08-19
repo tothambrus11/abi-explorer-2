@@ -60,6 +60,27 @@ describe('architecture', () => {
     });
   }
 
+  // The ~27 MB clang download must not start before the metered-connection gate
+  // has had its say (issue #1). The gate lives in `Session.boot()`, so a second
+  // caller starting the compiler makes it decorative — which is exactly what an
+  // eager `compiler.start()` in `main.ts` used to do, with the consent prompt
+  // rendering over a download already in flight.
+  it('starts the compiler only through the session, which owns the download gate', () => {
+    const offenders: string[] = [];
+    for (const layer of Object.keys(MAY_IMPORT) as Layer[]) {
+      for (const file of filesIn(path.join(SRC, layer))) {
+        const rel = path.relative(SRC, file);
+        if (rel === path.join('state', 'session.svelte.ts')) continue;
+        if (/\bcompiler\.start\s*\(/.test(code(readFileSync(file, 'utf8')))) {
+          offenders.push(rel);
+        }
+      }
+    }
+    const main = code(readFileSync(path.join(SRC, 'main.ts'), 'utf8'));
+    if (/\bcompiler\.start\s*\(/.test(main)) offenders.push('main.ts');
+    expect(offenders).toEqual([]);
+  });
+
   it('core stays free of browser globals so it runs anywhere', () => {
     const offenders: string[] = [];
     for (const file of filesIn(path.join(SRC, 'core'))) {

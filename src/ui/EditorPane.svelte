@@ -18,7 +18,7 @@
       value: store.source,
       theme: theme.current.id,
       language: store.options.lang,
-      typeHover: (line, word) => session.describeType(line, word),
+      typeHover: (line, word, signal) => session.describeType(line, word, signal),
     });
     editor.onChange(() => (store.source = editor!.getValue()));
     editor.onSubmit(() => {

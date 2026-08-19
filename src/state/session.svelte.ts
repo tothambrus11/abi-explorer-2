@@ -31,6 +31,7 @@ import {
   buildLineIndex,
   collectLocateOwners,
   collectMemberAligns,
+  EMPTY_INDEX,
   type LineIndex,
   type LineInfo,
 } from './code-locations';
@@ -50,12 +51,6 @@ interface LocateInput {
   analysis: Analysis;
   owners: string[];
 }
-
-const EMPTY_INDEX: LineIndex = {
-  lines: new Map(),
-  leafLocations: new Map(),
-  groupLocations: new Map(),
-};
 
 const SOURCE_DEBOUNCE_MS = 500;
 const HASH_DEBOUNCE_MS = 400;
@@ -149,22 +144,28 @@ export class Session {
     this.analyzer = new Analyzer(compiler);
   }
 
+  /**
+   * Decide whether the compiler may start, and start it if so. Call this first
+   * and *only* through here: on a metered connection (issue #1) the ~27 MB
+   * download waits for an explicit opt-in, so nothing else may kick the
+   * compiler off — starting it eagerly elsewhere would download the bundle
+   * behind the consent prompt and make the gate decorative.
+   *
+   * Returns a promise for tests; callers may ignore it (the load is slow and
+   * DOM-independent, so the app mounts while it runs).
+   */
+  async boot(): Promise<void> {
+    // No usable hint (or the check threw) — behave as on an unmetered link.
+    const ask = await shouldAskBeforeDownload().catch(() => false);
+    if (ask) store.awaitingDownloadConsent = true;
+    else this.startCompiler();
+  }
+
   /** Wire reactive effects. Returns a disposer. */
   start(): () => void {
     const offStatus = this.compiler.onStatus((s) => {
       store.compiler = s;
     });
-    // On a metered connection (issue #1) the ~27 MB download waits for an
-    // explicit opt-in; anywhere else — or once the bundle is cached — it starts
-    // straight away.
-    void shouldAskBeforeDownload()
-      .then((ask) => {
-        if (ask) store.awaitingDownloadConsent = true;
-        else this.startCompiler();
-      })
-      .catch(() => {
-        this.startCompiler();
-      });
 
     const stopRoot = $effect.root(() => {
       // Drive the compile resource from source/options. Dedup-by-input means the
@@ -408,6 +409,7 @@ export class Session {
   async describeType(
     line: number,
     word: { word: string; startColumn: number; endColumn: number },
+    signal?: AbortSignal,
   ): Promise<string | null> {
     const analysis = store.analysis;
     if (!analysis) return null;
@@ -450,7 +452,9 @@ export class Session {
     }
     const rec = findRecord(spelling, analysis.recordIndex);
     if (rec) return describeRecord(rec, analysis);
-    const pr = await this.analyzer.probeSpelling(analysis, spelling).catch(() => null);
+    // A spelling probe is a full compile of the user's TU; pass the hover's
+    // cancellation on so an abandoned hover does not hold the single wasm clang.
+    const pr = await this.analyzer.probeSpelling(analysis, spelling, signal).catch(() => null);
     if (!pr || pr.bits <= 0) return null;
     const size = pr.bits % 8 ? `${pr.bits} b` : `**${pr.bits / 8}** B`;
     const canon = alias && alias !== spelling ? `\n\n\`= ${alias}\`` : '';
@@ -459,7 +463,9 @@ export class Session {
 }
 
 function describeRecord(r: RecordLayout, analysis: Analysis): string {
-  const model = buildRenderModel(r, analysis);
+  // Same inputs as the panels build their models from — including the explicit
+  // `alignas` values — or the popup would quote a different padding figure.
+  const model = buildRenderModel(r, { ...analysis, memberAligns: store.memberAligns });
   // Members of the record itself — a compound member counts once, not once per
   // field inside it.
   const n = directMembers(model).filter((u) => !('kind' in u && u.kind === 'special')).length;

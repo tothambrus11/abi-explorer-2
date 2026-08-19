@@ -6,6 +6,7 @@ import EditorWorker from 'monaco-editor/editor/editor.worker.js?worker';
 import type { Diagnostic } from '$core/types';
 import type { Language } from '$core/options';
 import { THEMES, type Theme } from '$core/themes';
+import type { MemberDot } from '$state/editor-view';
 
 (self as unknown as { MonacoEnvironment: unknown }).MonacoEnvironment = {
   getWorker: () => new EditorWorker(),
@@ -29,12 +30,8 @@ export interface WordAt {
   endColumn: number;
 }
 
-export interface MemberDot {
-  line: number;
-  /** 1-based column of the member's name; the circle is injected before it. */
-  col: number;
-  colorClass: string;
-}
+// The dot list is produced by `$state/editor-view`; this facade only applies it.
+export type { MemberDot } from '$state/editor-view';
 
 export interface EditorHandle {
   getValue(): string;
@@ -65,7 +62,24 @@ export interface CreateEditorOptions {
   value: string;
   theme: string;
   language: Language;
-  typeHover: (line: number, word: WordAt) => Promise<string | null>;
+  /**
+   * Documentation for the word under the pointer. `signal` aborts when the user
+   * moves on: answering can cost a full compile, and the wasm clang runs one job
+   * at a time, so an abandoned hover must not queue ahead of the next analysis.
+   */
+  typeHover: (line: number, word: WordAt, signal: AbortSignal) => Promise<string | null>;
+}
+
+/** Bridge Monaco's CancellationToken to the AbortSignal our async code takes. */
+function signalFor(token: monaco.CancellationToken): AbortSignal {
+  const ac = new AbortController();
+  if (token.isCancellationRequested) ac.abort();
+  else {
+    token.onCancellationRequested(() => {
+      ac.abort();
+    });
+  }
+  return ac.signal;
 }
 
 export function createEditor(container: HTMLElement, opts: CreateEditorOptions): EditorHandle {
@@ -142,12 +156,12 @@ export function createEditor(container: HTMLElement, opts: CreateEditorOptions):
   });
 
   const hoverDisposable = monaco.languages.registerHoverProvider(['c', 'cpp'], {
-    async provideHover(m, position) {
+    async provideHover(m, position, token) {
       if (m !== model) return null;
       const w = m.getWordAtPosition(position);
       if (!w) return null;
-      const md = await opts.typeHover(position.lineNumber, w);
-      if (!md) return null;
+      const md = await opts.typeHover(position.lineNumber, w, signalFor(token));
+      if (!md || token.isCancellationRequested) return null;
       return {
         range: new monaco.Range(
           position.lineNumber,

@@ -16,6 +16,7 @@
 // for zero-width bit-fields. Nesting depth is 2 spaces per level.
 
 import type { LayoutRow, RecordKind, RecordLayout, RowKind } from './types';
+import { escapeRegExp } from './diagnostics';
 
 const BASE_SUFFIXES: { re: RegExp; kind: RowKind }[] = [
   { re: /\s*\(primary base\)$/, kind: 'primary-base' },
@@ -230,15 +231,59 @@ export function isInternalRecord(rec: RecordLayout): boolean {
 }
 
 /**
+ * Records that belong to a library rather than to the user, by name: anything
+ * in `std::`, and anything reserved-identifier (`__`) at any scope level.
+ *
+ * `-fdump-record-layouts-complete` dumps *every* complete record in the TU, so a
+ * single `#include <string>` contributes well over a thousand of them — which
+ * would otherwise fill the record list and bury the user's own struct. The
+ * layout dump carries no source location for named records, so the name is the
+ * only signal available without asking clang a second time; it catches the
+ * standard library (the case that matters) but not, say, `struct tm` from a C
+ * header. The "show internal" toggle brings them back.
+ */
+export function isLibraryRecord(name: string): boolean {
+  return /^(?:std::|__)|::__/.test(name);
+}
+
+/**
  * For an anonymous record declared in `fileName`, the "at file:line:col)" tail
  * of its name — a substring only that record's qualified name contains, usable
  * as an `-ast-dump-filter`. Null for named or nested-anonymous records.
  */
 export function anonymousLocationFilter(rec: RecordLayout, fileName: string): string | null {
   const m = new RegExp(
-    `^\\((?:unnamed|anonymous)[^()]* at (${fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:\\d+:\\d+)\\)$`,
+    `^\\((?:unnamed|anonymous)[^()]* at (${escapeRegExp(fileName)}:\\d+:\\d+)\\)$`,
   ).exec(rec.name);
   return m ? `at ${m[1]!})` : null;
+}
+
+/**
+ * How clang spells a type it has no name for: `(unnamed struct at f.c:3:9)`,
+ * `(anonymous union at …)`, `(lambda at …)` — and also the `(anonymous
+ * namespace)::` qualifier, which is a *scope*, not an unnamed type. Callers that
+ * mean "unnameable type" must therefore strip the namespace qualifier first;
+ * callers asking "is any part of this spelling unwritable" want it included.
+ *
+ * One definition, because these spellings were tested for with four slightly
+ * different regexes across three modules.
+ */
+const ANON_SPELLING_RE = /\((?:anon|unnamed|lambda)/;
+
+/** Does this name or type spelling contain one of clang's unnamed-entity forms? */
+export function hasAnonymousSpelling(name: string): boolean {
+  return ANON_SPELLING_RE.test(name);
+}
+
+const ANON_NAMESPACE_RE = /\(anonymous namespace\)::/g;
+
+/**
+ * Drop the `(anonymous namespace)::` qualifier. A record in an anonymous
+ * namespace is still a *named* record, and is spellable in its own TU without
+ * the (unwritable) qualifier.
+ */
+export function stripAnonymousNamespace(name: string): string {
+  return name.replace(ANON_NAMESPACE_RE, '');
 }
 
 /** True for anonymous records (they also appear inline in their parent). */

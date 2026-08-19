@@ -7,8 +7,9 @@ export default defineConfig({
     svelte(),
     VitePWA({
       // We keep our own service worker (src/sw.ts): it needs custom rules —
-      // network-first for our own files, cache-first for vendor assets, and it
-      // must never touch the `abix-clang-*` cache owned by the compile worker.
+      // the app shell is precached, locally vendored clang assets are too big
+      // for that and are cached lazily instead, and it must never touch the
+      // `abix-clang-*` cache owned by the compile worker.
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
