@@ -1,0 +1,412 @@
+{
+ "source": "#include <stdint.h>\n\nstruct Example {\n  uint8_t  flag;      /* 1 byte, then padding  */\n  uint32_t count;     /* wants 4-byte alignment */\n  uint8_t  tag;\n  uint64_t id;        /* wants 8-byte alignment */\n  char     name[5];\n  void    *userdata;  /* pointer size varies!   */\n};\n",
+ "options": {
+  "lang": "c",
+  "std": "gnu17",
+  "triple": "x86_64-pc-windows-msvc",
+  "pack": "",
+  "msBitfields": false,
+  "shortEnums": false,
+  "shortWchar": false,
+  "warnPadded": false,
+  "extraFlags": ""
+ },
+ "response": {
+  "clangVersion": "clang version 22.1.8 (https://github.com/llvm/llvm-project.git ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)",
+  "diagnostics": [],
+  "diagnosticsText": "",
+  "error": null,
+  "exitCode": 0,
+  "ok": true,
+  "records": [
+   {
+    "alignBits": 64,
+    "bases": [],
+    "dataSizeBits": 320,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 8,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "unsigned char",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 12,
+       "endCol": 16,
+       "file": "input.c",
+       "isMainFile": true,
+       "line": 4
+      },
+      "name": "flag",
+      "offsetBits": 0,
+      "recordId": null,
+      "sizeBits": 8,
+      "typeSpelling": "uint8_t"
+     },
+     {
+      "access": "public",
+      "alignBits": 32,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "unsigned int",
+      "explicitAlignBits": null,
+      "id": 1,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 12,
+       "endCol": 17,
+       "file": "input.c",
+       "isMainFile": true,
+       "line": 5
+      },
+      "name": "count",
+      "offsetBits": 32,
+      "recordId": null,
+      "sizeBits": 32,
+      "typeSpelling": "uint32_t"
+     },
+     {
+      "access": "public",
+      "alignBits": 8,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "unsigned char",
+      "explicitAlignBits": null,
+      "id": 2,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 12,
+       "endCol": 15,
+       "file": "input.c",
+       "isMainFile": true,
+       "line": 6
+      },
+      "name": "tag",
+      "offsetBits": 64,
+      "recordId": null,
+      "sizeBits": 8,
+      "typeSpelling": "uint8_t"
+     },
+     {
+      "access": "public",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "unsigned long long",
+      "explicitAlignBits": null,
+      "id": 3,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 12,
+       "endCol": 14,
+       "file": "input.c",
+       "isMainFile": true,
+       "line": 7
+      },
+      "name": "id",
+      "offsetBits": 128,
+      "recordId": null,
+      "sizeBits": 64,
+      "typeSpelling": "uint64_t"
+     },
+     {
+      "access": "public",
+      "alignBits": 8,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "char[5]",
+      "explicitAlignBits": null,
+      "id": 4,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 12,
+       "endCol": 16,
+       "file": "input.c",
+       "isMainFile": true,
+       "line": 8
+      },
+      "name": "name",
+      "offsetBits": 192,
+      "recordId": null,
+      "sizeBits": 40,
+      "typeSpelling": "char[5]"
+     },
+     {
+      "access": "public",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "void *",
+      "explicitAlignBits": null,
+      "id": 5,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 12,
+       "endCol": 20,
+       "file": "input.c",
+       "isMainFile": true,
+       "line": 9
+      },
+      "name": "userdata",
+      "offsetBits": 256,
+      "recordId": null,
+      "sizeBits": 64,
+      "typeSpelling": "void *"
+     }
+    ],
+    "id": 0,
+    "isAnonymous": false,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": true,
+    "kind": "struct",
+    "location": {
+     "col": 8,
+     "endCol": 15,
+     "file": "input.c",
+     "isMainFile": true,
+     "line": 3
+    },
+    "name": "Example",
+    "nonVirtualAlignBits": 64,
+    "nonVirtualSizeBits": 320,
+    "paddingBits": 104,
+    "paddingRuns": [
+     {
+      "endBits": 32,
+      "startBits": 8
+     },
+     {
+      "endBits": 128,
+      "startBits": 72
+     },
+     {
+      "endBits": 256,
+      "startBits": 232
+     }
+    ],
+    "parentRecordId": null,
+    "preferredAlignBits": 64,
+    "printedName": "struct Example",
+    "qualifiedName": "Example",
+    "range": {
+     "col": 1,
+     "endCol": 2,
+     "endLine": 10,
+     "line": 3
+    },
+    "render": {
+     "groups": [],
+     "leaves": [
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 12,
+        "endCol": 16,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 4
+       },
+       "name": "flag",
+       "offsetBits": 0,
+       "ownerId": 0,
+       "ownerName": "Example",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 8,
+       "type": "uint8_t"
+      },
+      {
+       "alignBits": 32,
+       "kind": "field",
+       "location": {
+        "col": 12,
+        "endCol": 17,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 5
+       },
+       "name": "count",
+       "offsetBits": 32,
+       "ownerId": 0,
+       "ownerName": "Example",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 32,
+       "type": "uint32_t"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 12,
+        "endCol": 15,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 6
+       },
+       "name": "tag",
+       "offsetBits": 64,
+       "ownerId": 0,
+       "ownerName": "Example",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 8,
+       "type": "uint8_t"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 12,
+        "endCol": 14,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 7
+       },
+       "name": "id",
+       "offsetBits": 128,
+       "ownerId": 0,
+       "ownerName": "Example",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "uint64_t"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 12,
+        "endCol": 16,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 8
+       },
+       "name": "name",
+       "offsetBits": 192,
+       "ownerId": 0,
+       "ownerName": "Example",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 40,
+       "type": "char[5]"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 12,
+        "endCol": 20,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 9
+       },
+       "name": "userdata",
+       "offsetBits": 256,
+       "ownerId": 0,
+       "ownerName": "Example",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "void *"
+      }
+     ],
+     "markers": [],
+     "paddingBits": 104,
+     "paddingRuns": [
+      {
+       "endBits": 32,
+       "startBits": 8
+      },
+      {
+       "endBits": 128,
+       "startBits": 72
+      },
+      {
+       "endBits": 256,
+       "startBits": 232
+      }
+     ],
+     "tree": [
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 0
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 1
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 2
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 3
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 4
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 5
+      }
+     ]
+    },
+    "sizeBits": 320,
+    "vtableSlots": []
+   }
+  ],
+  "target": {
+   "charSizeBits": 8,
+   "cxxAbi": "microsoft",
+   "intSizeBits": 32,
+   "isLittleEndian": true,
+   "longLongSizeBits": 64,
+   "longSizeBits": 32,
+   "normalizedTriple": "x86_64-pc-windows-msvc19.33.0",
+   "pointerAlignBits": 64,
+   "pointerSizeBits": 64,
+   "shortSizeBits": 16,
+   "triple": "x86_64-pc-windows-msvc"
+  },
+  "typedefs": []
+ }
+}

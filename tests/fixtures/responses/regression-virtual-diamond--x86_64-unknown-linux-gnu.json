@@ -1,0 +1,876 @@
+{
+ "source": "struct Base { int a; };\nstruct Mixin { char m; };\nstruct Derived : virtual Base, Mixin { double d; };\nstruct Diamond : Derived, virtual Base { short s; };\n",
+ "options": {
+  "lang": "c++",
+  "std": "gnu++20",
+  "triple": "x86_64-unknown-linux-gnu",
+  "pack": "",
+  "msBitfields": false,
+  "shortEnums": false,
+  "shortWchar": false,
+  "warnPadded": false,
+  "extraFlags": ""
+ },
+ "response": {
+  "clangVersion": "clang version 22.1.8 (https://github.com/llvm/llvm-project.git ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)",
+  "diagnostics": [],
+  "diagnosticsText": "",
+  "error": null,
+  "exitCode": 0,
+  "ok": true,
+  "records": [
+   {
+    "alignBits": 32,
+    "bases": [],
+    "dataSizeBits": 32,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 32,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "int",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 19,
+       "endCol": 20,
+       "file": "input.cc",
+       "isMainFile": true,
+       "line": 1
+      },
+      "name": "a",
+      "offsetBits": 0,
+      "recordId": null,
+      "sizeBits": 32,
+      "typeSpelling": "int"
+     }
+    ],
+    "id": 0,
+    "isAnonymous": false,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": true,
+    "kind": "struct",
+    "location": {
+     "col": 8,
+     "endCol": 12,
+     "file": "input.cc",
+     "isMainFile": true,
+     "line": 1
+    },
+    "name": "Base",
+    "nonVirtualAlignBits": 32,
+    "nonVirtualSizeBits": 32,
+    "paddingBits": 0,
+    "paddingRuns": [],
+    "parentRecordId": null,
+    "preferredAlignBits": 32,
+    "printedName": "struct Base",
+    "qualifiedName": "Base",
+    "range": {
+     "col": 1,
+     "endCol": 23,
+     "endLine": 1,
+     "line": 1
+    },
+    "render": {
+     "groups": [],
+     "leaves": [
+      {
+       "alignBits": 32,
+       "kind": "field",
+       "location": {
+        "col": 19,
+        "endCol": 20,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 1
+       },
+       "name": "a",
+       "offsetBits": 0,
+       "ownerId": 0,
+       "ownerName": "Base",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 32,
+       "type": "int"
+      }
+     ],
+     "markers": [],
+     "paddingBits": 0,
+     "paddingRuns": [],
+     "tree": [
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 0
+      }
+     ]
+    },
+    "sizeBits": 32,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 8,
+    "bases": [],
+    "dataSizeBits": 8,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 8,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "char",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 21,
+       "endCol": 22,
+       "file": "input.cc",
+       "isMainFile": true,
+       "line": 2
+      },
+      "name": "m",
+      "offsetBits": 0,
+      "recordId": null,
+      "sizeBits": 8,
+      "typeSpelling": "char"
+     }
+    ],
+    "id": 1,
+    "isAnonymous": false,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": true,
+    "kind": "struct",
+    "location": {
+     "col": 8,
+     "endCol": 13,
+     "file": "input.cc",
+     "isMainFile": true,
+     "line": 2
+    },
+    "name": "Mixin",
+    "nonVirtualAlignBits": 8,
+    "nonVirtualSizeBits": 8,
+    "paddingBits": 0,
+    "paddingRuns": [],
+    "parentRecordId": null,
+    "preferredAlignBits": 8,
+    "printedName": "struct Mixin",
+    "qualifiedName": "Mixin",
+    "range": {
+     "col": 1,
+     "endCol": 25,
+     "endLine": 2,
+     "line": 2
+    },
+    "render": {
+     "groups": [],
+     "leaves": [
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 21,
+        "endCol": 22,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 2
+       },
+       "name": "m",
+       "offsetBits": 0,
+       "ownerId": 1,
+       "ownerName": "Mixin",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 8,
+       "type": "char"
+      }
+     ],
+     "markers": [],
+     "paddingBits": 0,
+     "paddingRuns": [],
+     "tree": [
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 0
+      }
+     ]
+    },
+    "sizeBits": 8,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 64,
+    "bases": [
+     {
+      "access": "public",
+      "isEmpty": false,
+      "isPrimary": false,
+      "isVirtual": false,
+      "location": {
+       "col": 32,
+       "endCol": 37,
+       "endLine": 3,
+       "line": 3
+      },
+      "offsetBits": 64,
+      "recordId": 1,
+      "sizeBits": 8,
+      "typeSizeBits": 8,
+      "typeSpelling": "Mixin"
+     },
+     {
+      "access": "public",
+      "isEmpty": false,
+      "isPrimary": false,
+      "isVirtual": true,
+      "location": {
+       "col": 18,
+       "endCol": 30,
+       "endLine": 3,
+       "line": 3
+      },
+      "offsetBits": 192,
+      "recordId": 0,
+      "sizeBits": 32,
+      "typeSizeBits": 32,
+      "typeSpelling": "Base"
+     }
+    ],
+    "dataSizeBits": 224,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "double",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 47,
+       "endCol": 48,
+       "file": "input.cc",
+       "isMainFile": true,
+       "line": 3
+      },
+      "name": "d",
+      "offsetBits": 128,
+      "recordId": null,
+      "sizeBits": 64,
+      "typeSpelling": "double"
+     }
+    ],
+    "id": 2,
+    "isAnonymous": false,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": false,
+    "isUserCode": true,
+    "kind": "struct",
+    "location": {
+     "col": 8,
+     "endCol": 15,
+     "file": "input.cc",
+     "isMainFile": true,
+     "line": 3
+    },
+    "name": "Derived",
+    "nonVirtualAlignBits": 64,
+    "nonVirtualSizeBits": 192,
+    "paddingBits": 88,
+    "paddingRuns": [
+     {
+      "endBits": 128,
+      "startBits": 72
+     },
+     {
+      "endBits": 256,
+      "startBits": 224
+     }
+    ],
+    "parentRecordId": null,
+    "preferredAlignBits": 64,
+    "printedName": "struct Derived",
+    "qualifiedName": "Derived",
+    "range": {
+     "col": 1,
+     "endCol": 51,
+     "endLine": 3,
+     "line": 3
+    },
+    "render": {
+     "groups": [
+      {
+       "alignBits": 8,
+       "isBase": true,
+       "isUnion": false,
+       "kind": "base",
+       "leafIndexes": [
+        1
+       ],
+       "location": {
+        "col": 32,
+        "endCol": 37,
+        "endLine": 3,
+        "line": 3
+       },
+       "name": "Mixin",
+       "offsetBits": 64,
+       "ownerId": 2,
+       "ownerName": "Derived",
+       "path": [],
+       "recordId": 1,
+       "sizeBits": 8,
+       "type": "Mixin",
+       "typeSizeBits": 8
+      },
+      {
+       "alignBits": 32,
+       "isBase": true,
+       "isUnion": false,
+       "kind": "vbase",
+       "leafIndexes": [
+        3
+       ],
+       "location": {
+        "col": 18,
+        "endCol": 30,
+        "endLine": 3,
+        "line": 3
+       },
+       "name": "virtual Base",
+       "offsetBits": 192,
+       "ownerId": 2,
+       "ownerName": "Derived",
+       "path": [],
+       "recordId": 0,
+       "sizeBits": 32,
+       "type": "Base",
+       "typeSizeBits": 32
+      }
+     ],
+     "leaves": [
+      {
+       "alignBits": 64,
+       "kind": "special",
+       "location": null,
+       "name": "Derived vtable pointer",
+       "offsetBits": 0,
+       "ownerId": 2,
+       "ownerName": "Derived",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": null
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 21,
+        "endCol": 22,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 2
+       },
+       "name": "m",
+       "offsetBits": 64,
+       "ownerId": 1,
+       "ownerName": "Mixin",
+       "path": [
+        "Mixin"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 8,
+       "type": "char"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 47,
+        "endCol": 48,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 3
+       },
+       "name": "d",
+       "offsetBits": 128,
+       "ownerId": 2,
+       "ownerName": "Derived",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "double"
+      },
+      {
+       "alignBits": 32,
+       "kind": "field",
+       "location": {
+        "col": 19,
+        "endCol": 20,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 1
+       },
+       "name": "a",
+       "offsetBits": 192,
+       "ownerId": 0,
+       "ownerName": "Base",
+       "path": [
+        "virtual Base"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 32,
+       "type": "int"
+      }
+     ],
+     "markers": [],
+     "paddingBits": 88,
+     "paddingRuns": [
+      {
+       "endBits": 128,
+       "startBits": 72
+      },
+      {
+       "endBits": 256,
+       "startBits": 224
+      }
+     ],
+     "tree": [
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 0
+      },
+      {
+       "children": [
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 1
+        }
+       ],
+       "kind": "group",
+       "overlaps": false,
+       "ref": 0
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 2
+      },
+      {
+       "children": [
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 3
+        }
+       ],
+       "kind": "group",
+       "overlaps": false,
+       "ref": 1
+      }
+     ]
+    },
+    "sizeBits": 256,
+    "vtableSlots": [
+     {
+      "kind": "vptr",
+      "label": "Derived vtable pointer",
+      "offsetBits": 0,
+      "sizeBits": 64
+     }
+    ]
+   },
+   {
+    "alignBits": 64,
+    "bases": [
+     {
+      "access": "public",
+      "isEmpty": false,
+      "isPrimary": true,
+      "isVirtual": false,
+      "location": {
+       "col": 18,
+       "endCol": 25,
+       "endLine": 4,
+       "line": 4
+      },
+      "offsetBits": 0,
+      "recordId": 2,
+      "sizeBits": 192,
+      "typeSizeBits": 256,
+      "typeSpelling": "Derived"
+     },
+     {
+      "access": "public",
+      "isEmpty": false,
+      "isPrimary": false,
+      "isVirtual": true,
+      "location": {
+       "col": 18,
+       "endCol": 30,
+       "endLine": 3,
+       "line": 3
+      },
+      "offsetBits": 224,
+      "recordId": 0,
+      "sizeBits": 32,
+      "typeSizeBits": 32,
+      "typeSpelling": "Base"
+     }
+    ],
+    "dataSizeBits": 256,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 16,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "short",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 48,
+       "endCol": 49,
+       "file": "input.cc",
+       "isMainFile": true,
+       "line": 4
+      },
+      "name": "s",
+      "offsetBits": 192,
+      "recordId": null,
+      "sizeBits": 16,
+      "typeSpelling": "short"
+     }
+    ],
+    "id": 3,
+    "isAnonymous": false,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": false,
+    "isUserCode": true,
+    "kind": "struct",
+    "location": {
+     "col": 8,
+     "endCol": 15,
+     "file": "input.cc",
+     "isMainFile": true,
+     "line": 4
+    },
+    "name": "Diamond",
+    "nonVirtualAlignBits": 64,
+    "nonVirtualSizeBits": 208,
+    "paddingBits": 16,
+    "paddingRuns": [
+     {
+      "endBits": 224,
+      "startBits": 208
+     }
+    ],
+    "parentRecordId": null,
+    "preferredAlignBits": 64,
+    "printedName": "struct Diamond",
+    "qualifiedName": "Diamond",
+    "range": {
+     "col": 1,
+     "endCol": 52,
+     "endLine": 4,
+     "line": 4
+    },
+    "render": {
+     "groups": [
+      {
+       "alignBits": 8,
+       "isBase": true,
+       "isUnion": false,
+       "kind": "base",
+       "leafIndexes": [
+        1
+       ],
+       "location": {
+        "col": 32,
+        "endCol": 37,
+        "endLine": 3,
+        "line": 3
+       },
+       "name": "Mixin",
+       "offsetBits": 64,
+       "ownerId": 2,
+       "ownerName": "Derived",
+       "path": [
+        "Derived"
+       ],
+       "recordId": 1,
+       "sizeBits": 8,
+       "type": "Mixin",
+       "typeSizeBits": 8
+      },
+      {
+       "alignBits": 64,
+       "isBase": true,
+       "isUnion": false,
+       "kind": "primary-base",
+       "leafIndexes": [
+        0,
+        1,
+        2
+       ],
+       "location": {
+        "col": 18,
+        "endCol": 25,
+        "endLine": 4,
+        "line": 4
+       },
+       "name": "Derived",
+       "offsetBits": 0,
+       "ownerId": 3,
+       "ownerName": "Diamond",
+       "path": [],
+       "recordId": 2,
+       "sizeBits": 192,
+       "type": "Derived",
+       "typeSizeBits": 256
+      },
+      {
+       "alignBits": 32,
+       "isBase": true,
+       "isUnion": false,
+       "kind": "vbase",
+       "leafIndexes": [
+        4
+       ],
+       "location": {
+        "col": 18,
+        "endCol": 30,
+        "endLine": 3,
+        "line": 3
+       },
+       "name": "virtual Base",
+       "offsetBits": 224,
+       "ownerId": 3,
+       "ownerName": "Diamond",
+       "path": [],
+       "recordId": 0,
+       "sizeBits": 32,
+       "type": "Base",
+       "typeSizeBits": 32
+      }
+     ],
+     "leaves": [
+      {
+       "alignBits": 64,
+       "kind": "special",
+       "location": null,
+       "name": "Derived vtable pointer",
+       "offsetBits": 0,
+       "ownerId": 2,
+       "ownerName": "Derived",
+       "path": [
+        "Derived"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": null
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 21,
+        "endCol": 22,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 2
+       },
+       "name": "m",
+       "offsetBits": 64,
+       "ownerId": 1,
+       "ownerName": "Mixin",
+       "path": [
+        "Derived",
+        "Mixin"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 8,
+       "type": "char"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 47,
+        "endCol": 48,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 3
+       },
+       "name": "d",
+       "offsetBits": 128,
+       "ownerId": 2,
+       "ownerName": "Derived",
+       "path": [
+        "Derived"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "double"
+      },
+      {
+       "alignBits": 16,
+       "kind": "field",
+       "location": {
+        "col": 48,
+        "endCol": 49,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 4
+       },
+       "name": "s",
+       "offsetBits": 192,
+       "ownerId": 3,
+       "ownerName": "Diamond",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 16,
+       "type": "short"
+      },
+      {
+       "alignBits": 32,
+       "kind": "field",
+       "location": {
+        "col": 19,
+        "endCol": 20,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 1
+       },
+       "name": "a",
+       "offsetBits": 224,
+       "ownerId": 0,
+       "ownerName": "Base",
+       "path": [
+        "virtual Base"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 32,
+       "type": "int"
+      }
+     ],
+     "markers": [],
+     "paddingBits": 72,
+     "paddingRuns": [
+      {
+       "endBits": 128,
+       "startBits": 72
+      },
+      {
+       "endBits": 224,
+       "startBits": 208
+      }
+     ],
+     "tree": [
+      {
+       "children": [
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 0
+        },
+        {
+         "children": [
+          {
+           "children": [],
+           "kind": "leaf",
+           "overlaps": false,
+           "ref": 1
+          }
+         ],
+         "kind": "group",
+         "overlaps": false,
+         "ref": 0
+        },
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 2
+        }
+       ],
+       "kind": "group",
+       "overlaps": false,
+       "ref": 1
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 3
+      },
+      {
+       "children": [
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 4
+        }
+       ],
+       "kind": "group",
+       "overlaps": false,
+       "ref": 2
+      }
+     ]
+    },
+    "sizeBits": 256,
+    "vtableSlots": []
+   }
+  ],
+  "target": {
+   "charSizeBits": 8,
+   "cxxAbi": "itanium",
+   "intSizeBits": 32,
+   "isLittleEndian": true,
+   "longLongSizeBits": 64,
+   "longSizeBits": 64,
+   "normalizedTriple": "x86_64-unknown-linux-gnu",
+   "pointerAlignBits": 64,
+   "pointerSizeBits": 64,
+   "shortSizeBits": 16,
+   "triple": "x86_64-unknown-linux-gnu"
+  },
+  "typedefs": []
+ }
+}

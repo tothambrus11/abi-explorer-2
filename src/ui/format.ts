@@ -12,24 +12,21 @@ export function escapeHtml(s: string): string {
   );
 }
 
-/** "3 b" for bit-fields, "≈ 4 B" for estimated members, "8 B" otherwise. */
+/** "3 b" for bit-fields, "8 B" otherwise. */
 export function fmtSize(leaf: Leaf): string {
   if (leaf.kind === 'bitfield') return `${leaf.sizeBits} b`;
-  return `${leaf.estimated ? '≈ ' : ''}${fmt.format(leaf.sizeBits / 8)} B`;
+  return `${fmt.format(leaf.sizeBits / 8)} B`;
 }
 
-/** Byte extent of a group; "size ?" when a probe could not measure it. */
-export function fmtGroupSize(sizeBits: number | null): string {
-  return sizeBits === null ? 'size ?' : `${fmt.format(sizeBits / 8)} B`;
+/** Byte extent of a group. */
+export function fmtGroupSize(sizeBits: number): string {
+  return `${fmt.format(sizeBits / 8)} B`;
 }
 
-/** "occupies 12 B (sizeof 16 B)" when a member takes fewer bytes than its type. */
-function extentLine(occupies: number | null, typeSize: number | null): string {
-  if (occupies === null) return 'size unknown';
+/** "occupies 12 B · sizeof 16 B" when a member takes fewer bytes than its type. */
+function extentLine(occupies: number, typeSize: number): string {
   const here = `occupies ${fmt.format(occupies / 8)} B`;
-  return typeSize !== null && typeSize > occupies
-    ? `${here} · sizeof ${fmt.format(typeSize / 8)} B`
-    : here;
+  return typeSize > occupies ? `${here} · sizeof ${fmt.format(typeSize / 8)} B` : here;
 }
 
 /** Tooltip body for a compound member (record-typed field or base subobject). */
@@ -50,9 +47,7 @@ export function memberTooltipHtml(leaf: Leaf, extra?: string): string {
     `<strong>${escapeHtml([...leaf.path, leaf.name].join(' :: '))}</strong>`,
     leaf.type ? escapeHtml(leaf.type) : '',
     `offset ${fmtOffset(leaf.offsetBits)} · ${fmtSize(leaf)}`,
-    leaf.sizeBits === 0 && leaf.row.isEmpty
-      ? 'empty type sharing an address — occupies no bytes'
-      : '',
+    leaf.sharesAddress ? 'empty type sharing an address — occupies no bytes' : '',
     extra ?? '',
   ];
   return lines.filter(Boolean).join('<br>');

@@ -1,7 +1,6 @@
 <script lang="ts">
   import { store } from '$state/store.svelte';
   import type { Session } from '$state/session.svelte';
-  import { recordKey } from '$core/layout-parser';
   import { activeBundle } from '$state/download-gate';
   import RecordSection from './RecordSection.svelte';
   import Rows3 from '@lucide/svelte/icons/rows-3';
@@ -28,8 +27,6 @@
       }
       case 'ready':
         return '';
-      case 'restarting':
-        return `Compiler restarted (${c.reason}) — retrying…`;
       case 'failed':
         return `Failed to load clang: ${c.message}`;
     }
@@ -81,8 +78,9 @@
     <div id="results">
       <div class="bar">
         <div id="record-chips" class="chips" role="tablist" hidden={stacked}>
-          {#each store.visibleRecords as rec (recordKey(rec))}
-            {@const key = recordKey(rec)}
+          {#each store.visibleRecords as entry (entry.key)}
+            {@const key = entry.key}
+            {@const rec = entry.record}
             <button
               class="chip"
               class:selected={key === store.activeRecordKey}

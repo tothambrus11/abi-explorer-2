@@ -27,7 +27,8 @@ interface Wire {
   mb: number;
   se: number;
   sw: number;
-  wl: number;
+  /** v2 only: the wasi-libc header toggle, which no longer exists. */
+  wl?: number;
   wp: number;
   x: string;
   r: string | null;
@@ -46,7 +47,6 @@ function toWire(state: ShareState): Wire {
     mb: +o.msBitfields,
     se: +o.shortEnums,
     sw: +o.shortWchar,
-    wl: +o.wasiLibc,
     wp: +o.warnPadded,
     x: o.extraFlags,
     r: state.selectedRecord,
@@ -74,7 +74,6 @@ function fromWire(w: Partial<Wire>): ShareState {
     msBitfields: !!w.mb,
     shortEnums: !!w.se,
     shortWchar: !!w.sw,
-    wasiLibc: !!w.wl,
     warnPadded: !!w.wp,
     extraFlags: typeof w.x === 'string' ? w.x.slice(0, 500) : '',
   };

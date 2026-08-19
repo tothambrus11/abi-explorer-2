@@ -21,7 +21,6 @@
     bits: (number | null)[] | null; // per-bit owner when bit-fields touch this byte
     start: boolean;
     end: boolean;
-    estimated: boolean;
   }
 
   /**
@@ -78,7 +77,6 @@
         bits,
         start: leaves.some((li) => Math.floor(model.leaves[li]!.offsetBits / 8) === b),
         end: one ? Math.ceil((one.offsetBits + one.sizeBits) / 8) === b + 1 : false,
-        estimated: one?.estimated ?? false,
       });
     }
     return out;
@@ -87,6 +85,14 @@
   const hovered = $derived(
     new Set(store.hover.members.filter((m) => m.record === record).map((m) => m.leaf)),
   );
+  /**
+   * The extent of what is hovered. Bytes inside it that no member covers — a
+   * compound member's own padding — light up too: `hdr` claims eight bytes and
+   * five hold fields, so without this the other three read as belonging to
+   * nothing, and the row's size has no visible answer.
+   */
+  const hoveredExtent = $derived(store.hover.ranges.filter((r) => r.record === record));
+  const inHovered = (byte: number) => hoveredExtent.some((r) => byte >= r.start && byte < r.end);
 
   function stripe(leaves: number[]): string {
     const colors = leaves.slice(0, 3).map((li) => `var(--${model.leaves[li]!.colorClass})`);
@@ -134,7 +140,7 @@
       .sort((a, b) => a.off - b.off) as seg (`${seg.off}:${seg.li ?? 'pad'}`)}
       <div
         class="seg {seg.li === null ? 'pad' : model.leaves[seg.li]!.colorClass}"
-        class:hovered={seg.li !== null && hovered.has(seg.li)}
+        class:hovered={seg.li === null ? inHovered(Math.floor(seg.off / 8)) : hovered.has(seg.li)}
         style:flex-grow={Math.max(seg.len / model.sizeBits, 0.002) * 1000}
         role="presentation"
         onmouseenter={(e) => {
@@ -168,7 +174,7 @@
                 {#each cell.bits as owner, bit (bit)}
                   <div
                     class="bit {owner === null ? 'pad' : model.leaves[owner]!.colorClass}"
-                    class:hovered={owner !== null && hovered.has(owner)}
+                    class:hovered={owner === null ? inHovered(b) : hovered.has(owner)}
                     class:start={owner !== null && b * 8 + bit === model.leaves[owner]!.offsetBits}
                     role="presentation"
                     onmouseenter={(e) => {
@@ -183,6 +189,7 @@
                 class:band
                 class:band-first={band?.first}
                 class:band-last={band?.last}
+                class:hovered={inHovered(b)}
                 role="presentation"
                 onmouseenter={(e) => {
                   enter(null, b, e);
@@ -193,7 +200,6 @@
                 class="cell {model.leaves[cell.leaves[0]!]!.colorClass}"
                 class:start={cell.start}
                 class:end={cell.end}
-                class:estimated={cell.estimated}
                 class:band
                 class:band-first={band?.first}
                 class:band-last={band?.last}
@@ -322,10 +328,6 @@
   .bit.pad {
     background:
       repeating-linear-gradient(45deg, transparent 0 3px, var(--baseline) 3px 4px), var(--grid-line);
-  }
-  .estimated {
-    outline: 2px dashed var(--baseline);
-    outline-offset: -3px;
   }
   .hovered {
     box-shadow: inset 0 0 0 2px var(--text-primary);

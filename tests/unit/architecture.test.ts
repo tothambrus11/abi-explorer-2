@@ -1,8 +1,8 @@
 // The dependency direction, as an executable rule rather than a convention.
 //
-//   core      pure domain logic: layouts, probes, parsing, themes. Depends on
+//   core      pure domain logic: the render model, options, themes. Depends on
 //             nothing of ours, and must stay runnable without a DOM.
-//   compiler  drives clang (worker protocol, client, analysis pipeline).
+//   compiler  talks to the wasm module (worker client, analysis pipeline).
 //   state     reactive orchestration; may use core and compiler.
 //   ui        components; may use everything.
 //
@@ -60,24 +60,24 @@ describe('architecture', () => {
     });
   }
 
-  // The ~27 MB clang download must not start before the metered-connection gate
-  // has had its say (issue #1). The gate lives in `Session.boot()`, so a second
-  // caller starting the compiler makes it decorative — which is exactly what an
-  // eager `compiler.start()` in `main.ts` used to do, with the consent prompt
-  // rendering over a download already in flight.
-  it('starts the compiler only through the session, which owns the download gate', () => {
+  // The module download must not start before the metered-connection gate has
+  // had its say (issue #1). The gate lives in `Session.boot()`, so a second
+  // caller starting the client makes it decorative — which is exactly what an
+  // eager `start()` in `main.ts` used to do, with the consent prompt rendering
+  // over a download already in flight.
+  it('starts the module only through the session, which owns the download gate', () => {
+    const START = /\b(?:client|compiler|module)\.start\s*\(/;
     const offenders: string[] = [];
     for (const layer of Object.keys(MAY_IMPORT) as Layer[]) {
       for (const file of filesIn(path.join(SRC, layer))) {
         const rel = path.relative(SRC, file);
         if (rel === path.join('state', 'session.svelte.ts')) continue;
-        if (/\bcompiler\.start\s*\(/.test(code(readFileSync(file, 'utf8')))) {
-          offenders.push(rel);
-        }
+        if (START.test(code(readFileSync(file, 'utf8')))) offenders.push(rel);
       }
     }
-    const main = code(readFileSync(path.join(SRC, 'main.ts'), 'utf8'));
-    if (/\bcompiler\.start\s*\(/.test(main)) offenders.push('main.ts');
+    if (START.test(code(readFileSync(path.join(SRC, 'main.ts'), 'utf8')))) {
+      offenders.push('main.ts');
+    }
     expect(offenders).toEqual([]);
   });
 

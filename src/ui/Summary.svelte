@@ -4,8 +4,11 @@
   const { model }: { model: RenderModel } = $props();
   const fmt = new Intl.NumberFormat('en-US');
   const rec = $derived(model.record);
+  // Null means the record was too big to scan for padding — a different claim
+  // from "no padding", and the tile says so rather than showing a confident 0.
+  const padding = $derived(model.paddingBytes);
   const padPct = $derived(
-    rec.sizeBytes ? Math.round((100 * model.paddingBytes) / rec.sizeBytes) : 0,
+    padding !== null && rec.sizeBytes ? Math.round((100 * padding) / rec.sizeBytes) : 0,
   );
   const extras = $derived.by(() => {
     const out: string[] = [];
@@ -42,14 +45,17 @@
   </div>
   <div
     class="tile"
-    class:warn={model.paddingBytes > 0}
-    use:tooltip={'Bytes inside sizeof that no member occupies — inserted to keep members aligned.'}
+    class:warn={padding !== null && padding > 0}
+    use:tooltip={padding === null
+      ? 'Not measured: the record is too large to scan byte by byte.'
+      : 'Bytes inside sizeof that no member occupies — inserted to keep members aligned.'}
   >
     <div class="label">padding</div>
-    <div class="value">{fmt.format(model.paddingBytes)}</div>
+    <div class="value">{padding === null ? '—' : fmt.format(padding)}</div>
     <div class="unit">
-      bytes{#if rec.sizeBytes}
-        · {padPct}%{/if}
+      {#if padding !== null}bytes{#if rec.sizeBytes}
+          · {padPct}%{/if}
+      {:else}not measured{/if}
     </div>
   </div>
   {#if extras.length}

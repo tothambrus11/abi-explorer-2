@@ -21,7 +21,7 @@ const line = (n: number, marks: MemberMark[]): LineInfo => ({
   items: [],
   primary: 'S',
   colorClass: marks.length === 1 ? marks[0]!.colorClass : 'c-compound',
-  location: null,
+  anchor: { line: n, col: marks[0]?.col ?? 1, endCol: (marks[0]?.col ?? 1) + 1 },
   marks,
 });
 

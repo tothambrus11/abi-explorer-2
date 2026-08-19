@@ -1,7 +1,7 @@
 <script lang="ts">
   import { store } from '$state/store.svelte';
   import { parseAnsi } from '$core/ansi';
-  const ansi = $derived(store.analysis?.diagnosticsAnsi ?? '');
+  const ansi = $derived(store.analysis?.diagnosticsText ?? '');
   const spans = $derived(parseAnsi(ansi));
 </script>
 

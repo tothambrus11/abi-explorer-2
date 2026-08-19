@@ -1,6 +1,10 @@
-// Compile options as chosen in the UI, and their translation to clang argv.
-// Building argv from a spec (instead of editing arrays) keeps every pass —
-// layout dump, field probes, AST locations — consistent.
+// Compile options as chosen in the UI, and the clang flags they mean.
+//
+// This used to build a full argv per pass — a layout dump, a probe TU, an AST
+// dump — each needing the same target, standard and header paths spelled
+// consistently or the answers would not line up. A query takes the target and
+// the language as fields, and header search is the module's own business, so
+// what is left here is the handful of flags that change layout.
 
 import {
   C_STANDARDS,
@@ -21,8 +25,6 @@ export interface CompileOptions {
   msBitfields: boolean;
   shortEnums: boolean;
   shortWchar: boolean;
-  /** Map wasi-libc headers in for non-WASI targets. */
-  wasiLibc: boolean;
   warnPadded: boolean;
   /** Free-form extra flags (validated by isAllowedFlag). */
   extraFlags: string;
@@ -36,22 +38,9 @@ export const DEFAULT_OPTIONS: CompileOptions = {
   msBitfields: false,
   shortEnums: false,
   shortWchar: false,
-  wasiLibc: false,
   warnPadded: false,
   extraFlags: '',
 };
-
-/** Which frontend action a pass wants. */
-export type PassKind = 'layout' | 'ast-json';
-
-export interface PassSpec {
-  kind: PassKind;
-  files: string[];
-  /** For 'ast-json': `-ast-dump-filter` value. */
-  astFilter?: string;
-  /** Measurement-only pass: may look at private/protected members (-fno-access-control). */
-  measure?: boolean;
-}
 
 // Hylo is a placeholder for now: no standards, no compiler backend yet.
 export function standardsFor(lang: Language): readonly string[] {
@@ -62,26 +51,23 @@ export function defaultStdFor(lang: Language): string {
   return lang === 'c++' ? DEFAULT_CXX_STD : lang === 'hylo' ? '' : DEFAULT_C_STD;
 }
 
-export function sourceExtension(lang: Language): string {
-  return lang === 'c++' ? 'cc' : lang === 'hylo' ? 'hylo' : 'c';
-}
-
-export function driverFor(lang: Language): 'clang' | 'clang++' {
-  return lang === 'c++' ? 'clang++' : 'clang';
-}
-
 // Flags that make sense for a layout query. Anything else typed into "extra
-// flags" (or restored from a URL) is dropped: e.g. -o / -### / -x could wedge
-// the pipeline, and driver modes like -E produce no layouts.
+// flags" (or restored from a URL) is dropped: -o / -### / -x would wedge the
+// query, and driver modes like -E produce no layouts.
+//
+// The target is not among them, deliberately. It is a field of the request and
+// the UI shows which one is selected; a `-target` in the flag box would change
+// what is actually being laid out while the selector went on claiming
+// otherwise — and a shared link can put anything in that box.
 const ALLOWED_FLAG_RE =
-  /^(?:-f(?!syntax-only$)[A-Za-z0-9=+_.-]+|-m[A-Za-z0-9=+_.-]+|-W[A-Za-z0-9=+_.-]*|-std=[A-Za-z0-9+.:]+|-D[A-Za-z_][A-Za-z0-9_]*(?:=.*)?|-U[A-Za-z_][A-Za-z0-9_]*|-isystem\/[A-Za-z0-9_.+/-]+|-I\/[A-Za-z0-9_.+/-]+|-O[0-3sz]?|--?target=[A-Za-z0-9_.-]+|-w|-pedantic(?:-errors)?|-ansi|-nostdinc(?:\+\+)?)$/;
+  /^(?:-f(?!syntax-only$)[A-Za-z0-9=+_.-]+|-m[A-Za-z0-9=+_.-]+|-W[A-Za-z0-9=+_.-]*|-std=[A-Za-z0-9+.:]+|-D[A-Za-z_][A-Za-z0-9_]*(?:=.*)?|-U[A-Za-z_][A-Za-z0-9_]*|-isystem\/[A-Za-z0-9_.+/-]+|-I\/[A-Za-z0-9_.+/-]+|-O[0-3sz]?|-w|-pedantic(?:-errors)?|-ansi|-nostdinc(?:\+\+)?)$/;
 /**
  * Flags that take their value as the next token. The value must never itself
  * look like a flag: `-target -o` would otherwise be accepted as a pair and put
  * a bare `-o` into argv, where reasoning about which tokens are flags breaks
  * down. Every value pattern below therefore pins its first character.
  */
-const TAKES_ARG = new Set(['-Xclang', '-include', '-D', '-U', '-I', '-isystem', '-target']);
+const TAKES_ARG = new Set(['-Xclang', '-include', '-D', '-U', '-I', '-isystem']);
 /**
  * `-Xclang` hands the next token straight to the frontend, where the flags that
  * select an *action* live — `-ast-dump`, `-ast-print`, `-ast-list`,
@@ -114,11 +100,9 @@ export function splitExtraFlags(text: string): [string[], string[]] {
       const ok =
         f === '-Xclang'
           ? XCLANG_ARG_RE.test(next)
-          : f === '-target'
-            ? /^[A-Za-z0-9_][A-Za-z0-9_.-]*$/.test(next)
-            : f === '-D' || f === '-U'
-              ? /^[A-Za-z_][A-Za-z0-9_]*(?:=.*)?$/.test(next)
-              : PATH_ARG_RE.test(next);
+          : f === '-D' || f === '-U'
+            ? /^[A-Za-z_][A-Za-z0-9_]*(?:=.*)?$/.test(next)
+            : PATH_ARG_RE.test(next);
       (ok ? accepted : rejected).push(f, next);
       i++;
       continue;
@@ -128,46 +112,17 @@ export function splitExtraFlags(text: string): [string[], string[]] {
   return [accepted, rejected];
 }
 
-/** Translate options + pass into clang argv (without argv0). */
-export function buildArgv(opts: CompileOptions, pass: PassSpec): string[] {
-  const isCxx = opts.lang === 'c++';
-  const args = [
-    '--target=' + opts.triple,
-    '-x' + (isCxx ? 'c++' : 'c'),
-    ...(opts.std ? ['-std=' + opts.std] : []),
-    '-fsyntax-only',
-  ];
-  if (pass.kind === 'layout') args.push('-Xclang', '-fdump-record-layouts-complete');
-  else {
-    args.push('-Xclang', '-ast-dump=json', '-Xclang', '-ast-dump-filter=' + (pass.astFilter ?? ''));
-  }
-  // Colored diagnostics from clang itself (parsers strip the escapes) and
-  // machine-readable source ranges: `file:line:col:{l:c-l:c}: error: …`.
-  args.push(
-    '-Wno-unused',
-    '-fcolor-diagnostics',
-    '-fansi-escape-codes',
-    '-fdiagnostics-print-source-range-info',
-  );
-  if (isCxx) args.push('-isystem/usr/include/c++/v1');
-  // libc++ headers #include the C library (bits/alltypes.h, wchar.h, …), which
-  // this toolchain ships only in the wasi-libc tree — so <string>/<vector> fail
-  // with "file not found" for every other target unless it is mapped in too.
-  // Order matters: libc++ reaches the C headers via #include_next, so c++/v1
-  // must come first.
-  if (opts.wasiLibc || isCxx) args.push('-isystem/usr/include/wasm32-wasip1');
-  if (opts.pack) args.push('-fpack-struct=' + opts.pack);
-  if (opts.msBitfields) args.push('-mms-bitfields');
-  if (opts.shortEnums) args.push('-fshort-enums');
-  if (opts.shortWchar) args.push('-fshort-wchar');
-  if (opts.warnPadded) args.push('-Wpadded');
-  args.push(...splitExtraFlags(opts.extraFlags)[0]);
-  if (pass.measure) {
-    // Probe TUs deliberately contain failing lines; clang's default error limit
-    // (~20) would stop parsing and skip both the errors *and* the layout dumps
-    // for later probes, leaving those members unmeasured. Report them all.
-    args.push('-Xclang', '-fno-access-control', '-ferror-limit=0');
-  }
-  args.push(...pass.files);
-  return args;
+/**
+ * The clang flags these options mean. Target, language and standard are fields
+ * of the request, not flags, so they are not here.
+ */
+export function buildFlags(opts: CompileOptions): string[] {
+  const flags: string[] = ['-Wno-unused'];
+  if (opts.pack) flags.push('-fpack-struct=' + opts.pack);
+  if (opts.msBitfields) flags.push('-mms-bitfields');
+  if (opts.shortEnums) flags.push('-fshort-enums');
+  if (opts.shortWchar) flags.push('-fshort-wchar');
+  if (opts.warnPadded) flags.push('-Wpadded');
+  flags.push(...splitExtraFlags(opts.extraFlags)[0]);
+  return flags;
 }

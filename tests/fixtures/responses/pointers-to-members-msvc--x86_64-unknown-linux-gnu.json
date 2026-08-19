@@ -1,0 +1,186 @@
+{
+ "source": "struct Host;                  /* incomplete: the most general representation */\n\nstruct S {\n  int Host::*pm;              /* data member pointer */\n  void (Host::*pmf)();        /* member function pointer */\n};\n\n/* Pick x86_64-pc-windows-msvc: 12 B and 24 B, because MSVC must cover\n   every inheritance shape while Host is unknown. On Itanium both are\n   a fixed size instead. */\n",
+ "options": {
+  "lang": "c++",
+  "std": "gnu++20",
+  "triple": "x86_64-unknown-linux-gnu",
+  "pack": "",
+  "msBitfields": false,
+  "shortEnums": false,
+  "shortWchar": false,
+  "warnPadded": false,
+  "extraFlags": ""
+ },
+ "response": {
+  "clangVersion": "clang version 22.1.8 (https://github.com/llvm/llvm-project.git ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)",
+  "diagnostics": [],
+  "diagnosticsText": "",
+  "error": null,
+  "exitCode": 0,
+  "ok": true,
+  "records": [
+   {
+    "alignBits": 64,
+    "bases": [],
+    "dataSizeBits": 192,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "int Host::*",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 14,
+       "endCol": 16,
+       "file": "input.cc",
+       "isMainFile": true,
+       "line": 4
+      },
+      "name": "pm",
+      "offsetBits": 0,
+      "recordId": null,
+      "sizeBits": 64,
+      "typeSpelling": "int Host::*"
+     },
+     {
+      "access": "public",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "void (Host::*)()",
+      "explicitAlignBits": null,
+      "id": 1,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 16,
+       "endCol": 19,
+       "file": "input.cc",
+       "isMainFile": true,
+       "line": 5
+      },
+      "name": "pmf",
+      "offsetBits": 64,
+      "recordId": null,
+      "sizeBits": 128,
+      "typeSpelling": "void (Host::*)()"
+     }
+    ],
+    "id": 0,
+    "isAnonymous": false,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": true,
+    "kind": "struct",
+    "location": {
+     "col": 8,
+     "endCol": 9,
+     "file": "input.cc",
+     "isMainFile": true,
+     "line": 3
+    },
+    "name": "S",
+    "nonVirtualAlignBits": 64,
+    "nonVirtualSizeBits": 192,
+    "paddingBits": 0,
+    "paddingRuns": [],
+    "parentRecordId": null,
+    "preferredAlignBits": 64,
+    "printedName": "struct S",
+    "qualifiedName": "S",
+    "range": {
+     "col": 1,
+     "endCol": 2,
+     "endLine": 6,
+     "line": 3
+    },
+    "render": {
+     "groups": [],
+     "leaves": [
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 14,
+        "endCol": 16,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 4
+       },
+       "name": "pm",
+       "offsetBits": 0,
+       "ownerId": 0,
+       "ownerName": "S",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "int Host::*"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 16,
+        "endCol": 19,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 5
+       },
+       "name": "pmf",
+       "offsetBits": 64,
+       "ownerId": 0,
+       "ownerName": "S",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 128,
+       "type": "void (Host::*)()"
+      }
+     ],
+     "markers": [],
+     "paddingBits": 0,
+     "paddingRuns": [],
+     "tree": [
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 0
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 1
+      }
+     ]
+    },
+    "sizeBits": 192,
+    "vtableSlots": []
+   }
+  ],
+  "target": {
+   "charSizeBits": 8,
+   "cxxAbi": "itanium",
+   "intSizeBits": 32,
+   "isLittleEndian": true,
+   "longLongSizeBits": 64,
+   "longSizeBits": 64,
+   "normalizedTriple": "x86_64-unknown-linux-gnu",
+   "pointerAlignBits": 64,
+   "pointerSizeBits": 64,
+   "shortSizeBits": 16,
+   "triple": "x86_64-unknown-linux-gnu"
+  },
+  "typedefs": []
+ }
+}

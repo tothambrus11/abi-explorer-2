@@ -45,24 +45,21 @@ test.describe('ABI Explorer', () => {
         get: () => ({ saveData: true, effectiveType: '4g' }),
       });
     });
-    // Watch for the bundle itself, not just the prompt: the gate is only real
-    // if no byte of clang is requested before the click.
-    let tarballRequests = 0;
-    await page.route('**/registry.npmjs.org/**', (route) => {
-      tarballRequests++;
+    // Watch for the module itself, not just the prompt: the gate is only real
+    // if no byte of it is requested before the click.
+    let moduleRequests = 0;
+    await page.route('**/vendor/abi/**', (route) => {
+      moduleRequests++;
       return route.continue();
     });
     await page.goto('/');
     // Nothing is fetched until the user agrees; the results pane stays gated.
     await expect(page.locator('#allow-download')).toBeVisible();
-    // The size follows the bundle this build actually downloads — 27 MB of
-    // clang driver, or ~11 MB of layout module — so the assertion is that a
-    // size is quoted at all, not which one.
     await expect(page.locator('#consent-text')).toContainText(/~\d+ MB/);
     await expect(page.locator('#results')).toHaveCount(0);
     // Give a stray eager start time to show itself before asserting.
     await page.waitForTimeout(2_000);
-    expect(tarballRequests, 'clang requested before consent').toBe(0);
+    expect(moduleRequests, 'the module was fetched before consent').toBe(0);
 
     await page.click('#allow-download');
     await expect(page.locator('#allow-download')).toHaveCount(0);
@@ -75,9 +72,8 @@ test.describe('ABI Explorer', () => {
     await expect(page.locator('#results')).toBeVisible({ timeout: 240_000 });
   });
 
-  test('every member is measured (no estimates) with alignment shown', async ({ page }) => {
+  test('every member is measured, with its alignment shown', async ({ page }) => {
     await waitReady(page);
-    await expect(page.locator('.estimate-note')).toHaveCount(0);
     const aligns = await page.locator('.field-table tbody tr td:nth-child(6)').allTextContents();
     expect(aligns.slice(0, 6)).toEqual(['1 B', '4 B', '1 B', '8 B', '1 B', '8 B']);
   });

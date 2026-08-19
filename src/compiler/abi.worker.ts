@@ -6,10 +6,10 @@
 // response kind — because the interesting structure is in the response body,
 // which this file never looks at.
 
-import type { AbiResponse } from './AbiAdapter';
+import type { WireResponse } from '$core/render';
 
 interface AbiWasmModule {
-  query(request: unknown): AbiResponse;
+  query(request: unknown): WireResponse;
   targets(): string[];
   version(): string;
 }
@@ -61,7 +61,8 @@ async function boot(): Promise<AbiWasmModule> {
   const blobUrl = URL.createObjectURL(new Blob([source], { type: 'text/javascript' }));
   let factory: EmscriptenFactory;
   try {
-    factory = ((await import(/* @vite-ignore */ blobUrl)) as { default: EmscriptenFactory }).default;
+    factory = ((await import(/* @vite-ignore */ blobUrl)) as { default: EmscriptenFactory })
+      .default;
   } finally {
     URL.revokeObjectURL(blobUrl);
   }
@@ -76,7 +77,7 @@ async function boot(): Promise<AbiWasmModule> {
   const rawVersion = instance.cwrap('abi_version', 'string', []);
 
   module = {
-    query: (request) => JSON.parse(rawQuery(JSON.stringify(request))) as AbiResponse,
+    query: (request) => JSON.parse(rawQuery(JSON.stringify(request))) as WireResponse,
     targets: () =>
       (JSON.parse(rawQuery(JSON.stringify({ listTargets: true }))) as { targets?: string[] })
         .targets ?? [],

@@ -1,18 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import { computeAnalysisStatus } from '$state/status';
-import type { Analysis } from '$compiler/Analyzer';
+import type { Analysis } from '$compiler/AbiAnalyzer';
 
 const analysis = (over: Partial<Analysis>): Analysis =>
   ({
     code: 0,
     diagnosticsText: '',
-    diagnosticsAnsi: '',
-    userRecords: [],
-    unmeasured: [],
+    records: [],
     diagnostics: [],
     options: {},
     ...over,
-  }) as Analysis;
+  }) as unknown as Analysis;
 
 describe('computeAnalysisStatus', () => {
   it('mirrors idle / running straight through', () => {
@@ -30,7 +28,7 @@ describe('computeAnalysisStatus', () => {
     ).toEqual({ kind: 'error', message: 'worker died' });
   });
 
-  it('ok + clean exit → ok, warnings from stderr presence', () => {
+  it('ok + clean exit → ok, warnings from what clang reported', () => {
     expect(computeAnalysisStatus({ status: 'ok', error: null }, analysis({ code: 0 }), 2)).toEqual({
       kind: 'ok',
       warnings: false,
@@ -38,7 +36,10 @@ describe('computeAnalysisStatus', () => {
     expect(
       computeAnalysisStatus(
         { status: 'ok', error: null },
-        analysis({ code: 0, diagnosticsText: 'warning: padded' }),
+        analysis({
+          code: 0,
+          diagnostics: [{ line: 1, column: 1, severity: 'warning', message: 'padded' }],
+        }),
         2,
       ),
     ).toEqual({ kind: 'ok', warnings: true });

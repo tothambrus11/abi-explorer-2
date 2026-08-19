@@ -142,15 +142,6 @@
           >Report padding <code>-Wpadded</code></span
         ></label
       >
-      <label class="opt check" use:tooltip={'Map the bundled wasi-libc headers in for any target'}
-        ><input type="checkbox" id="wasi-libc" bind:checked={store.options.wasiLibc} />
-        <span
-          >WASI libc headers <small
-            >lets <code>&lt;stdio.h&gt;</code> &amp; co. resolve on non-WASI targets — their internals
-            reflect wasi-libc, not the target's real libc</small
-          ></span
-        ></label
-      >
       <label
         class="opt wide"
         use:tooltip={'Additional clang flags (-f…, -m…, -W…, -D…, -std=…); anything else is ignored'}
@@ -279,11 +270,6 @@
   .opt code {
     font-size: 11.5px;
     color: var(--text-muted);
-  }
-  .opt small {
-    display: block;
-    color: var(--text-muted);
-    max-width: 420px;
   }
   .opt.wide {
     flex: 1 1 340px;

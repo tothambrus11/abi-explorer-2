@@ -6,7 +6,7 @@ export default defineConfig({
   timeout: 240_000,
   expect: { timeout: 20_000 },
   retries: process.env['CI'] ? 1 : 0,
-  workers: 1, // one shared clang download/cache
+  workers: 1, // one shared module download/cache
   reporter: process.env['CI'] ? 'github' : 'list',
   use: {
     baseURL: `http://127.0.0.1:${port}`,

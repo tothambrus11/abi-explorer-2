@@ -1,0 +1,412 @@
+{
+ "source": "struct E {};\nstruct W : E {};\nstruct S { W a; W b; int i; };\n",
+ "options": {
+  "lang": "c++",
+  "std": "gnu++20",
+  "triple": "x86_64-pc-windows-msvc",
+  "pack": "",
+  "msBitfields": false,
+  "shortEnums": false,
+  "shortWchar": false,
+  "warnPadded": false,
+  "extraFlags": ""
+ },
+ "response": {
+  "clangVersion": "clang version 22.1.8 (https://github.com/llvm/llvm-project.git ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)",
+  "diagnostics": [],
+  "diagnosticsText": "",
+  "error": null,
+  "exitCode": 0,
+  "ok": true,
+  "records": [
+   {
+    "alignBits": 8,
+    "bases": [],
+    "dataSizeBits": 0,
+    "fields": [],
+    "id": 0,
+    "isAnonymous": false,
+    "isEmpty": true,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": true,
+    "kind": "struct",
+    "location": {
+     "col": 8,
+     "endCol": 9,
+     "file": "input.cc",
+     "isMainFile": true,
+     "line": 1
+    },
+    "name": "E",
+    "nonVirtualAlignBits": 8,
+    "nonVirtualSizeBits": 0,
+    "paddingBits": 8,
+    "paddingRuns": [
+     {
+      "endBits": 8,
+      "startBits": 0
+     }
+    ],
+    "parentRecordId": null,
+    "preferredAlignBits": 8,
+    "printedName": "struct E",
+    "qualifiedName": "E",
+    "range": {
+     "col": 1,
+     "endCol": 12,
+     "endLine": 1,
+     "line": 1
+    },
+    "render": {
+     "groups": [],
+     "leaves": [],
+     "markers": [],
+     "paddingBits": 8,
+     "paddingRuns": [
+      {
+       "endBits": 8,
+       "startBits": 0
+      }
+     ],
+     "tree": []
+    },
+    "sizeBits": 8,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 8,
+    "bases": [
+     {
+      "access": "public",
+      "isEmpty": true,
+      "isPrimary": false,
+      "isVirtual": false,
+      "location": {
+       "col": 12,
+       "endCol": 13,
+       "endLine": 2,
+       "line": 2
+      },
+      "offsetBits": 0,
+      "recordId": 0,
+      "sizeBits": 0,
+      "typeSizeBits": 8,
+      "typeSpelling": "E"
+     }
+    ],
+    "dataSizeBits": 0,
+    "fields": [],
+    "id": 1,
+    "isAnonymous": false,
+    "isEmpty": true,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": true,
+    "kind": "struct",
+    "location": {
+     "col": 8,
+     "endCol": 9,
+     "file": "input.cc",
+     "isMainFile": true,
+     "line": 2
+    },
+    "name": "W",
+    "nonVirtualAlignBits": 8,
+    "nonVirtualSizeBits": 0,
+    "paddingBits": 8,
+    "paddingRuns": [
+     {
+      "endBits": 8,
+      "startBits": 0
+     }
+    ],
+    "parentRecordId": null,
+    "preferredAlignBits": 8,
+    "printedName": "struct W",
+    "qualifiedName": "W",
+    "range": {
+     "col": 1,
+     "endCol": 16,
+     "endLine": 2,
+     "line": 2
+    },
+    "render": {
+     "groups": [
+      {
+       "alignBits": 8,
+       "isBase": true,
+       "isUnion": false,
+       "kind": "base",
+       "leafIndexes": [],
+       "location": {
+        "col": 12,
+        "endCol": 13,
+        "endLine": 2,
+        "line": 2
+       },
+       "name": "E",
+       "offsetBits": 0,
+       "ownerId": 1,
+       "ownerName": "W",
+       "path": [],
+       "recordId": 0,
+       "sizeBits": 0,
+       "type": "E",
+       "typeSizeBits": 8
+      }
+     ],
+     "leaves": [],
+     "markers": [
+      {
+       "kind": "empty-base",
+       "name": "E",
+       "offsetBits": 0,
+       "path": [],
+       "type": "E"
+      }
+     ],
+     "paddingBits": 8,
+     "paddingRuns": [
+      {
+       "endBits": 8,
+       "startBits": 0
+      }
+     ],
+     "tree": [
+      {
+       "children": [],
+       "kind": "group",
+       "overlaps": false,
+       "ref": 0
+      }
+     ]
+    },
+    "sizeBits": 8,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 32,
+    "bases": [],
+    "dataSizeBits": 64,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 8,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "struct W",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 14,
+       "endCol": 15,
+       "file": "input.cc",
+       "isMainFile": true,
+       "line": 3
+      },
+      "name": "a",
+      "offsetBits": 0,
+      "recordId": 1,
+      "sizeBits": 8,
+      "typeSpelling": "W"
+     },
+     {
+      "access": "public",
+      "alignBits": 8,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "struct W",
+      "explicitAlignBits": null,
+      "id": 1,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 19,
+       "endCol": 20,
+       "file": "input.cc",
+       "isMainFile": true,
+       "line": 3
+      },
+      "name": "b",
+      "offsetBits": 8,
+      "recordId": 1,
+      "sizeBits": 8,
+      "typeSpelling": "W"
+     },
+     {
+      "access": "public",
+      "alignBits": 32,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "int",
+      "explicitAlignBits": null,
+      "id": 2,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 26,
+       "endCol": 27,
+       "file": "input.cc",
+       "isMainFile": true,
+       "line": 3
+      },
+      "name": "i",
+      "offsetBits": 32,
+      "recordId": null,
+      "sizeBits": 32,
+      "typeSpelling": "int"
+     }
+    ],
+    "id": 2,
+    "isAnonymous": false,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": true,
+    "kind": "struct",
+    "location": {
+     "col": 8,
+     "endCol": 9,
+     "file": "input.cc",
+     "isMainFile": true,
+     "line": 3
+    },
+    "name": "S",
+    "nonVirtualAlignBits": 32,
+    "nonVirtualSizeBits": 64,
+    "paddingBits": 16,
+    "paddingRuns": [
+     {
+      "endBits": 32,
+      "startBits": 16
+     }
+    ],
+    "parentRecordId": null,
+    "preferredAlignBits": 32,
+    "printedName": "struct S",
+    "qualifiedName": "S",
+    "range": {
+     "col": 1,
+     "endCol": 30,
+     "endLine": 3,
+     "line": 3
+    },
+    "render": {
+     "groups": [],
+     "leaves": [
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 14,
+        "endCol": 15,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 3
+       },
+       "name": "a",
+       "offsetBits": 0,
+       "ownerId": 2,
+       "ownerName": "S",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 8,
+       "type": "W"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 19,
+        "endCol": 20,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 3
+       },
+       "name": "b",
+       "offsetBits": 8,
+       "ownerId": 2,
+       "ownerName": "S",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 8,
+       "type": "W"
+      },
+      {
+       "alignBits": 32,
+       "kind": "field",
+       "location": {
+        "col": 26,
+        "endCol": 27,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 3
+       },
+       "name": "i",
+       "offsetBits": 32,
+       "ownerId": 2,
+       "ownerName": "S",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 32,
+       "type": "int"
+      }
+     ],
+     "markers": [],
+     "paddingBits": 16,
+     "paddingRuns": [
+      {
+       "endBits": 32,
+       "startBits": 16
+      }
+     ],
+     "tree": [
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 0
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 1
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 2
+      }
+     ]
+    },
+    "sizeBits": 64,
+    "vtableSlots": []
+   }
+  ],
+  "target": {
+   "charSizeBits": 8,
+   "cxxAbi": "microsoft",
+   "intSizeBits": 32,
+   "isLittleEndian": true,
+   "longLongSizeBits": 64,
+   "longSizeBits": 32,
+   "normalizedTriple": "x86_64-pc-windows-msvc19.33.0",
+   "pointerAlignBits": 64,
+   "pointerSizeBits": 64,
+   "shortSizeBits": 16,
+   "triple": "x86_64-pc-windows-msvc"
+  },
+  "typedefs": []
+ }
+}

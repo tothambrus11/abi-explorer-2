@@ -2,8 +2,8 @@
 // source, view, selection, the current analysis, and hover — every view
 // derives from it; nothing is stored in the DOM.
 
-import type { Analysis } from '$compiler/Analyzer';
-import type { CompilerStatus } from '$compiler/Compiler';
+import type { AnalysedRecord, Analysis } from '$compiler/AbiAnalyzer';
+import type { ModuleStatus } from '$compiler/AbiClient';
 import {
   DEFAULT_OPTIONS,
   defaultStdFor,
@@ -12,14 +12,6 @@ import {
   type Language,
 } from '$core/options';
 import { EXAMPLES } from '$core/targets';
-import {
-  anonymousLocationFilter,
-  isAnonymousRecord,
-  isLibraryRecord,
-  recordKey,
-} from '$core/layout-parser';
-import { sourceExtension } from '$core/options';
-import { assignColors, buildRenderModel } from '$core/model';
 import type { RenderModel } from '$core/types';
 import type { ViewMode } from '$core/url-state';
 import { EMPTY_HOVER } from './hover';
@@ -41,9 +33,24 @@ export interface Section {
   model: RenderModel;
 }
 
+/** A stretch of bytes belonging to one hovered thing. */
+export interface ByteRange {
+  record: string;
+  /** Byte offsets, half-open. */
+  start: number;
+  end: number;
+}
+
 /** Hover state shared by grid, table and editor. */
 export interface Hover {
   members: MemberRef[];
+  /**
+   * The extent of what is hovered, so the byte map can light the bytes *inside*
+   * a member that no member of its own occupies — its internal padding. A
+   * member's row says it takes eight bytes; pointing at it has to show which
+   * eight, and the five that happen to hold a field are not an answer.
+   */
+  ranges: ByteRange[];
   /** Editor line to highlight. */
   line: number | null;
   /** The member's own name, for the strong highlight on a shared line. */
@@ -66,12 +73,10 @@ class Store {
   selectedRecord: string | null = $state(null);
   showInternal = $state(false);
 
-  compiler: CompilerStatus = $state({ state: 'idle' });
+  compiler: ModuleStatus = $state({ state: 'idle' });
   status: AnalysisStatus = $state({ kind: 'idle' });
   analysis: Analysis | null = $state.raw(null);
   hover: Hover = $state.raw(EMPTY_HOVER);
-  /** `<unqualified owner> <field>` -> explicit alignment from the AST (filled in by the session). */
-  memberAligns: Map<string, number> = $state.raw(new Map<string, number>());
   /**
    * The clang download is waiting for the user to opt in (metered connection,
    * nothing cached yet). Set by the session; cleared once they accept.
@@ -87,28 +92,21 @@ class Store {
 
   // -------------------------------------------------------- derived ----
 
-  /** Records worth showing (no library, compiler-internal or anonymous ones unless asked). */
-  visibleRecords = $derived.by(() => {
-    const a = this.analysis;
-    if (!a) return [];
-    const mainFile = 'input.' + sourceExtension(a.options.lang);
-    return a.userRecords.filter((r) => {
-      if (this.showInternal) return true;
-      // A single `#include <string>` lays out >1000 library records; they are
-      // not what the user asked about.
-      if (isLibraryRecord(r.name)) return false;
-      // Nested anonymous records are shown inline in their parent; top-level
-      // ones from the user's file (`typedef struct { … } T;`) are records of their own.
-      return !isAnonymousRecord(r) || anonymousLocationFilter(r, mainFile) !== null;
-    });
-  });
+  /**
+   * Records worth showing. The response only carries what the user's file
+   * declares — a library record reaches the app solely as the type of a
+   * member — so what is left to decide is the nested anonymous ones, which are
+   * drawn inside their parent rather than listed beside it.
+   */
+  visibleRecords: AnalysedRecord[] = $derived(
+    this.analysis?.records.filter((r) => this.showInternal || r.listed) ?? [],
+  );
 
   /** The record shown in tabs mode (falls back to the last one). */
   activeRecordKey = $derived.by(() => {
     const recs = this.modelRecords;
     if (recs.length === 0) return null;
-    const found = recs.find((r) => recordKey(r) === this.selectedRecord);
-    return recordKey(found ?? recs[recs.length - 1]!);
+    return (recs.find((r) => r.key === this.selectedRecord) ?? recs[recs.length - 1]!).key;
   });
 
   /**
@@ -116,28 +114,18 @@ class Store {
    * explicitly selected — drilling into a nested anonymous member should show
    * it even though it is not listed on its own.
    */
-  modelRecords = $derived.by(() => {
+  modelRecords: AnalysedRecord[] = $derived.by(() => {
     const recs = [...this.visibleRecords];
     const sel = this.selectedRecord;
-    if (sel !== null && !recs.some((r) => recordKey(r) === sel)) {
-      const extra = this.analysis?.userRecords.find((r) => recordKey(r) === sel);
+    if (sel !== null && !recs.some((r) => r.key === sel)) {
+      const extra = this.analysis?.byKey.get(sel);
       if (extra) recs.push(extra);
     }
     return recs;
   });
 
-  /** Render models for every visible record (built once per analysis). */
-  models = $derived.by(() => {
-    const a = this.analysis;
-    const out = new Map<string, RenderModel>();
-    if (!a) return out;
-    for (const rec of this.modelRecords) {
-      const model = buildRenderModel(rec, { ...a, memberAligns: this.memberAligns });
-      assignColors(model);
-      out.set(recordKey(rec), model);
-    }
-    return out;
-  });
+  /** Render models by record key. The analysis already built them. */
+  models = $derived(new Map<string, RenderModel>(this.modelRecords.map((r) => [r.key, r.model])));
 
   /** Sections to render: one (tabs) or all (stack). */
   sections = $derived.by(() => {

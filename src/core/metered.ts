@@ -14,13 +14,10 @@ export interface ConnectionHint {
   type?: string | undefined;
 }
 
-/** Approximate size of the download we are gating (bytes), for the prompt. */
-export const CLANG_DOWNLOAD_BYTES = 27_112_311;
-
 /**
- * A connection we should not spend 27 MB on without asking: the user turned on
- * Data Saver, the browser reports a cellular link, or the link is slow enough
- * that the download would take minutes.
+ * A connection we should not spend ten-odd megabytes on without asking: the
+ * user turned on Data Saver, the browser reports a cellular link, or the link
+ * is slow enough that the download would take minutes.
  */
 export function isMeteredConnection(c: ConnectionHint | null | undefined): boolean {
   if (!c) return false; // no information → assume unmetered (the common desktop case)

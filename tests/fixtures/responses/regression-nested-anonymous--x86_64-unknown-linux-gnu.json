@@ -1,0 +1,1174 @@
+{
+ "source": "struct S {\n  struct { int a; struct { char b, c; }; };\n  union { long d; struct { short e, f; }; };\n};\n",
+ "options": {
+  "lang": "c",
+  "std": "gnu17",
+  "triple": "x86_64-unknown-linux-gnu",
+  "pack": "",
+  "msBitfields": false,
+  "shortEnums": false,
+  "shortWchar": false,
+  "warnPadded": false,
+  "extraFlags": ""
+ },
+ "response": {
+  "clangVersion": "clang version 22.1.8 (https://github.com/llvm/llvm-project.git ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)",
+  "diagnostics": [],
+  "diagnosticsText": "",
+  "error": null,
+  "exitCode": 0,
+  "ok": true,
+  "records": [
+   {
+    "alignBits": 64,
+    "bases": [],
+    "dataSizeBits": 128,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 32,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "struct S::(anonymous at input.c:2:3)",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": true,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 3,
+       "endCol": 9,
+       "file": "input.c",
+       "isMainFile": true,
+       "line": 2
+      },
+      "name": "",
+      "offsetBits": 0,
+      "recordId": 1,
+      "sizeBits": 64,
+      "typeSpelling": "struct S::(anonymous at input.c:2:3)"
+     },
+     {
+      "access": "public",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "union S::(anonymous at input.c:3:3)",
+      "explicitAlignBits": null,
+      "id": 1,
+      "isAnonymousMember": true,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 3,
+       "endCol": 8,
+       "file": "input.c",
+       "isMainFile": true,
+       "line": 3
+      },
+      "name": "",
+      "offsetBits": 64,
+      "recordId": 3,
+      "sizeBits": 64,
+      "typeSpelling": "union S::(anonymous at input.c:3:3)"
+     }
+    ],
+    "id": 0,
+    "isAnonymous": false,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": true,
+    "kind": "struct",
+    "location": {
+     "col": 8,
+     "endCol": 9,
+     "file": "input.c",
+     "isMainFile": true,
+     "line": 1
+    },
+    "name": "S",
+    "nonVirtualAlignBits": 64,
+    "nonVirtualSizeBits": 128,
+    "paddingBits": 0,
+    "paddingRuns": [],
+    "parentRecordId": null,
+    "preferredAlignBits": 64,
+    "printedName": "struct S",
+    "qualifiedName": "S",
+    "range": {
+     "col": 1,
+     "endCol": 2,
+     "endLine": 4,
+     "line": 1
+    },
+    "render": {
+     "groups": [
+      {
+       "alignBits": 8,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        1,
+        2
+       ],
+       "location": {
+        "col": 19,
+        "endCol": 25,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 2
+       },
+       "name": "(anonymous)",
+       "offsetBits": 32,
+       "ownerId": 1,
+       "ownerName": "",
+       "path": [
+        "(anonymous)"
+       ],
+       "recordId": 2,
+       "sizeBits": 16,
+       "type": "struct S::(anonymous struct)::(anonymous at input.c:2:19)",
+       "typeSizeBits": 16
+      },
+      {
+       "alignBits": 32,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        0,
+        1,
+        2
+       ],
+       "location": {
+        "col": 3,
+        "endCol": 9,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 2
+       },
+       "name": "(anonymous)",
+       "offsetBits": 0,
+       "ownerId": 0,
+       "ownerName": "S",
+       "path": [],
+       "recordId": 1,
+       "sizeBits": 64,
+       "type": "struct S::(anonymous at input.c:2:3)",
+       "typeSizeBits": 64
+      },
+      {
+       "alignBits": 16,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        4,
+        5
+       ],
+       "location": {
+        "col": 19,
+        "endCol": 25,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 3
+       },
+       "name": "(anonymous)",
+       "offsetBits": 64,
+       "ownerId": 3,
+       "ownerName": "",
+       "path": [
+        "(anonymous)"
+       ],
+       "recordId": 4,
+       "sizeBits": 32,
+       "type": "struct S::(anonymous union)::(anonymous at input.c:3:19)",
+       "typeSizeBits": 32
+      },
+      {
+       "alignBits": 64,
+       "isBase": false,
+       "isUnion": true,
+       "kind": "member",
+       "leafIndexes": [
+        3,
+        4,
+        5
+       ],
+       "location": {
+        "col": 3,
+        "endCol": 8,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 3
+       },
+       "name": "(anonymous)",
+       "offsetBits": 64,
+       "ownerId": 0,
+       "ownerName": "S",
+       "path": [],
+       "recordId": 3,
+       "sizeBits": 64,
+       "type": "union S::(anonymous at input.c:3:3)",
+       "typeSizeBits": 64
+      }
+     ],
+     "leaves": [
+      {
+       "alignBits": 32,
+       "kind": "field",
+       "location": {
+        "col": 16,
+        "endCol": 17,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 2
+       },
+       "name": "a",
+       "offsetBits": 0,
+       "ownerId": 1,
+       "ownerName": "",
+       "path": [
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 32,
+       "type": "int"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 33,
+        "endCol": 34,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 2
+       },
+       "name": "b",
+       "offsetBits": 32,
+       "ownerId": 2,
+       "ownerName": "",
+       "path": [
+        "(anonymous)",
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 8,
+       "type": "char"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 36,
+        "endCol": 37,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 2
+       },
+       "name": "c",
+       "offsetBits": 40,
+       "ownerId": 2,
+       "ownerName": "",
+       "path": [
+        "(anonymous)",
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 8,
+       "type": "char"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 16,
+        "endCol": 17,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 3
+       },
+       "name": "d",
+       "offsetBits": 64,
+       "ownerId": 3,
+       "ownerName": "",
+       "path": [
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "long"
+      },
+      {
+       "alignBits": 16,
+       "kind": "field",
+       "location": {
+        "col": 34,
+        "endCol": 35,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 3
+       },
+       "name": "e",
+       "offsetBits": 64,
+       "ownerId": 4,
+       "ownerName": "",
+       "path": [
+        "(anonymous)",
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 16,
+       "type": "short"
+      },
+      {
+       "alignBits": 16,
+       "kind": "field",
+       "location": {
+        "col": 37,
+        "endCol": 38,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 3
+       },
+       "name": "f",
+       "offsetBits": 80,
+       "ownerId": 4,
+       "ownerName": "",
+       "path": [
+        "(anonymous)",
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 16,
+       "type": "short"
+      }
+     ],
+     "markers": [],
+     "paddingBits": 16,
+     "paddingRuns": [
+      {
+       "endBits": 64,
+       "startBits": 48
+      }
+     ],
+     "tree": [
+      {
+       "children": [
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 0
+        },
+        {
+         "children": [
+          {
+           "children": [],
+           "kind": "leaf",
+           "overlaps": false,
+           "ref": 1
+          },
+          {
+           "children": [],
+           "kind": "leaf",
+           "overlaps": false,
+           "ref": 2
+          }
+         ],
+         "kind": "group",
+         "overlaps": false,
+         "ref": 0
+        }
+       ],
+       "kind": "group",
+       "overlaps": false,
+       "ref": 1
+      },
+      {
+       "children": [
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": true,
+         "ref": 3
+        },
+        {
+         "children": [
+          {
+           "children": [],
+           "kind": "leaf",
+           "overlaps": false,
+           "ref": 4
+          },
+          {
+           "children": [],
+           "kind": "leaf",
+           "overlaps": false,
+           "ref": 5
+          }
+         ],
+         "kind": "group",
+         "overlaps": true,
+         "ref": 2
+        }
+       ],
+       "kind": "group",
+       "overlaps": false,
+       "ref": 3
+      }
+     ]
+    },
+    "sizeBits": 128,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 32,
+    "bases": [],
+    "dataSizeBits": 64,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 32,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "int",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 16,
+       "endCol": 17,
+       "file": "input.c",
+       "isMainFile": true,
+       "line": 2
+      },
+      "name": "a",
+      "offsetBits": 0,
+      "recordId": null,
+      "sizeBits": 32,
+      "typeSpelling": "int"
+     },
+     {
+      "access": "public",
+      "alignBits": 8,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "struct S::(anonymous struct)::(anonymous at input.c:2:19)",
+      "explicitAlignBits": null,
+      "id": 1,
+      "isAnonymousMember": true,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 19,
+       "endCol": 25,
+       "file": "input.c",
+       "isMainFile": true,
+       "line": 2
+      },
+      "name": "",
+      "offsetBits": 32,
+      "recordId": 2,
+      "sizeBits": 16,
+      "typeSpelling": "struct S::(anonymous struct)::(anonymous at input.c:2:19)"
+     }
+    ],
+    "id": 1,
+    "isAnonymous": true,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": true,
+    "kind": "struct",
+    "location": {
+     "col": 3,
+     "endCol": 9,
+     "file": "input.c",
+     "isMainFile": true,
+     "line": 2
+    },
+    "name": "",
+    "nonVirtualAlignBits": 32,
+    "nonVirtualSizeBits": 64,
+    "paddingBits": 16,
+    "paddingRuns": [
+     {
+      "endBits": 64,
+      "startBits": 48
+     }
+    ],
+    "parentRecordId": 0,
+    "preferredAlignBits": 32,
+    "printedName": "struct S::(anonymous at input.c:2:3)",
+    "qualifiedName": "S::struct (anonymous at input.c:2:3)",
+    "range": {
+     "col": 3,
+     "endCol": 43,
+     "endLine": 2,
+     "line": 2
+    },
+    "render": {
+     "groups": [
+      {
+       "alignBits": 8,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        1,
+        2
+       ],
+       "location": {
+        "col": 19,
+        "endCol": 25,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 2
+       },
+       "name": "(anonymous)",
+       "offsetBits": 32,
+       "ownerId": 1,
+       "ownerName": "",
+       "path": [],
+       "recordId": 2,
+       "sizeBits": 16,
+       "type": "struct S::(anonymous struct)::(anonymous at input.c:2:19)",
+       "typeSizeBits": 16
+      }
+     ],
+     "leaves": [
+      {
+       "alignBits": 32,
+       "kind": "field",
+       "location": {
+        "col": 16,
+        "endCol": 17,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 2
+       },
+       "name": "a",
+       "offsetBits": 0,
+       "ownerId": 1,
+       "ownerName": "",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 32,
+       "type": "int"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 33,
+        "endCol": 34,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 2
+       },
+       "name": "b",
+       "offsetBits": 32,
+       "ownerId": 2,
+       "ownerName": "",
+       "path": [
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 8,
+       "type": "char"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 36,
+        "endCol": 37,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 2
+       },
+       "name": "c",
+       "offsetBits": 40,
+       "ownerId": 2,
+       "ownerName": "",
+       "path": [
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 8,
+       "type": "char"
+      }
+     ],
+     "markers": [],
+     "paddingBits": 16,
+     "paddingRuns": [
+      {
+       "endBits": 64,
+       "startBits": 48
+      }
+     ],
+     "tree": [
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 0
+      },
+      {
+       "children": [
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 1
+        },
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 2
+        }
+       ],
+       "kind": "group",
+       "overlaps": false,
+       "ref": 0
+      }
+     ]
+    },
+    "sizeBits": 64,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 8,
+    "bases": [],
+    "dataSizeBits": 16,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 8,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "char",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 33,
+       "endCol": 34,
+       "file": "input.c",
+       "isMainFile": true,
+       "line": 2
+      },
+      "name": "b",
+      "offsetBits": 0,
+      "recordId": null,
+      "sizeBits": 8,
+      "typeSpelling": "char"
+     },
+     {
+      "access": "public",
+      "alignBits": 8,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "char",
+      "explicitAlignBits": null,
+      "id": 1,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 36,
+       "endCol": 37,
+       "file": "input.c",
+       "isMainFile": true,
+       "line": 2
+      },
+      "name": "c",
+      "offsetBits": 8,
+      "recordId": null,
+      "sizeBits": 8,
+      "typeSpelling": "char"
+     }
+    ],
+    "id": 2,
+    "isAnonymous": true,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": true,
+    "kind": "struct",
+    "location": {
+     "col": 19,
+     "endCol": 25,
+     "file": "input.c",
+     "isMainFile": true,
+     "line": 2
+    },
+    "name": "",
+    "nonVirtualAlignBits": 8,
+    "nonVirtualSizeBits": 16,
+    "paddingBits": 0,
+    "paddingRuns": [],
+    "parentRecordId": 1,
+    "preferredAlignBits": 8,
+    "printedName": "struct S::(anonymous struct)::(anonymous at input.c:2:19)",
+    "qualifiedName": "S::(anonymous struct)::struct (anonymous at input.c:2:19)",
+    "range": {
+     "col": 19,
+     "endCol": 40,
+     "endLine": 2,
+     "line": 2
+    },
+    "render": {
+     "groups": [],
+     "leaves": [
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 33,
+        "endCol": 34,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 2
+       },
+       "name": "b",
+       "offsetBits": 0,
+       "ownerId": 2,
+       "ownerName": "",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 8,
+       "type": "char"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 36,
+        "endCol": 37,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 2
+       },
+       "name": "c",
+       "offsetBits": 8,
+       "ownerId": 2,
+       "ownerName": "",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 8,
+       "type": "char"
+      }
+     ],
+     "markers": [],
+     "paddingBits": 0,
+     "paddingRuns": [],
+     "tree": [
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 0
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 1
+      }
+     ]
+    },
+    "sizeBits": 16,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 64,
+    "bases": [],
+    "dataSizeBits": 64,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "long",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 16,
+       "endCol": 17,
+       "file": "input.c",
+       "isMainFile": true,
+       "line": 3
+      },
+      "name": "d",
+      "offsetBits": 0,
+      "recordId": null,
+      "sizeBits": 64,
+      "typeSpelling": "long"
+     },
+     {
+      "access": "public",
+      "alignBits": 16,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "struct S::(anonymous union)::(anonymous at input.c:3:19)",
+      "explicitAlignBits": null,
+      "id": 1,
+      "isAnonymousMember": true,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 19,
+       "endCol": 25,
+       "file": "input.c",
+       "isMainFile": true,
+       "line": 3
+      },
+      "name": "",
+      "offsetBits": 0,
+      "recordId": 4,
+      "sizeBits": 32,
+      "typeSpelling": "struct S::(anonymous union)::(anonymous at input.c:3:19)"
+     }
+    ],
+    "id": 3,
+    "isAnonymous": true,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": true,
+    "kind": "union",
+    "location": {
+     "col": 3,
+     "endCol": 8,
+     "file": "input.c",
+     "isMainFile": true,
+     "line": 3
+    },
+    "name": "",
+    "nonVirtualAlignBits": 64,
+    "nonVirtualSizeBits": 64,
+    "paddingBits": 0,
+    "paddingRuns": [],
+    "parentRecordId": 0,
+    "preferredAlignBits": 64,
+    "printedName": "union S::(anonymous at input.c:3:3)",
+    "qualifiedName": "S::union (anonymous at input.c:3:3)",
+    "range": {
+     "col": 3,
+     "endCol": 44,
+     "endLine": 3,
+     "line": 3
+    },
+    "render": {
+     "groups": [
+      {
+       "alignBits": 16,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        1,
+        2
+       ],
+       "location": {
+        "col": 19,
+        "endCol": 25,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 3
+       },
+       "name": "(anonymous)",
+       "offsetBits": 0,
+       "ownerId": 3,
+       "ownerName": "",
+       "path": [],
+       "recordId": 4,
+       "sizeBits": 32,
+       "type": "struct S::(anonymous union)::(anonymous at input.c:3:19)",
+       "typeSizeBits": 32
+      }
+     ],
+     "leaves": [
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 16,
+        "endCol": 17,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 3
+       },
+       "name": "d",
+       "offsetBits": 0,
+       "ownerId": 3,
+       "ownerName": "",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "long"
+      },
+      {
+       "alignBits": 16,
+       "kind": "field",
+       "location": {
+        "col": 34,
+        "endCol": 35,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 3
+       },
+       "name": "e",
+       "offsetBits": 0,
+       "ownerId": 4,
+       "ownerName": "",
+       "path": [
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 16,
+       "type": "short"
+      },
+      {
+       "alignBits": 16,
+       "kind": "field",
+       "location": {
+        "col": 37,
+        "endCol": 38,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 3
+       },
+       "name": "f",
+       "offsetBits": 16,
+       "ownerId": 4,
+       "ownerName": "",
+       "path": [
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 16,
+       "type": "short"
+      }
+     ],
+     "markers": [],
+     "paddingBits": 0,
+     "paddingRuns": [],
+     "tree": [
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": true,
+       "ref": 0
+      },
+      {
+       "children": [
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 1
+        },
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 2
+        }
+       ],
+       "kind": "group",
+       "overlaps": true,
+       "ref": 0
+      }
+     ]
+    },
+    "sizeBits": 64,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 16,
+    "bases": [],
+    "dataSizeBits": 32,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 16,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "short",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 34,
+       "endCol": 35,
+       "file": "input.c",
+       "isMainFile": true,
+       "line": 3
+      },
+      "name": "e",
+      "offsetBits": 0,
+      "recordId": null,
+      "sizeBits": 16,
+      "typeSpelling": "short"
+     },
+     {
+      "access": "public",
+      "alignBits": 16,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "short",
+      "explicitAlignBits": null,
+      "id": 1,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 37,
+       "endCol": 38,
+       "file": "input.c",
+       "isMainFile": true,
+       "line": 3
+      },
+      "name": "f",
+      "offsetBits": 16,
+      "recordId": null,
+      "sizeBits": 16,
+      "typeSpelling": "short"
+     }
+    ],
+    "id": 4,
+    "isAnonymous": true,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": true,
+    "kind": "struct",
+    "location": {
+     "col": 19,
+     "endCol": 25,
+     "file": "input.c",
+     "isMainFile": true,
+     "line": 3
+    },
+    "name": "",
+    "nonVirtualAlignBits": 16,
+    "nonVirtualSizeBits": 32,
+    "paddingBits": 0,
+    "paddingRuns": [],
+    "parentRecordId": 3,
+    "preferredAlignBits": 16,
+    "printedName": "struct S::(anonymous union)::(anonymous at input.c:3:19)",
+    "qualifiedName": "S::(anonymous union)::struct (anonymous at input.c:3:19)",
+    "range": {
+     "col": 19,
+     "endCol": 41,
+     "endLine": 3,
+     "line": 3
+    },
+    "render": {
+     "groups": [],
+     "leaves": [
+      {
+       "alignBits": 16,
+       "kind": "field",
+       "location": {
+        "col": 34,
+        "endCol": 35,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 3
+       },
+       "name": "e",
+       "offsetBits": 0,
+       "ownerId": 4,
+       "ownerName": "",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 16,
+       "type": "short"
+      },
+      {
+       "alignBits": 16,
+       "kind": "field",
+       "location": {
+        "col": 37,
+        "endCol": 38,
+        "file": "input.c",
+        "isMainFile": true,
+        "line": 3
+       },
+       "name": "f",
+       "offsetBits": 16,
+       "ownerId": 4,
+       "ownerName": "",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 16,
+       "type": "short"
+      }
+     ],
+     "markers": [],
+     "paddingBits": 0,
+     "paddingRuns": [],
+     "tree": [
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 0
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 1
+      }
+     ]
+    },
+    "sizeBits": 32,
+    "vtableSlots": []
+   }
+  ],
+  "target": {
+   "charSizeBits": 8,
+   "cxxAbi": "itanium",
+   "intSizeBits": 32,
+   "isLittleEndian": true,
+   "longLongSizeBits": 64,
+   "longSizeBits": 64,
+   "normalizedTriple": "x86_64-unknown-linux-gnu",
+   "pointerAlignBits": 64,
+   "pointerSizeBits": 64,
+   "shortSizeBits": 16,
+   "triple": "x86_64-unknown-linux-gnu"
+  },
+  "typedefs": []
+ }
+}

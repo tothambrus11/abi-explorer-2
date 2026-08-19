@@ -4,29 +4,11 @@ export type RecordKind = 'struct' | 'union' | 'class' | '__interface' | 'interfa
 
 export type RowKind = 'field' | 'special' | 'base' | 'primary-base' | 'vbase' | 'primary-vbase';
 
-/** One line of a `-fdump-record-layouts` block, with nested rows. */
-export interface LayoutRow {
-  rowKind: RowKind;
-  /** Type spelling for fields/bases; null for special rows. */
-  type: string | null;
-  /** Field name ('' when unnamed/anonymous); null for bases/specials. */
-  name: string | null;
-  /** Text inside the parentheses for special rows, e.g. "Base vtable pointer". */
-  label: string | null;
-  offsetBits: number;
-  /** Bit width for bit-fields (0 for zero-width), null otherwise. */
-  bitWidth: number | null;
-  isBitfield: boolean;
-  isZeroWidth: boolean;
-  isEmpty: boolean;
-  depth: number;
-  children: LayoutRow[];
-}
-
-/** A complete record layout as dumped by clang. */
+/** A record's own facts, as clang computed them. Sizes in bytes. */
 export interface RecordLayout {
   kind: RecordKind;
   name: string;
+  qualifiedName: string;
   isEmpty: boolean;
   sizeBytes: number;
   align: number;
@@ -34,38 +16,82 @@ export interface RecordLayout {
   nvsize?: number;
   nvalign?: number;
   preferredalign?: number;
-  /** Ordinal among records dumped with the same kind+name (function-local duplicates). */
+  /** Ordinal among records sharing a kind+name (function-local duplicates). */
   dup?: number;
-  rows: LayoutRow[];
+  /** Where its name is written, when that is in the user's file. */
+  location: SourceLocation | null;
+  /**
+   * The whole declaration's extent. A caret anywhere inside it belongs to this
+   * record — including on a blank line or the closing brace, where no member
+   * location would match.
+   */
+  range: SourceSpan | null;
 }
 
-export interface ProbeResult {
-  bits: number;
-  align: number;
+export interface SourceLocation {
+  file: string;
+  line: number;
+  col: number;
+  endCol: number;
+  isMainFile: boolean;
+}
+
+/** A span that may cross lines — a base specifier, a diagnostic highlight. */
+export interface SourceSpan {
+  line: number;
+  col: number;
+  endLine: number;
+  endCol: number;
+}
+
+/** Where to underline something in the editor: one line, one column range. */
+export interface Anchor {
+  line: number;
+  col: number;
+  endCol: number;
+}
+
+/**
+ * The anchor of a location or a span. A base specifier is a span (`public
+ * Base`) and may cross lines; its first line is what gets marked.
+ */
+export function anchorOf(loc: SourceLocation | SourceSpan | null): Anchor | null {
+  if (!loc) return null;
+  if ('isMainFile' in loc) {
+    return loc.isMainFile ? { line: loc.line, col: loc.col, endCol: loc.endCol } : null;
+  }
+  return {
+    line: loc.line,
+    col: loc.col,
+    endCol: loc.endLine === loc.line ? loc.endCol : loc.col + 1,
+  };
 }
 
 export type LeafKind = 'field' | 'bitfield' | 'special';
 
-/** A drawable member extent. */
+/** A drawable extent: something that occupies bytes and can be pointed at. */
 export interface Leaf {
   kind: LeafKind;
-  row: LayoutRow;
   /** Labels of enclosing members/bases (outermost first). */
   path: string[];
   name: string;
   type: string | null;
   offsetBits: number;
   sizeBits: number;
-  /** Alignment in bytes if known. */
+  /** Alignment in bytes; null for a bit-field, which has none of its own. */
   align: number | null;
-  estimated: boolean;
-  depth: number;
-  /** Unqualified-ish record name that declares this member (as printed by clang). */
+  /** Record that declares this member, as clang names it. */
   owner: string;
+  /**
+   * Its type is empty and it shares an address with something else, so it
+   * occupies nothing — which is what `[[no_unique_address]]` permits.
+   */
+  sharesAddress: boolean;
+  location: SourceLocation | null;
   colorClass?: string;
 }
 
-/** A compound member (record-typed field or base) with the leaves it contains. */
+/** A compound member: a base subobject, a record-typed field, or an anonymous aggregate. */
 export interface Group {
   kind: 'member' | RowKind;
   name: string;
@@ -73,22 +99,26 @@ export interface Group {
   owner: string;
   path: string[];
   offsetBits: number;
-  sizeBits: number | null;
+  sizeBits: number;
+  /**
+   * `sizeof` of the member's own type. The bytes it occupies here (`sizeBits`)
+   * can be smaller: a base may have its tail padding reused.
+   */
+  typeSizeBits: number;
   align: number | null;
   leafIndexes: number[];
-  /**
-   * `sizeof` of the member's own type, when known. The bytes it occupies here
-   * (`sizeBits`) can be smaller: a base may have its tail padding reused.
-   */
-  typeSizeBits: number | null;
   isBase: boolean;
-  /** The member is a union (its fields share storage / overlap). */
+  /** The member is a union: its fields share storage. */
   isUnion: boolean;
+  /** The record this is an instance of, by index into the analysis's records. */
+  recordId: number | null;
+  /** A base carries the span of its specifier; a member, its name's position. */
+  location: SourceLocation | SourceSpan | null;
 }
 
+/** A zero-size thing worth marking even though it draws no bytes. */
 export interface Marker {
   kind: 'empty-base' | 'zero-bitfield';
-  row: LayoutRow;
   path: string[];
   name: string;
   type?: string | null;
@@ -100,15 +130,36 @@ export interface PaddingRun {
   end: number;
 }
 
+/** One node of the containment tree the field table renders. */
+export interface TreeNode {
+  /** Stable within a model; used for keys and collapse state. */
+  id: string;
+  kind: 'leaf' | 'group';
+  /** Index into `leaves` or `groups`. */
+  ref: number;
+  offsetBits: number;
+  sizeBits: number;
+  align: number | null;
+  /** Leaf indices this subtree covers, for hover highlighting. */
+  leafIndexes: number[];
+  isBase: boolean;
+  isUnion: boolean;
+  /** This node's bytes intersect a sibling's (union, EBO, tail-padding reuse). */
+  overlaps: boolean;
+  depth: number;
+  children: TreeNode[];
+}
+
 export interface RenderModel {
   record: RecordLayout;
   leaves: Leaf[];
   groups: Group[];
   markers: Marker[];
+  tree: TreeNode[];
   paddings: PaddingRun[];
   sizeBits: number;
-  paddingBytes: number;
-  unresolved: string[];
+  /** Null when the record was too large to scan for padding. */
+  paddingBytes: number | null;
 }
 
 export type DiagnosticSeverity = 'error' | 'fatal error' | 'warning' | 'note' | 'remark';

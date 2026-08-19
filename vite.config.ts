@@ -6,16 +6,15 @@ export default defineConfig({
   plugins: [
     svelte(),
     VitePWA({
-      // We keep our own service worker (src/sw.ts): it needs custom rules —
-      // the app shell is precached, locally vendored clang assets are too big
-      // for that and are cached lazily instead, and it must never touch the
-      // `abix-clang-*` cache owned by the compile worker.
+      // We keep our own service worker (src/sw.ts): the app shell is
+      // precached, and the wasm module is too big for that and is cached
+      // lazily on first fetch instead.
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
       registerType: 'autoUpdate',
       injectRegister: false, // registered from src/pwa.ts so we can show status
-      includeAssets: ['icons/*', 'vendor/clang/bundle.js'],
+      includeAssets: ['icons/*'],
       manifest: {
         name: 'ABI Explorer',
         short_name: 'ABI Explorer',
@@ -41,9 +40,8 @@ export default defineConfig({
       },
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2,ttf,webmanifest}'],
-        // Optional locally vendored clang assets are huge and cached lazily by
-        // the compile worker itself.
-        globIgnores: ['**/vendor/clang/llvm*'],
+        // The wasm module is cached lazily by the service worker's own route.
+        globIgnores: ['**/vendor/abi/*'],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
       },
       devOptions: { enabled: false },

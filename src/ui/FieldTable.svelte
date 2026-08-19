@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { RenderModel } from '$core/types';
-  import { buildLayoutTree, flattenVisible } from '$core/tree';
-  import { groupColorClass, isNameable } from '$core/model';
+  import { flattenVisible, groupColorClass, isNameable } from '$core/render';
   import { store } from '$state/store.svelte';
   import { fmtOffset, type Session } from '$state/session.svelte';
   import { fmtSize, fmtGroupSize, memberTooltipHtml, groupTooltipHtml } from './format';
@@ -20,11 +19,10 @@
   const { model, record, session }: { model: RenderModel; record: string; session: Session } =
     $props();
 
-  const tree = $derived(buildLayoutTree(model));
   // Collapsed node ids (default: everything expanded). Reassigned on toggle so
   // the derived flat list recomputes.
   let collapsed = $state(new Set<string>());
-  const rows = $derived(flattenVisible(tree, collapsed));
+  const rows = $derived(flattenVisible(model.tree, collapsed));
 
   const hovered = $derived(
     new Set(store.hover.members.filter((m) => m.record === record).map((m) => m.leaf)),
@@ -112,9 +110,8 @@
             <td class="num">{fmtOffset(leaf.offsetBits)}</td>
             <td
               class="num"
-              class:est={leaf.estimated}
-              class:noted={leaf.sizeBits === 0 && leaf.row.isEmpty}
-              use:tooltip={leaf.sizeBits === 0 && leaf.row.isEmpty
+              class:noted={leaf.sharesAddress}
+              use:tooltip={leaf.sharesAddress
                 ? 'Its type is empty and it shares an address with another member, so it occupies no bytes — sizeof(its type) is still 1.'
                 : null}>{fmtSize(leaf)}</td
             >
@@ -126,13 +123,13 @@
           {@const canCollapse = node.children.length > 0}
           {@const unitColour = isNameable(group.path) ? groupColorClass(model, group) : null}
           {@const full = group.typeSizeBits}
-          {@const short = full !== null && node.sizeBits !== null && node.sizeBits < full}
+          {@const short = node.sizeBits < full}
           <!-- Why it is short: an empty base is elided entirely (empty base
                optimization); anything else lost its tail padding to what follows. -->
           {@const shortWhy = short
             ? node.sizeBits === 0
               ? `Occupies no bytes here: it is empty, so it shares its address with the rest of the object — sizeof(${group.type || group.name}) is ${full / 8} B only because a complete object cannot be zero-sized.`
-              : `Occupies ${(node.sizeBits ?? 0) / 8} B here, though sizeof(${group.type || group.name}) is ${full / 8} B — the bytes after it are reused.`
+              : `Occupies ${node.sizeBits / 8} B here, though sizeof(${group.type || group.name}) is ${full / 8} B — the bytes after it are reused.`
             : null}
           <tr
             class="group"
@@ -316,9 +313,6 @@
     text-align: right;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
-  }
-  .num.est {
-    color: var(--text-muted);
   }
   /* A size that is not simply sizeof(the type). */
   .num.noted {

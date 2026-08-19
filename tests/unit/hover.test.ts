@@ -1,64 +1,22 @@
 import { describe, it, expect } from 'vitest';
-import { effectivePos, hoveredPrimary, resolveHover, type HoverInputs } from '$state/hover';
-import type { FieldLocation } from '$core/ast-locations';
-import type { Group, Leaf, RenderModel } from '$core/types';
+import {
+  EMPTY_HOVER,
+  effectivePos,
+  hoveredPrimary,
+  resolveHover,
+  type HoverInputs,
+} from '$state/hover';
 import type { LineInfo } from '$state/code-locations';
+import { analysed, group, leaf as mkLeaf, loc, model, record } from './factories';
 
-const leaf = (
-  name: string,
-  offsetBits: number,
-  sizeBits: number,
-  extra: Partial<Leaf> = {},
-): Leaf => ({
-  kind: 'field',
-  row: {} as never,
-  path: [],
-  name,
-  type: null,
-  offsetBits,
-  sizeBits,
-  align: 4,
-  estimated: false,
-  depth: 0,
-  owner: 'S',
-  ...extra,
-});
-const group = (name: string, leafIndexes: number[], extra: Partial<Group> = {}): Group => ({
-  kind: 'member',
-  name,
-  type: '',
-  owner: 'S',
-  path: [],
-  offsetBits: 0,
-  sizeBits: 64,
-  align: 8,
-  leafIndexes,
-  typeSizeBits: null,
-  isBase: false,
-  isUnion: false,
-  ...extra,
-});
-const model = (leaves: Leaf[], groups: Group[] = []): RenderModel => ({
-  record: { name: 'S' } as never,
-  leaves,
-  groups,
-  markers: [],
-  paddings: [],
-  sizeBits: 0,
-  paddingBytes: 0,
-  unresolved: [],
-});
-const loc = (line: number): FieldLocation => ({
-  owner: 'S',
-  qualifiedOwner: 'S',
-  name: 'x',
-  line,
-  col: 3,
-  qualType: '',
-});
+const leaf = (name: string, offsetBits: number, sizeBits: number, extra = {}) =>
+  mkLeaf(name, { offsetBits, sizeBits, align: 4, ...extra });
 
 function inputs(over: Partial<HoverInputs> = {}): HoverInputs {
-  const m = model([leaf('a', 0, 32), leaf('b', 32, 32)], [group('g', [0, 1])]);
+  const m = model(
+    [leaf('a', 0, 32, { location: loc(7) }), leaf('b', 32, 32, { location: loc(8) })],
+    [group('g', [0, 1], { sizeBits: 64, align: 8, location: loc(5) })],
+  );
   const lines = new Map<number, LineInfo>([
     [
       7,
@@ -68,7 +26,7 @@ function inputs(over: Partial<HoverInputs> = {}): HoverInputs {
         items: [m.leaves[0]!],
         primary: 'S',
         colorClass: 'c-1',
-        location: loc(7),
+        anchor: { line: 7, col: 3, endCol: 4 },
         marks: [],
       },
     ],
@@ -80,18 +38,8 @@ function inputs(over: Partial<HoverInputs> = {}): HoverInputs {
     preferCursor: false,
     models: new Map([['S', m]]),
     lines,
-    decls: [],
+    records: [],
     current: null,
-    leafLocations: new Map([
-      [
-        'S',
-        new Map([
-          [0, loc(7)],
-          [1, loc(8)],
-        ]),
-      ],
-    ]),
-    groupLocations: new Map([['S', new Map([[0, loc(5)]])]]),
     ...over,
   };
 }
@@ -111,13 +59,7 @@ describe('effectivePos', () => {
 
 describe('resolveHover', () => {
   it('is empty with no pointer, cursor or intent', () => {
-    expect(resolveHover(inputs())).toEqual({
-      members: [],
-      line: null,
-      nameRange: null,
-      inlay: null,
-      tooltip: null,
-    });
+    expect(resolveHover(inputs())).toEqual(EMPTY_HOVER);
   });
 
   it('resolves an editor line to its members and inlay', () => {
@@ -150,6 +92,20 @@ describe('resolveHover', () => {
     expect(h.inlay).toBe('offset 0 B · 8 B · align 8 B');
   });
 
+  it('carries the hovered extent, so the grid can light bytes no member covers', () => {
+    // The group spans eight bytes; whether a field happens to occupy each one
+    // is not the question the pointer is asking.
+    const h = resolveHover(
+      inputs({ intent: { kind: 'group', record: 'S', group: 0, tooltip: null } }),
+    );
+    expect(h.ranges).toEqual([{ record: 'S', start: 0, end: 8 }]);
+    // A leaf carries its own bytes, and nothing that occupies none carries any.
+    expect(
+      resolveHover(inputs({ intent: { kind: 'leaf', record: 'S', leaf: 1, tooltip: null } }))
+        .ranges,
+    ).toEqual([{ record: 'S', start: 4, end: 8 }]);
+  });
+
   it('a padding-cell intent shows only the tooltip', () => {
     const tooltip = { html: 'pad', x: 0, y: 0 };
     const h = resolveHover(inputs({ intent: { kind: 'tooltip', tooltip } }));
@@ -168,7 +124,7 @@ describe('resolveHover', () => {
         intent: { kind: 'leaf', record: 'S', leaf: 5, tooltip: null },
       }),
     );
-    expect(h).toEqual({ members: [], line: null, nameRange: null, inlay: null, tooltip: null });
+    expect(h).toEqual(EMPTY_HOVER);
   });
 
   it('an intent for a record that no longer exists resolves to nothing', () => {
@@ -195,7 +151,7 @@ describe('resolveHover with several declarators on a line', () => {
           items: m.leaves,
           primary: 'S',
           colorClass: 'c-compound',
-          location: loc(5),
+          anchor: { line: 5, col: 11, endCol: 13 },
           marks: [
             {
               col: 11,
@@ -240,29 +196,28 @@ describe('resolveHover with several declarators on a line', () => {
 });
 
 describe('hoveredPrimary', () => {
-  const decl = (name: string, begin: number, end: number) => ({
-    kind: 'record' as const,
-    name,
-    line: begin,
-    col: 8,
-    span: { begin, end },
-  });
+  const spanning = (key: string, line: number, endLine: number) =>
+    analysed(key, record(key, { range: { line, col: 1, endLine, endCol: 2 } }));
 
   it('falls back to the record whose declaration contains the cursor', () => {
     // Line 6 declares nothing, but it is inside `struct S { … }` (lines 4..9).
-    const i = inputs({ mouse: { line: 6, col: 1 }, decls: [decl('S', 4, 9)] });
+    const i = inputs({ mouse: { line: 6, col: 1 }, records: [spanning('S', 4, 9)] });
     expect(hoveredPrimary(i)).toBe('S');
   });
 
   it('prefers the record declaring a member on that line', () => {
-    // Line 7 declares S's own member, and is inside another record's span.
-    const i = inputs({ mouse: at(7), decls: [decl('Outer', 1, 20)] });
+    // Line 7 declares S's own member, and is inside another record's extent.
+    const i = inputs({ mouse: at(7), records: [spanning('Outer', 1, 20)] });
     expect(hoveredPrimary(i)).toBe('S');
   });
 
-  it('stays on the instantiation already shown when a span is shared', () => {
-    const i = inputs({ mouse: { line: 6, col: 1 }, decls: [decl('S', 4, 9)], current: 'S' });
-    expect(hoveredPrimary(i)).toBe('S');
+  it('stays on the instantiation already shown when an extent is shared', () => {
+    const i = inputs({
+      mouse: { line: 6, col: 1 },
+      records: [spanning('S', 4, 9), spanning('S<int>', 4, 9)],
+      current: 'S<int>',
+    });
+    expect(hoveredPrimary(i)).toBe('S<int>');
   });
 
   it('is the declaring record of the hovered line', () => {

@@ -1,15 +1,19 @@
 // Orchestration: reacts to store changes, runs the analyzer with debounce and
-// cancellation, resolves member source locations, and answers hover queries.
-// The UI never talks to the compiler directly.
+// cancellation, and answers hover queries. The UI never talks to the compiler
+// directly.
+//
+// There used to be two async resources here, and a feedback loop between them:
+// the compile produced models, the models decided which records to request an
+// AST dump for, and the dump produced alignments that the models were rebuilt
+// from. Keeping that from oscillating took dedup-by-key on both resources and a
+// guarded equality check on the alignment map. All of it existed because
+// locations and alignments arrived separately from the layout they described.
+// They arrive together now, so one resource is left and the loop is gone.
 
-import { Analyzer, type Analysis, type LayoutAnalyzer } from '$compiler/Analyzer';
-import type { Compiler } from '$compiler/Compiler';
+import { AbiAnalyzer, type AnalysedRecord, type Analysis } from '$compiler/AbiAnalyzer';
+import type { AbiClient } from '$compiler/AbiClient';
 import type { CompileOptions } from '$core/options';
-import type { AstInfo, DeclLocation } from '$core/ast-locations';
-import { recordKey, stripRecordKeyword } from '$core/layout-parser';
-import { buildRenderModel, directMembers } from '$core/model';
-import { findRecord } from '$core/probes';
-import type { RecordLayout } from '$core/types';
+import { directMembers } from '$core/render';
 import { decodeShareState, encodeShareState, type ShareState } from '$core/url-state';
 import { store, type Hover, type MemberRef } from './store.svelte';
 import {
@@ -27,14 +31,7 @@ import { AsyncRunner } from './async-resource.svelte';
 import { computeAnalysisStatus } from './status';
 import { declLineFor } from './inspected-record';
 import { grantConsent, shouldAskBeforeDownload } from './download-gate';
-import {
-  buildLineIndex,
-  collectLocateOwners,
-  collectMemberAligns,
-  EMPTY_INDEX,
-  type LineIndex,
-  type LineInfo,
-} from './code-locations';
+import { buildLineIndex, type LineIndex, type LineInfo } from './code-locations';
 
 export type { LineInfo };
 
@@ -46,21 +43,15 @@ interface CompileInput {
   options: CompileOptions;
 }
 
-/** Input to the AST-locate resource: an analysis plus the owner names to dump. */
-interface LocateInput {
-  analysis: Analysis;
-  owners: string[];
-}
-
 const SOURCE_DEBOUNCE_MS = 500;
 const HASH_DEBOUNCE_MS = 400;
 
 export class Session {
-  readonly analyzer: LayoutAnalyzer;
+  readonly analyzer: AbiAnalyzer;
   private cleanup: (() => void) | null = null;
 
   /**
-   * The compile as a reactive resource: debounced (source edits) or immediate
+   * The query as a reactive resource: debounced (source edits) or immediate
    * (option changes / first run), deduped by input, and cancelling. `value` is
    * the latest Analysis; `store.analysis`/`store.status` mirror it (see start()).
    */
@@ -69,7 +60,7 @@ export class Session {
     {
       key: (i) => JSON.stringify(i.options) + '\n' + i.source,
       // Option changes (and the very first compile) apply immediately; source
-      // edits debounce so we don't recompile on every keystroke.
+      // edits debounce so we don't re-query on every keystroke.
       debounce: (i, prev) =>
         !prev || JSON.stringify(prev.options) !== JSON.stringify(i.options)
           ? 0
@@ -77,38 +68,32 @@ export class Session {
     },
   );
 
-  /**
-   * AST source-location dump as a reactive resource, keyed by (source, options,
-   * owner set). Dedup-by-key breaks the memberAligns→models→owners feedback
-   * loop: once alignments settle, the owner set is stable and no re-dump runs.
-   */
-  private readonly locate = new AsyncRunner<LocateInput, AstInfo>(
-    (input, signal) => this.analyzer.locate(input.analysis, new Set(input.owners), signal),
-    {
-      key: (i) =>
-        i.analysis.source + '\0' + JSON.stringify(i.analysis.options) + '\0' + i.owners.join(','),
-    },
-  );
-
-  /** The per-line index derived from the current models + the latest AST dump. */
-  private readonly index: LineIndex = $derived(
-    this.locate.value ? buildLineIndex(store.models, this.locate.value.fields) : EMPTY_INDEX,
-  );
+  /** The per-line index derived from the models currently on screen. */
+  private readonly index: LineIndex = $derived(buildLineIndex(store.models));
   /** line -> LineInfo across all visible records. */
   get lines(): Map<number, LineInfo> {
-    return this.index.lines;
+    return this.index;
   }
-  /** Record/typedef name locations from the AST (for the type hover). */
-  private decls: DeclLocation[] = $derived(this.locate.value?.decls ?? []);
-  /** Type spellings clang reported (field types, typedef/record names): the only bare words we probe on hover. */
-  private knownSpellings: Set<string> = $derived(
-    new Set(
-      [
-        ...(this.locate.value?.decls.map((d) => d.name) ?? []),
-        ...(this.locate.value?.fields.flatMap((f) => [f.qualType, f.desugaredType ?? '']) ?? []),
-      ].filter(Boolean),
-    ),
-  );
+
+  /** Records with their declaration extents, for resolving the caret. */
+  private records: AnalysedRecord[] = $derived(store.modelRecords);
+
+  /**
+   * Type spellings clang reported somewhere in this TU: the only bare words
+   * worth probing when the pointer stops on one.
+   */
+  private knownSpellings: Set<string> = $derived.by(() => {
+    const out = new Set<string>();
+    const a = store.analysis;
+    if (!a) return out;
+    for (const t of a.typedefs) out.add(t.name);
+    for (const name of a.byName.keys()) out.add(name);
+    for (const r of a.records) {
+      for (const leaf of r.model.leaves) if (leaf.type) out.add(leaf.type);
+    }
+    return out;
+  });
+
   /** Hover sources: pointer over the editor, the text cursor, pointer over grid/table. */
   private mouse: EditorPos | null = $state.raw(null);
   private cursor: EditorPos | null = $state.raw(null);
@@ -131,7 +116,7 @@ export class Session {
   /**
    * Cursor position when a record was picked explicitly. While the cursor is
    * still there, the pick outranks the cursor rule — otherwise a pick made
-   * before source locations have loaded is undone the moment they arrive.
+   * before the analysis lands is undone the moment it arrives.
    */
   private pickedAt: EditorPos | null = $state.raw(null);
 
@@ -140,25 +125,16 @@ export class Session {
   /** Record owning the hovered line, for record-follows-cursor in tabs mode. */
   private readonly hoverPrimary: string | null = $derived(hoveredPrimary(this.hoverInputs));
 
-  /**
-   * `analyzer` overrides the default text-parsing pipeline — the app passes the
-   * library-backed one when a clang-abi-wasm build is available. The compiler
-   * is still required either way: it owns the download gate and the status the
-   * UI reports.
-   */
-  constructor(
-    private readonly compiler: Compiler,
-    analyzer?: LayoutAnalyzer,
-  ) {
-    this.analyzer = analyzer ?? new Analyzer(compiler);
+  constructor(private readonly client: AbiClient) {
+    this.analyzer = new AbiAnalyzer(client);
   }
 
   /**
-   * Decide whether the compiler may start, and start it if so. Call this first
-   * and *only* through here: on a metered connection (issue #1) the ~27 MB
-   * download waits for an explicit opt-in, so nothing else may kick the
-   * compiler off — starting it eagerly elsewhere would download the bundle
-   * behind the consent prompt and make the gate decorative.
+   * Decide whether the module may start downloading, and start it if so. Call
+   * this first and *only* through here: on a metered connection (issue #1) the
+   * download waits for an explicit opt-in, so nothing else may kick it off —
+   * starting it eagerly elsewhere would fetch the bundle behind the consent
+   * prompt and make the gate decorative.
    *
    * Returns a promise for tests; callers may ignore it (the load is slow and
    * DOM-independent, so the app mounts while it runs).
@@ -167,19 +143,19 @@ export class Session {
     // No usable hint (or the check threw) — behave as on an unmetered link.
     const ask = await shouldAskBeforeDownload().catch(() => false);
     if (ask) store.awaitingDownloadConsent = true;
-    else this.startCompiler();
+    else this.startModule();
   }
 
   /** Wire reactive effects. Returns a disposer. */
   start(): () => void {
-    const offStatus = this.compiler.onStatus((s) => {
+    const offStatus = this.client.onStatus((s) => {
       store.compiler = s;
     });
 
     const stopRoot = $effect.root(() => {
-      // Drive the compile resource from source/options. Dedup-by-input means the
-      // compiler flipping back to 'ready' after a restart does not re-run the
-      // same input (a timed-out compile would otherwise retry to exhaustion).
+      // Drive the query from source/options. Dedup-by-input means the module
+      // flipping back to 'ready' after a restart does not re-run the same
+      // input (a timed-out query would otherwise retry to exhaustion).
       $effect(() => {
         const input: CompileInput = { source: store.source, options: { ...store.options } };
         if (store.compiler.state === 'ready') this.compile.trigger(input);
@@ -194,25 +170,6 @@ export class Session {
           store.analysis,
           store.visibleRecords.length,
         );
-      });
-      // Drive the AST-locate resource from the analysis + owner set. Owners are
-      // derived from the models (which depend on memberAligns, set below); the
-      // resource's dedup-by-key stops that feedback from re-dumping.
-      $effect(() => {
-        const analysis = store.analysis;
-        if (!analysis || store.models.size === 0) return;
-        const owners = [...collectLocateOwners(store.models, analysis.recordIndex)].sort();
-        this.locate.trigger({ analysis, owners });
-      });
-      // Feed explicit member alignments (AlignedAttr) back to the store; models
-      // re-derive. Guarded so an unchanged map doesn't loop.
-      $effect(() => {
-        const aligns = this.locate.value
-          ? collectMemberAligns(this.locate.value.fields)
-          : new Map<string, number>();
-        const prev = store.memberAligns;
-        const same = prev.size === aligns.size && [...aligns].every(([k, v]) => prev.get(k) === v);
-        if (!same) store.memberAligns = aligns;
       });
       // A new analysis drops the grid/table hover: the pointer will re-enter a
       // row and produce a fresh intent. (Resolution is index-safe either way.)
@@ -230,9 +187,9 @@ export class Session {
       // The trigger is the cursor position changing, not the record we derive
       // from it. Those differ twice over: the position is unchanged while an
       // explicit tab pick is in force (so the pick must not be reverted), and
-      // it is also unchanged when source locations merely finish loading — at
-      // which point resolving the caret's record for the first time would
-      // otherwise pull the panel off the record it opened on.
+      // it is also unchanged when an analysis merely finishes — at which point
+      // resolving the caret's record for the first time would otherwise pull
+      // the panel off the record it opened on.
       let lastPos: EditorPos | null = null;
       let started = false;
       $effect(() => {
@@ -269,7 +226,6 @@ export class Session {
       offStatus();
       stopRoot();
       this.compile.dispose();
-      this.locate.dispose();
     };
     return this.cleanup;
   }
@@ -303,15 +259,15 @@ export class Session {
     return location.href;
   }
 
-  private startCompiler(): void {
+  private startModule(): void {
     store.awaitingDownloadConsent = false;
-    void this.compiler.start().catch(() => {});
+    void this.client.start().catch(() => {});
   }
 
   /** The user opted into the download on a metered connection; remember and go. */
   allowDownload(): void {
     grantConsent();
-    this.startCompiler();
+    this.startModule();
   }
 
   /**
@@ -321,29 +277,30 @@ export class Session {
   selectRecord(key: string): void {
     store.selectedRecord = key;
     this.pickedAt = this.cursor;
-    const line = declLineFor(key, this.decls, store.models);
+    const line = declLineFor(key, this.records);
     if (line !== null) this.revealRequest = { line, seq: ++this.revealSeq };
   }
 
   /**
    * Drill into a compound member: inspect the record it is an instance of.
-   * Returns false when the member has no record to open (a plain field, or a
-   * type this analysis did not lay out).
+   * Returns false when the member has no record to open — a plain field, or a
+   * type this analysis did not lay out.
+   *
+   * This used to strip the record keyword off the member's printed type and
+   * search an index by name. The group carries the record's id.
    */
   inspectGroup(record: string, groupIndex: number): boolean {
-    const group = store.models.get(record)?.groups[groupIndex];
+    const recordId = store.models.get(record)?.groups[groupIndex]?.recordId ?? null;
     const analysis = store.analysis;
-    if (!group || !analysis) return false;
-    const type = stripRecordKeyword(group.type);
-    const target = findRecord(type, analysis.recordIndex);
-    if (!target || !analysis.userRecords.includes(target)) return false;
-    const key = recordKey(target);
-    if (key === record) return false; // already there
-    this.selectRecord(key);
+    if (recordId === null || !analysis) return false;
+    const target = analysis.byId.get(recordId);
+    // Already there: drilling into a member of your own type is a no-op.
+    if (!target || target.key === record) return false;
+    this.selectRecord(target.key);
     return true;
   }
 
-  /** Force a compile now (e.g. Ctrl+Enter), even if the input is unchanged. */
+  /** Force a query now (e.g. Ctrl+Enter), even if the input is unchanged. */
   compileNow(): void {
     this.compile.trigger({ source: store.source, options: { ...store.options } }, { force: true });
   }
@@ -401,19 +358,18 @@ export class Session {
       cursor: this.cursor,
       preferCursor: this.preferCursor,
       models: store.models,
-      lines: this.index.lines,
-      decls: this.decls,
+      lines: this.index,
+      records: this.records,
       current: store.activeRecordKey,
-      leafLocations: this.index.leafLocations,
-      groupLocations: this.index.groupLocations,
     };
   }
 
   /**
-   * Documentation hover at (line, word). What the word *is* comes from clang's
-   * AST (record/typedef name at that position, or the declared type of the
-   * field on that line); its size comes from the record's dump or a spelling
-   * probe. Anything else is probed as-is — clang decides whether it is a type.
+   * Documentation hover at (line, word). What the word *is* comes from the
+   * analysis — a record or type name written exactly there, or the declared
+   * type of the member on that line — and its size from the record it names or
+   * a spelling probe. Anything else is probed as written: clang decides
+   * whether it is a type.
    */
   async describeType(
     line: number,
@@ -423,45 +379,51 @@ export class Session {
     const analysis = store.analysis;
     if (!analysis) return null;
 
-    // 1. A record or typedef whose name is written exactly here.
-    const decl = this.decls.find(
-      (d) =>
-        d.line === line && word.startColumn >= d.col && word.startColumn < d.col + d.name.length,
+    const covers = (at: { line: number; col: number } | null, len: number) =>
+      at !== null &&
+      at.line === line &&
+      word.startColumn >= at.col &&
+      word.startColumn < at.col + Math.max(1, len);
+
+    // 1. A record whose name is written exactly here.
+    const here = analysis.records.filter(
+      (r) => r.record.location?.isMainFile && covers(r.record.location, r.record.name.length),
     );
-    if (decl?.kind === 'record') {
-      const recs = analysis.records.filter(
-        (r) =>
-          r.name === decl.name ||
-          r.name.endsWith('::' + decl.name) ||
-          r.name.startsWith(decl.name + '<'),
-      );
-      if (recs.length) {
-        return recs
-          .slice(0, 4)
-          .map((r) => describeRecord(r, analysis))
-          .join('\n\n---\n\n');
-      }
+    if (here.length) {
+      return here
+        .slice(0, 4)
+        .map((r) => describeRecord(r))
+        .join('\n\n---\n\n');
     }
+
+    // 2. A type name declared here.
     let spelling: string;
     let alias: string | null = null;
-    if (decl?.kind === 'typedef' && decl.qualType) {
-      spelling = decl.name;
-      alias = decl.qualType;
+    const typedef = analysis.typedefs.find(
+      (t) => t.location?.isMainFile && covers(t.location, t.name.length),
+    );
+    if (typedef) {
+      if (typedef.recordId !== null) {
+        const rec = analysis.byId.get(typedef.recordId);
+        if (rec) return describeRecord(rec);
+      }
+      spelling = typedef.name;
+      alias = typedef.canonicalType;
     } else {
-      // 2. The type part of a member declaration: the field's declared type.
+      // 3. The type part of a member declaration: the member's declared type.
       const info = this.lines.get(line);
-      if (info?.location && word.startColumn < info.location.col && info.location.qualType) {
-        spelling = info.location.qualType;
-        alias = info.location.desugaredType ?? null;
+      const first = info?.items[0];
+      if (info && first && word.startColumn < info.anchor.col && typeOf(first)) {
+        spelling = typeOf(first)!;
       } else if (this.knownSpellings.has(word.word)) {
-        spelling = word.word; // 3. a name clang reported as a type/typedef somewhere in the TU
+        spelling = word.word; // 4. a name clang reported as a type somewhere in the TU
       } else {
-        return null; // member names, keywords, numbers…: no compile for these
+        return null; // member names, keywords, numbers…: no query for these
       }
     }
-    const rec = findRecord(spelling, analysis.recordIndex);
-    if (rec) return describeRecord(rec, analysis);
-    // A spelling probe is a full compile of the user's TU; pass the hover's
+    const named = analysis.byName.get(spelling);
+    if (named) return describeRecord(named);
+    // A spelling probe is a full re-parse of the user's TU; pass the hover's
     // cancellation on so an abandoned hover does not hold the single wasm clang.
     const pr = await this.analyzer.probeSpelling(analysis, spelling, signal).catch(() => null);
     if (!pr || pr.bits <= 0) return null;
@@ -471,22 +433,27 @@ export class Session {
   }
 }
 
-function describeRecord(r: RecordLayout, analysis: Analysis): string {
-  // Same inputs as the panels build their models from — including the explicit
-  // `alignas` values — or the popup would quote a different padding figure.
-  const model = buildRenderModel(r, { ...analysis, memberAligns: store.memberAligns });
+/** The declared type of a leaf or a group, however it was spelled. */
+function typeOf(item: { type: string | null }): string | null {
+  return item.type;
+}
+
+function describeRecord(entry: AnalysedRecord): string {
+  const r = entry.record;
+  const model = entry.model;
   // Members of the record itself — a compound member counts once, not once per
   // field inside it.
   const n = directMembers(model).filter((u) => !('kind' in u && u.kind === 'special')).length;
-  const rows = [
-    `| sizeof | **${r.sizeBytes}** B |`,
-    `| alignof | **${r.align}** B |`,
-    `| padding | ${model.paddingBytes} B${r.sizeBytes ? ` (${Math.round((100 * model.paddingBytes) / r.sizeBytes)}%)` : ''} |`,
-  ];
-  if (r.dsize !== undefined && r.dsize !== r.sizeBytes) rows.push(`| dsize | ${r.dsize} B |`);
-  if (r.nvsize !== undefined && r.nvsize !== r.sizeBytes) rows.push(`| nvsize | ${r.nvsize} B |`);
-  if (r.nvalign !== undefined && r.nvalign !== r.align) rows.push(`| nvalign | ${r.nvalign} B |`);
-  return `**\`${recordKey(r)}\`** — ${n} member${n === 1 ? '' : 's'}\n\n| | |\n|---|---|\n${rows.join('\n')}`;
+  const padding = model.paddingBytes;
+  const rows = [`| sizeof | **${r.sizeBytes}** B |`, `| alignof | **${r.align}** B |`];
+  if (padding !== null) {
+    const pct = r.sizeBytes ? ` (${Math.round((100 * padding) / r.sizeBytes)}%)` : '';
+    rows.push(`| padding | ${padding} B${pct} |`);
+  }
+  if (r.dsize !== undefined) rows.push(`| dsize | ${r.dsize} B |`);
+  if (r.nvsize !== undefined) rows.push(`| nvsize | ${r.nvsize} B |`);
+  if (r.nvalign !== undefined) rows.push(`| nvalign | ${r.nvalign} B |`);
+  return `**\`${entry.key}\`** — ${n} member${n === 1 ? '' : 's'}\n\n| | |\n|---|---|\n${rows.join('\n')}`;
 }
 
 // The hover formatters live with the hover resolution they belong to; re-exported

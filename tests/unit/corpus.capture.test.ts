@@ -1,44 +1,40 @@
-// Not a test: captures real `-fdump-record-layouts-complete` output for every
-// corpus source, so the property tests can run against shapes clang actually
-// emits without needing clang themselves. Run with `npm run fixtures`
-// (ABIX_CAPTURE=1); skipped otherwise.
+// Not a test: records the module's answer for every corpus source, so the rest
+// of the suite runs against shapes clang actually produces without needing
+// clang itself. Run with `npm run fixtures` (ABIX_CAPTURE=1); skipped otherwise.
 //
-// Only the layout dump is stored, not a full analyzer recording — these files
-// exist to be *parsed*, not replayed, so they stay small and readable.
+// The whole response is stored, not a summary — these files stand in for the
+// compiler, and a test that reads one is reading exactly what the app would.
 
-import { it } from 'vitest';
+import { it, expect } from 'vitest';
 import { writeFile, mkdir } from 'node:fs/promises';
-import { buildArgv, DEFAULT_OPTIONS, defaultStdFor, driverFor, sourceExtension } from '$core/options';
-import type { Compiler } from '$compiler/Compiler';
-import { corpusSources, LAYOUTS_DIR, layoutFile } from './corpus';
+import { corpusSources, optionsFor, responseFile, RESPONSES_DIR } from './corpus';
+import { abiModule, moduleAvailable } from './abi-module';
 
 it.skipIf(process.env['ABIX_CAPTURE'] !== '1')(
-  'captures layout dumps for the corpus',
+  'captures a query response for every corpus source',
   async () => {
-    const { createNodeCompiler } = await import('../../tools/node-clang.mjs');
-    const clang = (await createNodeCompiler()) as Compiler;
-    await mkdir(LAYOUTS_DIR, { recursive: true });
+    expect(moduleAvailable, `no module at ABI_WASM_DIST — build it first`).toBe(true);
+    const abi = await abiModule();
+    await mkdir(RESPONSES_DIR, { recursive: true });
 
     for (const src of corpusSources()) {
       for (const triple of src.triples) {
-        const options = {
-          ...DEFAULT_OPTIONS,
-          lang: src.lang,
-          std: defaultStdFor(src.lang),
+        const options = optionsFor(src, triple);
+        const response = await abi.query({
+          source: src.source,
           triple,
-        };
-        const file = 'input.' + sourceExtension(src.lang);
-        const out = await clang.compile({
-          argv0: driverFor(src.lang),
-          args: buildArgv(options, { kind: 'layout', files: [file] }),
-          files: { [file]: src.source },
+          lang: options.lang === 'c++' ? 'c++' : 'c',
+          std: options.std,
         });
-        // Errors are worth knowing about, but a partial dump is still a corpus
-        // entry: the parser has to cope with whatever clang managed to print.
-        if (out.code !== 0) {
-          console.warn(`${src.name}--${triple}: clang exited ${out.code}\n${out.stderr}`);
+        // Errors are worth knowing about, but a partial answer is still a
+        // corpus entry: the app has to cope with whatever clang managed.
+        if (response.exitCode !== 0) {
+          console.warn(`${src.name}--${triple}: exit ${response.exitCode}`);
         }
-        await writeFile(layoutFile(src.name, triple), out.stdout);
+        await writeFile(
+          responseFile(src.name, triple),
+          JSON.stringify({ source: src.source, options, response }, null, 1) + '\n',
+        );
       }
     }
   },

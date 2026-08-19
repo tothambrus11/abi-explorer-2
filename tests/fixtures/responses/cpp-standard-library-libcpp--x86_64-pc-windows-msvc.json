@@ -1,0 +1,58 @@
+{
+ "source": "#include <string>\n#include <vector>\n\nstruct Probe {\n  std::string s;          /* short-string optimization: a union inside */\n  std::vector<int> v;     /* three pointers */\n  std::vector<bool> vb;   /* the bitset specialization */\n};\n\n/* These are libc++'s layouts. libstdc++ and MSVC's STL lay the same\n   types out differently, so read them as \"libc++ on this target\". */\n",
+ "options": {
+  "lang": "c++",
+  "std": "gnu++20",
+  "triple": "x86_64-pc-windows-msvc",
+  "pack": "",
+  "msBitfields": false,
+  "shortEnums": false,
+  "shortWchar": false,
+  "warnPadded": false,
+  "extraFlags": ""
+ },
+ "response": {
+  "clangVersion": "clang version 22.1.8 (https://github.com/llvm/llvm-project.git ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)",
+  "diagnostics": [
+   {
+    "location": {
+     "col": 12,
+     "endCol": 13,
+     "file": "/usr/include/c++/v1/__new/placement_new_delete.h",
+     "isMainFile": false,
+     "line": 20
+    },
+    "message": "'new.h' file not found",
+    "option": null,
+    "ranges": [
+     {
+      "col": 12,
+      "endCol": 19,
+      "endLine": 20,
+      "line": 20
+     }
+    ],
+    "severity": "fatal"
+   }
+  ],
+  "diagnosticsText": "In file included from input.cc:1:\nIn file included from /usr/include/c++/v1/string:596:\nIn file included from /usr/include/c++/v1/__algorithm/remove.h:12:\nIn file included from /usr/include/c++/v1/__algorithm/find.h:24:\nIn file included from /usr/include/c++/v1/__string/constexpr_c_functions.h:15:\nIn file included from /usr/include/c++/v1/__memory/construct_at.h:16:\n\u001b[1m/usr/include/c++/v1/__new/placement_new_delete.h:20:12: \u001b[0m\u001b[0;1;31mfatal error: \u001b[0m\u001b[1m'new.h' file not found\u001b[0m\n   20 | #  include <\u001b[0;34mnew\u001b[0m.h>\u001b[0m\n      | \u001b[0;1;32m           ^~~~~~~\n\u001b[0m",
+  "error": null,
+  "exitCode": 1,
+  "ok": true,
+  "records": [],
+  "target": {
+   "charSizeBits": 8,
+   "cxxAbi": "microsoft",
+   "intSizeBits": 32,
+   "isLittleEndian": true,
+   "longLongSizeBits": 64,
+   "longSizeBits": 32,
+   "normalizedTriple": "x86_64-pc-windows-msvc19.33.0",
+   "pointerAlignBits": 64,
+   "pointerSizeBits": 64,
+   "shortSizeBits": 16,
+   "triple": "x86_64-pc-windows-msvc"
+  },
+  "typedefs": []
+ }
+}

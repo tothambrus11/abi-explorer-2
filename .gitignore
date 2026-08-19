@@ -5,12 +5,6 @@ playwright-report/
 test-results/
 coverage/
 *.local
-# Large clang-wasm assets are fetched at runtime from the npm registry (see
-# src/compiler/clang.worker.ts) or vendored locally with tools/vendor-clang.sh.
-public/vendor/clang/llvm.core*.wasm
-public/vendor/clang/llvm-resources.tar
-# fixture capture cache
-.cache/
-# Local clang-abi-wasm build, linked in by that repo's scripts/dev-link.sh.
-# The real deployment fetches a release; this is a symlink to a working copy.
+# The layout module: about 48 MB, fetched by `npm run abi:fetch`, or a symlink
+# to a local build put there by clang-abi-wasm's scripts/dev-link.sh.
 public/vendor/abi

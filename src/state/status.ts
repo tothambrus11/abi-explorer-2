@@ -1,7 +1,7 @@
 // Pure mapping from the compile resource's state to the UI's AnalysisStatus.
 // Extracted so the status logic is testable without runes or a live compiler.
 
-import type { Analysis } from '$compiler/Analyzer';
+import type { Analysis } from '$compiler/AbiAnalyzer';
 import type { ResourceStatus } from './async-resource.svelte';
 import type { AnalysisStatus } from './store.svelte';
 
@@ -32,7 +32,7 @@ export function computeAnalysisStatus(
   if (analysis.code !== 0) {
     return { kind: 'error', message: 'compiled with errors — layouts may be incomplete' };
   }
-  return { kind: 'ok', warnings: analysis.diagnosticsText.length > 0 };
+  return { kind: 'ok', warnings: analysis.diagnostics.length > 0 };
 }
 
 function errorMessage(error: unknown): string {

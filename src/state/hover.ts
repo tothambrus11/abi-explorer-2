@@ -6,11 +6,11 @@
 // happens against whatever the models are now, so a hover cannot survive into a
 // later analysis pointing at some unrelated member.
 
-import type { DeclLocation, FieldLocation } from '$core/ast-locations';
+import type { AnalysedRecord } from '$compiler/AbiAnalyzer';
 import { recordsAtLine } from './inspected-record';
-import type { Group, Leaf, RenderModel } from '$core/types';
+import { anchorOf, type Anchor, type Group, type Leaf, type RenderModel } from '$core/types';
 import { markAtColumn, type LineInfo } from './code-locations';
-import type { Hover, MemberRef } from './store.svelte';
+import type { ByteRange, Hover, MemberRef } from './store.svelte';
 
 export interface TooltipAnchor {
   html: string;
@@ -42,21 +42,31 @@ export interface HoverInputs {
   preferCursor: boolean;
   models: Map<string, RenderModel>;
   lines: Map<number, LineInfo>;
-  /** Record declarations, for resolving a cursor that is on no member's line. */
-  decls: DeclLocation[];
-  /** The record on screen, to break ties between instantiations sharing a span. */
+  /** Records with their extents, for a cursor that is on no member's line. */
+  records: AnalysedRecord[];
+  /** The record on screen, to break ties between instantiations sharing an extent. */
   current: string | null;
-  leafLocations: Map<string, Map<number, FieldLocation>>;
-  groupLocations: Map<string, Map<number, FieldLocation>>;
 }
 
 export const EMPTY_HOVER: Hover = {
   members: [],
+  ranges: [],
   line: null,
   nameRange: null,
   inlay: null,
   tooltip: null,
 };
+
+/** The bytes an item covers, as the grid draws them. */
+function extentOf(record: string, items: { offsetBits: number; sizeBits: number }[]): ByteRange[] {
+  return items
+    .filter((it) => it.sizeBits > 0)
+    .map((it) => ({
+      record,
+      start: Math.floor(it.offsetBits / 8),
+      end: Math.ceil((it.offsetBits + it.sizeBits) / 8),
+    }));
+}
 
 /** The editor position the hover comes from, honouring the keyboard/mouse preference. */
 export function effectivePos(
@@ -78,7 +88,7 @@ export function hoveredPrimary(i: HoverInputs): string | null {
   if (declaring !== undefined) return declaring;
   // …and anywhere else inside a declaration — its first line, a blank line, the
   // closing brace — the innermost record containing the cursor.
-  const here = recordsAtLine(pos.line, i.decls, i.models);
+  const here = recordsAtLine(pos.line, i.records);
   if (here.length === 0) return null;
   // Instantiations of one template share a span; stay on the one already shown.
   return i.current !== null && here.includes(i.current) ? i.current : (here[0] ?? null);
@@ -96,6 +106,7 @@ export function resolveHover(i: HoverInputs): Hover {
   if (!mark) {
     return {
       members: info.members,
+      ranges: extentOf(info.primary, info.items),
       line: pos.line,
       nameRange: null,
       inlay: describeItems(info.items),
@@ -104,6 +115,7 @@ export function resolveHover(i: HoverInputs): Hover {
   }
   return {
     members: mark.members,
+    ranges: extentOf(info.primary, mark.items),
     line: pos.line,
     nameRange: { line: pos.line, startCol: mark.col, endCol: mark.endCol },
     inlay: describeItems(mark.items),
@@ -119,11 +131,12 @@ function resolveIntent(intent: HoverIntent, i: HoverInputs): Hover {
   if (intent.kind === 'leaf') {
     const leaf = model.leaves[intent.leaf];
     if (!leaf) return EMPTY_HOVER;
-    const loc = i.leafLocations.get(intent.record)?.get(intent.leaf);
+    const at = anchorOf(leaf.location);
     return {
       members: [{ record: intent.record, leaf: intent.leaf }],
-      line: loc?.line ?? null,
-      nameRange: nameRangeOf(loc),
+      ranges: extentOf(intent.record, [leaf]),
+      line: at?.line ?? null,
+      nameRange: nameRangeOf(at),
       inlay: describeItems([leaf]),
       tooltip: intent.tooltip,
     };
@@ -131,20 +144,21 @@ function resolveIntent(intent: HoverIntent, i: HoverInputs): Hover {
 
   const group = model.groups[intent.group];
   if (!group) return EMPTY_HOVER;
-  const loc = i.groupLocations.get(intent.record)?.get(intent.group);
+  const at = anchorOf(group.location);
   const members: MemberRef[] = group.leafIndexes.map((leaf) => ({ record: intent.record, leaf }));
   return {
     members,
-    line: loc?.line ?? null,
-    nameRange: nameRangeOf(loc),
+    ranges: extentOf(intent.record, [group]),
+    line: at?.line ?? null,
+    nameRange: nameRangeOf(at),
     inlay: describeItems([group]),
     tooltip: intent.tooltip,
   };
 }
 
-function nameRangeOf(loc: FieldLocation | undefined): Hover['nameRange'] {
-  if (!loc) return null;
-  return { line: loc.line, startCol: loc.col, endCol: loc.col + Math.max(1, loc.name.length) };
+function nameRangeOf(at: Anchor | null): Hover['nameRange'] {
+  if (!at) return null;
+  return { line: at.line, startCol: at.col, endCol: Math.max(at.endCol, at.col + 1) };
 }
 
 /** "offset 16 B · 8 B · align 8 B" for the items declared on a line. */
@@ -156,15 +170,10 @@ export function describeItems(items: (Leaf | Group)[]): string {
     return `offset ${fmtOffset(it.offsetBits)} · ${it.sizeBits} b`;
   }
   const start = Math.min(...items.map((i) => i.offsetBits));
-  const end = Math.max(...items.map((i) => i.offsetBits + (i.sizeBits ?? 0)));
+  const end = Math.max(...items.map((i) => i.offsetBits + i.sizeBits));
   const sizeBytes = (end - start) / 8;
   const parts = [`offset ${fmtOffset(start)}`];
-  if (one && it.sizeBits === null) parts.push('size ?');
-  else {
-    parts.push(
-      `${one && 'estimated' in it && it.estimated ? '≈' : ''}${Number.isInteger(sizeBytes) ? sizeBytes : sizeBytes.toFixed(1)} B`,
-    );
-  }
+  parts.push(`${Number.isInteger(sizeBytes) ? sizeBytes : sizeBytes.toFixed(1)} B`);
   if (one && it.align) parts.push(`align ${it.align} B`);
   else if (!one) parts.unshift(`${items.length} members`);
   return parts.join(' · ');
