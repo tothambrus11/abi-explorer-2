@@ -5,6 +5,8 @@ import { Analyzer } from '$compiler/Analyzer';
 import { DEFAULT_OPTIONS } from '$core/options';
 import { buildRenderModel } from '$core/model';
 import { buildLayoutTree } from '$core/tree';
+import { recordsAtLine } from '$state/inspected-record';
+import { recordKey } from '$core/layout-parser';
 import { matchItemsToLocations, unqualifiedName } from '$core/ast-locations';
 import type { Compiler } from '$compiler/Compiler';
 
@@ -283,6 +285,36 @@ struct S { std::string s; std::vector<int> v; uint32_t n; };`;
     );
     expect(top).toEqual(['s', 'v', 'n']);
     expect(m.leaves.every((l) => !l.estimated)).toBe(true);
+  }, 120_000);
+
+  // Phase 1.1: the caret resolves to the innermost record it sits in, which
+  // needs clang's declaration ranges (not just the name position).
+  it('reports record declaration spans, innermost resolvable', async () => {
+    const src = `struct Outer {
+  struct Inner { int i; };
+  Inner in;
+  int x;
+};
+`;
+    const a = await analyzer.analyze(src, {
+      ...DEFAULT_OPTIONS,
+      lang: 'c++',
+      std: 'gnu++20',
+      triple: 'x86_64-unknown-linux-gnu',
+    });
+    const info = await analyzer.locate(a, ['Outer']);
+    const span = (name: string) =>
+      info.decls.find((d) => d.kind === 'record' && d.name === name)?.span;
+    expect(span('Outer')).toEqual({ begin: 1, end: 5 });
+    expect(span('Inner')).toEqual({ begin: 2, end: 2 });
+
+    const models = new Map(
+      a.userRecords.map((r) => [recordKey(r), buildRenderModel(r, a)] as const),
+    );
+    // Line 2 is inside both; the nested one wins (keys stay qualified).
+    expect(recordsAtLine(2, info.decls, models)[0]).toBe('struct Outer::Inner');
+    // Line 4 is only inside Outer.
+    expect(recordsAtLine(4, info.decls, models)).toEqual(['struct Outer']);
   }, 120_000);
 
   it('probes arbitrary spellings', async () => {

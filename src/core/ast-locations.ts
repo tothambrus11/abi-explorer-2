@@ -34,6 +34,11 @@ export interface DeclLocation {
   col: number;
   /** For typedefs: the aliased type as clang prints it. */
   qualType?: string;
+  /**
+   * First and last line of the whole declaration (clang's `range`), so a cursor
+   * can be resolved to the innermost record it sits in. Inclusive on both ends.
+   */
+  span?: { begin: number; end: number };
 }
 
 export interface AstInfo {
@@ -101,6 +106,7 @@ function walk(node: unknown, scope: Scope, state: LocState, fileName: string, ou
   const n = node as JsonNode;
 
   let mine: { line: number; col: number } | null = null;
+  let span: { begin: number; end: number } | null = null;
   const kind = str(n, 'kind') ?? '';
   const name = str(n, 'name');
   // The scope children see: enclosing records give both an unqualified owner
@@ -124,12 +130,32 @@ function walk(node: unknown, scope: Scope, state: LocState, fileName: string, ou
       }
       continue;
     }
+    // `range` carries the declaration's extent. Its begin/end are applied in
+    // document order (the dumper omits fields that repeat the previous
+    // location), so this must not reorder or skip them.
+    if (key === 'range' && val && typeof val === 'object') {
+      const r = val as JsonNode;
+      const b = obj(r, 'begin');
+      const e = obj(r, 'end');
+      if (b) applyLoc(b, state);
+      const begin = state.line;
+      const inFile = state.file.endsWith(fileName);
+      if (e) applyLoc(e, state);
+      if (inFile && begin > 0) span = { begin, end: Math.max(begin, state.line) };
+      continue;
+    }
     if (val && typeof val === 'object') walk(val, next, state, fileName, out);
   }
   const type = obj(n, 'type') ?? {};
-  if (mine && mine.line > 0 && name) {
+  // Compiler-synthesised declarations are not written anywhere: a class's
+  // injected-class-name repeats the record's own name with a one-token range,
+  // which would otherwise shadow the real declaration.
+  const implicit = n['isImplicit'] === true;
+  if (mine && mine.line > 0 && name && !implicit) {
     if (RECORD_KINDS.has(kind)) {
-      out.decls.push({ kind: 'record', name, line: mine.line, col: mine.col });
+      const d: DeclLocation = { kind: 'record', name, line: mine.line, col: mine.col };
+      if (span) d.span = span;
+      out.decls.push(d);
     } else if (kind === 'TypedefDecl' || kind === 'TypeAliasDecl') {
       const d: DeclLocation = { kind: 'typedef', name, line: mine.line, col: mine.col };
       const qt = str(type, 'qualType');

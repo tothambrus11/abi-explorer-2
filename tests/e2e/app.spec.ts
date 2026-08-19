@@ -147,6 +147,38 @@ test.describe('ABI Explorer', () => {
     await expect(page.locator('.field-table .fname', { hasText: 'kind' })).toHaveCount(1);
   });
 
+  // Issue #3: an explicit tab pick must not be undone by the cursor rule.
+  test('picking a record from the tabs moves the caret to its declaration', async ({ page }) => {
+    await waitReady(page);
+    await page.selectOption('#example', '2');
+    await expect(page.locator('#record-chips .chip')).toHaveCount(3);
+
+    // Pick Header — not the default selection (the last record is).
+    const header = page.locator('#record-chips .chip', { hasText: 'Header' }).first();
+    await header.click();
+    await expect(header).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('.record .title')).toContainText('Header');
+
+    // The caret really moved into Header's declaration: monaco marks the
+    // current line's gutter number as active.
+    const declLine = await page.evaluate(() => {
+      // Monaco positions view-lines absolutely, so DOM order is not source
+      // order — sort by offset to recover the line numbering.
+      const lines = [...document.querySelectorAll('.monaco-editor .view-line')]
+        .map((e) => ({
+          top: parseFloat((e as HTMLElement).style.top || '0'),
+          text: (e.textContent ?? '').replace(/\u00a0/g, ' '),
+        }))
+        .sort((a, b) => a.top - b.top);
+      return String(lines.findIndex((l) => l.text.includes('struct Header')) + 1);
+    });
+    await expect(page.locator('.monaco-editor .active-line-number')).toHaveText(declLine);
+
+    // And the pick sticks: it is the cursor's record now, so it survives the
+    // record-follows-cursor rule instead of being reverted by it.
+    await expect(header).toHaveAttribute('aria-selected', 'true');
+  });
+
   test('C++: virtual bases on MSVC and Itanium, private members measured', async ({ page }) => {
     await waitReady(page);
     await page.selectOption('#example', '4');

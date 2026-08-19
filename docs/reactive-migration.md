@@ -39,9 +39,12 @@ preserves behavior; the existing suite is the guardrail.
 
 ## Phase 1 — inspected-record model (feature)
 
-- [ ] **1.1** `inspectedRecord` as `$derived`: tree-hover ?? deepest record whose
-      AST source span contains the cursor ?? selected tab. Tiebreaks: template
-      dups keep current; cursor in no record retains last.
+- [x] **1.1** Record source spans come from clang's `range` (implicit
+      injected-class-names skipped), and `inspected-record.ts` resolves them:
+      `recordsAtLine` (innermost first, inclusive ends) and `inspectedRecord`
+      (explicit pick > cursor > previous), 11 tests + a real-clang span test.
+      Picking a record from the tabs now moves the caret to its declaration, so
+      the explicit choice _is_ the cursor's choice — closes issue #3.
 - [ ] **1.2** per-inspected-record colour/level model (compound members —
       named, base, anonymous — as single units).
 - [ ] **1.3** member-range index `(line,col) → member` for precise hover/cursor.

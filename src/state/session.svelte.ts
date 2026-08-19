@@ -23,6 +23,7 @@ import {
 } from './hover';
 import { AsyncRunner } from './async-resource.svelte';
 import { computeAnalysisStatus } from './status';
+import { declLineFor } from './inspected-record';
 import { grantConsent, shouldAskBeforeDownload } from './download-gate';
 import {
   buildLineIndex,
@@ -119,6 +120,14 @@ export class Session {
   private hoverIntent: HoverIntent | null = $state.raw(null);
   /** Last input wins: after keyboard cursor movement the cursor beats the (still) hovered line until the mouse moves again. */
   private preferCursor = $state(false);
+
+  /**
+   * A one-shot request for the editor to move its caret (issue #3): picking a
+   * record from the tab bar navigates to its declaration, so the cursor — which
+   * decides the record when nothing is hovered — agrees with the tab.
+   */
+  revealRequest: { line: number; seq: number } | null = $state.raw(null);
+  private revealSeq = 0;
 
   /** The effective hover: grid/table intent first, then the pointer, then the cursor. */
   readonly hover: Hover = $derived(resolveHover(this.hoverInputs));
@@ -265,6 +274,16 @@ export class Session {
   allowDownload(): void {
     grantConsent();
     this.startCompiler();
+  }
+
+  /**
+   * Explicitly pick a record (tab bar). The caret jumps to its declaration so
+   * this choice also survives as the cursor-driven default.
+   */
+  selectRecord(key: string): void {
+    store.selectedRecord = key;
+    const line = declLineFor(key, this.decls, store.models);
+    if (line !== null) this.revealRequest = { line, seq: ++this.revealSeq };
   }
 
   /** Force a compile now (e.g. Ctrl+Enter), even if the input is unchanged. */

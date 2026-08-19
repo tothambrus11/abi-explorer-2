@@ -46,6 +46,8 @@ export interface EditorHandle {
   onLineHover(cb: (line: number | null) => void): void;
   /** cb(line, byKeyboard) when the text cursor moves. */
   onCursorLine(cb: (line: number, byKeyboard: boolean) => void): void;
+  /** Move the caret to a line and scroll it into view (an explicit navigation). */
+  setCursor(line: number): void;
   /** cb() on any pointer movement over the editor. */
   onMouseActivity(cb: () => void): void;
   /** Re-emit the current hover (after the line map changed). */
@@ -247,6 +249,13 @@ export function createEditor(container: HTMLElement, opts: CreateEditorOptions):
     },
     onLineHover(cb) {
       hoverCb = cb;
+    },
+    setCursor(line) {
+      const max = model.getLineCount();
+      const target = Math.min(Math.max(1, line), max);
+      const column = model.getLineFirstNonWhitespaceColumn(target) || 1;
+      editor.setPosition({ lineNumber: target, column });
+      editor.revealLineInCenterIfOutsideViewport(target);
     },
     onCursorLine(cb) {
       cursorCb = cb;

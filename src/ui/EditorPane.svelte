@@ -73,6 +73,12 @@
     editor?.highlightLine(view.highlight);
     editor?.setInlay(view.highlight, view.inlay);
   });
+  // A one-shot navigation command (picking a record from the tab bar), not a
+  // value to keep in sync — the seq makes re-picking the same record fire again.
+  $effect(() => {
+    const req = session.revealRequest;
+    if (req) editor?.setCursor(req.line);
+  });
 
   function loadExample(e: Event) {
     const sel = e.currentTarget as HTMLSelectElement;

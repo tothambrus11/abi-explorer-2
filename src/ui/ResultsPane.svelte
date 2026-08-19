@@ -87,7 +87,9 @@
               class:selected={key === store.activeRecordKey}
               role="tab"
               aria-selected={key === store.activeRecordKey}
-              onclick={() => (store.selectedRecord = key)}
+              onclick={() => {
+                session.selectRecord(key);
+              }}
               ><span class="kind">{rec.kind}</span>
               {rec.name} <span class="size">{rec.sizeBytes} B</span></button
             >
