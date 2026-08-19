@@ -28,5 +28,5 @@
     "noEmit": true,
     "paths": { "$core/*": ["./src/core/*"], "$compiler/*": ["./src/compiler/*"], "$state/*": ["./src/state/*"], "$ui/*": ["./src/ui/*"] }
   },
-  "include": ["src/**/*.ts", "src/**/*.svelte", "tests/**/*.ts", "vite.config.ts", "playwright.config.ts", "vitest.config.ts"]
+  "include": ["src/**/*.ts", "src/**/*.svelte", "tests/**/*.ts", "tools/**/*.mjs", "vite.config.ts", "playwright.config.ts", "vitest.config.ts"]
 }
