@@ -4,6 +4,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { Analyzer } from '$compiler/Analyzer';
 import { DEFAULT_OPTIONS } from '$core/options';
 import { buildRenderModel } from '$core/model';
+import { buildLayoutTree } from '$core/tree';
 import { matchItemsToLocations, unqualifiedName } from '$core/ast-locations';
 import type { Compiler } from '$compiler/Compiler';
 
@@ -246,6 +247,42 @@ A a; B b;
         ?.line;
     expect(lineOf(modelA, 'x')).toBe(1); // A::S::x on line 1
     expect(lineOf(modelB, 'y')).toBe(2); // B::S::y on line 2 (not A's line)
+  }, 120_000);
+
+  // Issue #2: libc++ headers include the C library, which this toolchain ships
+  // only under wasm32-wasip1 — without mapping it in, <string>/<vector> failed
+  // with "bits/alltypes.h file not found" on every non-WASI target.
+  it('C++ standard library headers resolve and their types are measured', async () => {
+    const src = `#include <string>
+#include <vector>
+#include <cstdint>
+struct S { std::string s; std::vector<int> v; uint32_t n; };`;
+    const a = await analyzer.analyze(src, {
+      ...DEFAULT_OPTIONS,
+      lang: 'c++',
+      std: 'gnu++20',
+      triple: 'x86_64-unknown-linux-gnu',
+    });
+    expect(a.diagnosticsText).not.toMatch(/file not found/);
+    expect(a.code).toBe(0);
+    const m = buildRenderModel(
+      a.userRecords.find((r) => r.name === 'S')!,
+      a,
+    );
+    expect(m.record.sizeBytes).toBe(56);
+    // libc++ on Itanium/x86-64: string and vector are 24 B each, aligned 8 —
+    // measured through their own records, not estimated.
+    const g = (name: string) => m.groups.find((x) => x.name === name && x.path.length === 0)!;
+    expect([g('s').sizeBits! / 8, g('s').align]).toEqual([24, 8]);
+    expect([g('v').sizeBits! / 8, g('v').align]).toEqual([24, 8]);
+    expect(m.leaves.find((l) => l.name === 'n')!.offsetBits / 8).toBe(48);
+    // The declared members are the tree's top level; every libc++ internal
+    // (string's SSO union, vector's pointers) nests underneath.
+    const top = buildLayoutTree(m).map((n) =>
+      n.kind === 'group' ? m.groups[n.ref]!.name : m.leaves[n.ref]!.name,
+    );
+    expect(top).toEqual(['s', 'v', 'n']);
+    expect(m.leaves.every((l) => !l.estimated)).toBe(true);
   }, 120_000);
 
   it('probes arbitrary spellings', async () => {

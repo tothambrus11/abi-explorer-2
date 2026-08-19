@@ -96,6 +96,31 @@ describe('options / argv', () => {
     expect(splitExtraFlags(' -Wall -x c ')).toEqual([['-Wall'], ['-x', 'c']]);
     expect(isAllowedFlag('-fsyntax-only')).toBe(false);
   });
+
+  it('C++ always gets libc++ *and* the C headers it includes, in that order', () => {
+    const cxx = buildArgv(
+      { ...DEFAULT_OPTIONS, lang: 'c++', std: 'gnu++20', wasiLibc: false },
+      { kind: 'layout', files: ['a.cc'] },
+    );
+    // libc++ reaches the C library via #include_next, so c++/v1 must come first.
+    const libcxx = cxx.indexOf('-isystem/usr/include/c++/v1');
+    const libc = cxx.indexOf('-isystem/usr/include/wasm32-wasip1');
+    expect(libcxx).toBeGreaterThanOrEqual(0);
+    expect(libc).toBeGreaterThan(libcxx);
+    // …and only once when the wasi-libc toggle is also on.
+    const both = buildArgv(
+      { ...DEFAULT_OPTIONS, lang: 'c++', std: 'gnu++20', wasiLibc: true },
+      { kind: 'layout', files: ['a.cc'] },
+    );
+    expect(both.filter((a) => a === '-isystem/usr/include/wasm32-wasip1')).toHaveLength(1);
+    // C is unaffected: no libc++, and wasi-libc only when asked for.
+    const c = buildArgv(
+      { ...DEFAULT_OPTIONS, lang: 'c', wasiLibc: false },
+      { kind: 'layout', files: ['a.c'] },
+    );
+    expect(c).not.toContain('-isystem/usr/include/c++/v1');
+    expect(c).not.toContain('-isystem/usr/include/wasm32-wasip1');
+  });
 });
 
 describe('url state', () => {

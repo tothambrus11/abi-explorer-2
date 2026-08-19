@@ -132,7 +132,12 @@ export function buildArgv(opts: CompileOptions, pass: PassSpec): string[] {
     '-fdiagnostics-print-source-range-info',
   );
   if (isCxx) args.push('-isystem/usr/include/c++/v1');
-  if (opts.wasiLibc) args.push('-isystem/usr/include/wasm32-wasip1');
+  // libc++ headers #include the C library (bits/alltypes.h, wchar.h, …), which
+  // this toolchain ships only in the wasi-libc tree — so <string>/<vector> fail
+  // with "file not found" for every other target unless it is mapped in too.
+  // Order matters: libc++ reaches the C headers via #include_next, so c++/v1
+  // must come first.
+  if (opts.wasiLibc || isCxx) args.push('-isystem/usr/include/wasm32-wasip1');
   if (opts.pack) args.push('-fpack-struct=' + opts.pack);
   if (opts.msBitfields) args.push('-mms-bitfields');
   if (opts.shortEnums) args.push('-fshort-enums');
