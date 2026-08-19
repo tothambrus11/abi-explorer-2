@@ -5,47 +5,47 @@
 import { Analyzer, type Analysis } from '$compiler/Analyzer';
 import type { Compiler } from '$compiler/Compiler';
 import type { CompileOptions } from '$core/options';
-import type { DeclLocation, FieldLocation } from '$core/ast-locations';
-import { matchItemsToLocations, unqualifiedName } from '$core/ast-locations';
-import { isAnonymousRecord, recordKey } from '$core/layout-parser';
+import type { AstInfo, DeclLocation, FieldLocation } from '$core/ast-locations';
+import { recordKey } from '$core/layout-parser';
 import { buildRenderModel } from '$core/model';
 import { findRecord } from '$core/probes';
-import type { Group, Leaf, RecordLayout, RenderModel } from '$core/types';
+import type { Group, Leaf, RecordLayout } from '$core/types';
 import { decodeShareState, encodeShareState, type ShareState } from '$core/url-state';
 import { store, type MemberRef } from './store.svelte';
 import { AsyncRunner } from './async-resource.svelte';
 import { computeAnalysisStatus } from './status';
+import {
+  buildLineIndex,
+  collectLocateOwners,
+  collectMemberAligns,
+  type LineIndex,
+  type LineInfo,
+} from './code-locations';
+
+export type { LineInfo };
 
 interface CompileInput {
   source: string;
   options: CompileOptions;
 }
 
-/** Everything the editor needs to know about one source line. */
-export interface LineInfo {
-  line: number;
-  /** Members to highlight when this line is hovered (across all visible records). */
-  members: MemberRef[];
-  /** Items (leaves/groups) declared on this line, from the primary record. */
-  items: (Leaf | Group)[];
-  /** Record that "owns" the line (declares it as a direct member), for dot color and auto-select. */
-  primary: string;
-  /**
-   * Gutter-dot colour: a single leaf's colour when the line carries exactly one
-   * byte-occupying field, else `c-compound` (a neutral ring) — a line holding a
-   * container (nested record / base) has no colour of its own.
-   */
-  colorClass: string;
-  /** Location of the field declared here (for the type hover). */
-  location: FieldLocation | null;
+/** Input to the AST-locate resource: an analysis plus the owner names to dump. */
+interface LocateInput {
+  analysis: Analysis;
+  owners: string[];
 }
+
+const EMPTY_INDEX: LineIndex = {
+  lines: new Map(),
+  leafLocations: new Map(),
+  groupLocations: new Map(),
+};
 
 const SOURCE_DEBOUNCE_MS = 500;
 const HASH_DEBOUNCE_MS = 400;
 
 export class Session {
   readonly analyzer: Analyzer;
-  private locateAbort: AbortController | null = null;
   private cleanup: (() => void) | null = null;
 
   /**
@@ -54,12 +54,7 @@ export class Session {
    * the latest Analysis; `store.analysis`/`store.status` mirror it (see start()).
    */
   private readonly compile = new AsyncRunner<CompileInput, Analysis>(
-    (input, signal) => {
-      // A stale AST-locate pass must not sit ahead of this compile in the
-      // single worker's queue.
-      this.locateAbort?.abort();
-      return this.analyzer.analyze(input.source, input.options, signal);
-    },
+    (input, signal) => this.analyzer.analyze(input.source, input.options, signal),
     {
       key: (i) => JSON.stringify(i.options) + '\n' + i.source,
       // Option changes (and the very first compile) apply immediately; source
@@ -71,16 +66,44 @@ export class Session {
     },
   );
 
+  /**
+   * AST source-location dump as a reactive resource, keyed by (source, options,
+   * owner set). Dedup-by-key breaks the memberAligns→models→owners feedback
+   * loop: once alignments settle, the owner set is stable and no re-dump runs.
+   */
+  private readonly locate = new AsyncRunner<LocateInput, AstInfo>(
+    (input, signal) => this.analyzer.locate(input.analysis, new Set(input.owners), signal),
+    {
+      key: (i) =>
+        i.analysis.source + '\0' + JSON.stringify(i.analysis.options) + '\0' + i.owners.join(','),
+    },
+  );
+
+  /** The per-line index derived from the current models + the latest AST dump. */
+  private readonly index: LineIndex = $derived(
+    this.locate.value ? buildLineIndex(store.models, this.locate.value.fields) : EMPTY_INDEX,
+  );
   /** line -> LineInfo across all visible records. */
-  lines: Map<number, LineInfo> = $state.raw(new Map<number, LineInfo>());
-  /** recordKey -> (leaf index -> location) */
-  private leafLocations = new Map<string, Map<number, FieldLocation>>();
-  /** recordKey -> (group index -> location) */
-  private groupLocations = new Map<string, Map<number, FieldLocation>>();
+  get lines(): Map<number, LineInfo> {
+    return this.index.lines;
+  }
+  private get leafLocations(): Map<string, Map<number, FieldLocation>> {
+    return this.index.leafLocations;
+  }
+  private get groupLocations(): Map<string, Map<number, FieldLocation>> {
+    return this.index.groupLocations;
+  }
   /** Record/typedef name locations from the AST (for the type hover). */
-  private decls: DeclLocation[] = [];
+  private decls: DeclLocation[] = $derived(this.locate.value?.decls ?? []);
   /** Type spellings clang reported (field types, typedef/record names): the only bare words we probe on hover. */
-  private knownSpellings = new Set<string>();
+  private knownSpellings: Set<string> = $derived(
+    new Set(
+      [
+        ...(this.locate.value?.decls.map((d) => d.name) ?? []),
+        ...(this.locate.value?.fields.flatMap((f) => [f.qualType, f.desugaredType ?? '']) ?? []),
+      ].filter(Boolean),
+    ),
+  );
   /** Hover sources: pointer over the editor, the text cursor, pointer over grid/table. */
   private mouseLine: number | null = null;
   private cursorLine: number | null = null;
@@ -128,11 +151,31 @@ export class Session {
           store.visibleRecords.length,
         );
       });
-      // Resolve locations whenever the analysis / visible records change.
+      // Drive the AST-locate resource from the analysis + owner set. Owners are
+      // derived from the models (which depend on memberAligns, set below); the
+      // resource's dedup-by-key stops that feedback from re-dumping.
       $effect(() => {
-        const models = store.models;
         const analysis = store.analysis;
-        void this.resolveLocations(analysis, models);
+        if (!analysis || store.models.size === 0) return;
+        const owners = [...collectLocateOwners(store.models, analysis.recordIndex)].sort();
+        this.locate.trigger({ analysis, owners });
+      });
+      // Feed explicit member alignments (AlignedAttr) back to the store; models
+      // re-derive. Guarded so an unchanged map doesn't loop.
+      $effect(() => {
+        const aligns = this.locate.value
+          ? collectMemberAligns(this.locate.value.fields)
+          : new Map<string, number>();
+        const prev = store.memberAligns;
+        const same = prev.size === aligns.size && [...aligns].every(([k, v]) => prev.get(k) === v);
+        if (!same) store.memberAligns = aligns;
+      });
+      // A new analysis invalidates any cached grid/table hover (its leaf indices
+      // refer to the previous models). The pointer re-hovers as soon as it moves.
+      $effect(() => {
+        void store.analysis; // track
+        this.memberHover = null;
+        this.applyHover();
       });
       // Keep the URL fragment in sync.
       let hashTimer: ReturnType<typeof setTimeout> | null = null;
@@ -153,7 +196,7 @@ export class Session {
       offStatus();
       stopRoot();
       this.compile.dispose();
-      this.locateAbort?.abort();
+      this.locate.dispose();
     };
     return this.cleanup;
   }
@@ -190,149 +233,6 @@ export class Session {
   /** Force a compile now (e.g. Ctrl+Enter), even if the input is unchanged. */
   compileNow(): void {
     this.compile.trigger({ source: store.source, options: { ...store.options } }, { force: true });
-  }
-
-  // ------------------------------------------------------ locations ----
-
-  private async resolveLocations(
-    analysis: Analysis | null,
-    models: Map<string, RenderModel>,
-  ): Promise<void> {
-    this.locateAbort?.abort();
-    this.lines = new Map();
-    this.leafLocations = new Map();
-    this.groupLocations = new Map();
-    // A grid/table hover refers to a leaf *index* of the previous models; it
-    // would point at an arbitrary member now (the pointer gets a fresh
-    // mouseenter as soon as it moves).
-    this.memberHover = null;
-    store.setHover(null);
-    if (!analysis || models.size === 0) return;
-    const ac = new AbortController();
-    this.locateAbort = ac;
-    // `-ast-dump-filter` is a substring match on qualified names and the dump
-    // re-parses the whole TU per owner, so library records (std::string, its
-    // implementation-namespace parts) are skipped: their fields are not in the
-    // user's file anyway, and dumping e.g. every "string" in libc++ takes tens
-    // of seconds — long enough to trip the compile timeout.
-    // One filtered dump per *top-level* record name (a nested record's decls
-    // are inside its enclosing record's dump), plus member type spellings so
-    // typedef'd anonymous records are reached through their typedef.
-    const owners = new Set<string>();
-    const isLibrary = (name: string) => /^(?:std::|__)|::__/.test(name);
-    const top = (name: string) => {
-      if (isLibrary(name)) return '';
-      return unqualifiedName(name.replace(/\(anonymous namespace\)::/g, '').split('::')[0] ?? '');
-    };
-    for (const model of models.values()) {
-      owners.add(top(model.record.name));
-      for (const l of model.leaves) owners.add(top(l.owner));
-      for (const g of model.groups) {
-        owners.add(top(g.owner));
-        const typeName = g.type.replace(/^(?:struct|union|class)\s+/, '');
-        const rec = findRecord(typeName, analysis.recordIndex);
-        if ((!rec || isAnonymousRecord(rec)) && !isLibrary(typeName)) {
-          owners.add(unqualifiedName(typeName));
-        }
-      }
-    }
-    owners.delete('');
-    let locs: FieldLocation[];
-    try {
-      const info = await this.analyzer.locate(analysis, owners, ac.signal);
-      locs = info.fields;
-      this.decls = info.decls;
-      // Explicit member alignments (AlignedAttr) → store; models re-derive
-      // (guarded: only when the map actually changed, since models feed back here).
-      const aligns = new Map<string, number>();
-      for (const f of info.fields) {
-        if (f.alignAttr !== undefined) aligns.set(f.owner + ' ' + f.name, f.alignAttr);
-      }
-      const prev = store.memberAligns;
-      const same = prev.size === aligns.size && [...aligns].every(([k, v]) => prev.get(k) === v);
-      if (!same) store.memberAligns = aligns;
-      this.knownSpellings = new Set(
-        [
-          ...info.decls.map((d) => d.name),
-          ...info.fields.flatMap((f) => [f.qualType, f.desugaredType ?? '']),
-        ].filter(Boolean),
-      );
-    } catch {
-      return;
-    }
-    if (ac.signal.aborted) return;
-
-    interface Cand {
-      record: string;
-      direct: boolean;
-      items: (Leaf | Group)[];
-      members: MemberRef[];
-      loc: FieldLocation;
-    }
-    const byLine = new Map<number, Cand[]>();
-    for (const [key, model] of models) {
-      const leafLocs = matchItemsToLocations(model.leaves, locs);
-      const groupLocs = matchItemsToLocations(model.groups, locs);
-      this.leafLocations.set(key, leafLocs);
-      this.groupLocations.set(key, groupLocs);
-      const local = new Map<
-        number,
-        { items: (Leaf | Group)[]; members: Set<number>; loc: FieldLocation; direct: boolean }
-      >();
-      const at = (line: number, loc: FieldLocation) => {
-        let e = local.get(line);
-        if (!e) local.set(line, (e = { items: [], members: new Set(), loc, direct: false }));
-        return e;
-      };
-      for (const [gi, loc] of groupLocs) {
-        const g = model.groups[gi]!;
-        const e = at(loc.line, loc);
-        for (const li of g.leafIndexes) e.members.add(li);
-        e.items.push(g);
-        if (g.path.length === 0) e.direct = true;
-      }
-      for (const [li, loc] of leafLocs) {
-        const leaf = model.leaves[li]!;
-        const e = at(loc.line, loc);
-        if (e.items.some((it) => 'leafIndexes' in it && it.leafIndexes.includes(li))) continue; // subsumed by a group
-        e.members.add(li);
-        e.items.push(leaf);
-        if (leaf.depth === 0) e.direct = true;
-      }
-      for (const [line, e] of local) {
-        const list = byLine.get(line) ?? [];
-        list.push({
-          record: key,
-          direct: e.direct,
-          items: e.items,
-          members: [...e.members].map((leaf) => ({ record: key, leaf })),
-          loc: e.loc,
-        });
-        byLine.set(line, list);
-      }
-    }
-
-    const out = new Map<number, LineInfo>();
-    for (const [line, cands] of byLine) {
-      const primary = cands.find((c) => c.direct) ?? cands[0]!;
-      // One field declared on the line → its colour; a container (a group) or
-      // several fields → a neutral ring, since no single colour represents it.
-      // Based on the declaring record's items (source-truth), not on member
-      // count across records (the same field recurs in every record it nests in).
-      const item = primary.items.length === 1 ? primary.items[0]! : null;
-      const colorClass =
-        item && !('leafIndexes' in item) ? (item.colorClass ?? 'c-compound') : 'c-compound';
-      out.set(line, {
-        line,
-        members: cands.flatMap((c) => c.members),
-        items: primary.items,
-        primary: primary.record,
-        colorClass,
-        location: primary.loc,
-      });
-    }
-    this.lines = out;
-    this.applyHover();
   }
 
   // ---------------------------------------------------------- hover ----

@@ -19,8 +19,12 @@ preserves behavior; the existing suite is the guardrail.
       manual abort/timer/lastInputKey bookkeeping are gone. `store.status` is
       pushed from the pure `computeAnalysisStatus(resource, analysis, visibleCount)`
       (6 tests); `store.analysis` mirrors `resource.value`.
-- [ ] **0.3 Port AST-locate** onto a second resource; drop `locateAbort` and the
-      manual result-map resets.
+- [x] **0.3 Port AST-locate** onto a second resource; `locateAbort` and the
+      manual result-map resets are gone. The pure mapping moved to
+      `code-locations.ts` (`buildLineIndex`, `collectLocateOwners`,
+      `collectMemberAligns`, 6 tests); `lines`/leaf+group locations are now a
+      `$derived` index over `(models, dump)`. Dedup-by-key breaks the
+      memberAligns→models→owners feedback loop.
 - [ ] **0.4 Derived hover** — setters record _intent_ only
       (`{kind:'leaf'|'group'|'tooltip', …}`); `hover` becomes `$derived` over
       current models/locations (fixes stale snapshots). Record-follows-hover moves
