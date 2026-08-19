@@ -2,7 +2,13 @@
 
 export type RecordKind = 'struct' | 'union' | 'class' | '__interface' | 'interface';
 
-export type RowKind = 'field' | 'special' | 'base' | 'primary-base' | 'vbase' | 'primary-vbase';
+/**
+ * What a compound member is. `member` is a record-typed field or an anonymous
+ * aggregate; the rest are base subobjects, with the ABI's own distinctions —
+ * the primary base shares the derived object's address, and a virtual one is
+ * placed by the most derived object rather than by the class that names it.
+ */
+export type GroupKind = 'member' | 'base' | 'primary-base' | 'vbase' | 'primary-vbase';
 
 /** A record's own facts, as clang computed them. Sizes in bytes. */
 export interface RecordLayout {
@@ -93,7 +99,7 @@ export interface Leaf {
 
 /** A compound member: a base subobject, a record-typed field, or an anonymous aggregate. */
 export interface Group {
-  kind: 'member' | RowKind;
+  kind: GroupKind;
   name: string;
   type: string;
   owner: string;
