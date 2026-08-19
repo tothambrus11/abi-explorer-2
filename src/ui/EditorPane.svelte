@@ -5,6 +5,7 @@
   import { EXAMPLES } from '$core/targets';
   import { createEditor, setEditorTheme, type EditorHandle } from './monaco';
   import { theme } from '$state/theme.svelte';
+  import { memberDots } from '$state/editor-view';
   import StatusIcon from './StatusIcon.svelte';
   import { tooltip } from './tooltip';
 
@@ -35,43 +36,42 @@
     return () => editor?.dispose();
   });
 
-  // state -> editor
+  // state -> editor: one derived description of what Monaco should show...
+  const view = $derived({
+    value: store.source,
+    language: store.options.lang,
+    diagnostics: store.analysis?.diagnostics ?? [],
+    // Dots only for what is on screen: the active record in tabs mode, all when stacked.
+    dots: memberDots(
+      session.lines.values(),
+      store.models,
+      new Set(store.sections.map((s) => s.key)),
+    ),
+    highlight: store.hover.line,
+    inlay: store.hover.inlay,
+  });
+
+  // ...and one effect per sink that applies it. Monaco's decoration APIs are
+  // set-diffing, so handing them a derived value is all the reconciliation needed.
   $effect(() => {
     setEditorTheme(theme.current);
   });
   $effect(() => {
-    editor?.setValue(store.source);
+    editor?.setValue(view.value);
   });
   $effect(() => {
-    editor?.setLanguage(store.options.lang);
+    editor?.setLanguage(view.language);
   });
   $effect(() => {
-    editor?.setDiagnostics(store.analysis?.diagnostics ?? []);
+    editor?.setDiagnostics(view.diagnostics);
   });
   $effect(() => {
-    // Gutter dots only for what is shown: the active record in tabs mode, everything when stacked.
-    const shown = new Set(store.sections.map((s) => s.key));
-    const dots = [...session.lines.values()]
-      .filter((l) => l.members.some((m) => shown.has(m.record)))
-      .map((l) => {
-        // Filled dot only when the line declares a single field at the source
-        // level; a container line (a group, or several fields) gets the neutral
-        // ring. `l.items` is source-truth — unlike `l.members`, it is not
-        // inflated by the same field appearing in several record models.
-        const item = l.items.length === 1 ? l.items[0]! : null;
-        const singleField = item !== null && !('leafIndexes' in item);
-        const here = l.members.find((m) => shown.has(m.record))!;
-        const colorClass = singleField
-          ? (store.models.get(here.record)?.leaves[here.leaf]?.colorClass ?? 'c-compound')
-          : 'c-compound';
-        return { line: l.line, colorClass };
-      });
-    editor?.setMemberDots(dots);
+    editor?.setMemberDots(view.dots);
     editor?.refreshHover();
   });
   $effect(() => {
-    editor?.highlightLine(store.hover.line);
-    editor?.setInlay(store.hover.line, store.hover.inlay);
+    editor?.highlightLine(view.highlight);
+    editor?.setInlay(view.highlight, view.inlay);
   });
 
   function loadExample(e: Event) {

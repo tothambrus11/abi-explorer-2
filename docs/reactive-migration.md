@@ -31,9 +31,11 @@ preserves behavior; the existing suite is the guardrail.
       stale intent resolves to nothing instead of the wrong member. All six
       manual `applyHover()` calls are gone; record-follows-hover is its own
       command `$effect`.
-- [ ] **0.5 Declarative `editorView`** — one `$derived`
-      `{value, language, diagnostics, circles, highlight, inlay}` and a single
-      effect diffing it into Monaco. Color logic leaves the effect.
+- [x] **0.5 Declarative `editorView`** — EditorPane holds one `$derived`
+      `{value, language, diagnostics, dots, highlight, inlay}`; each effect only
+      hands a slice of it to Monaco. The dot-colour logic left the effect for the
+      pure `memberDots` (`editor-view.ts`, 5 tests) — including the stacked-view
+      case where one field recurs across records.
 
 ## Phase 1 — inspected-record model (feature)
 
