@@ -5,13 +5,22 @@
 import { Analyzer, type Analysis } from '$compiler/Analyzer';
 import type { Compiler } from '$compiler/Compiler';
 import type { CompileOptions } from '$core/options';
-import type { AstInfo, DeclLocation, FieldLocation } from '$core/ast-locations';
+import type { AstInfo, DeclLocation } from '$core/ast-locations';
 import { recordKey } from '$core/layout-parser';
 import { buildRenderModel } from '$core/model';
 import { findRecord } from '$core/probes';
-import type { Group, Leaf, RecordLayout } from '$core/types';
+import type { RecordLayout } from '$core/types';
 import { decodeShareState, encodeShareState, type ShareState } from '$core/url-state';
-import { store, type MemberRef } from './store.svelte';
+import { store, type Hover, type MemberRef } from './store.svelte';
+import {
+  describeItems,
+  fmtOffset,
+  hoveredPrimary,
+  resolveHover,
+  type HoverInputs,
+  type HoverIntent,
+  type TooltipAnchor,
+} from './hover';
 import { AsyncRunner } from './async-resource.svelte';
 import { computeAnalysisStatus } from './status';
 import { grantConsent, shouldAskBeforeDownload } from './download-gate';
@@ -88,12 +97,6 @@ export class Session {
   get lines(): Map<number, LineInfo> {
     return this.index.lines;
   }
-  private get leafLocations(): Map<string, Map<number, FieldLocation>> {
-    return this.index.leafLocations;
-  }
-  private get groupLocations(): Map<string, Map<number, FieldLocation>> {
-    return this.index.groupLocations;
-  }
   /** Record/typedef name locations from the AST (for the type hover). */
   private decls: DeclLocation[] = $derived(this.locate.value?.decls ?? []);
   /** Type spellings clang reported (field types, typedef/record names): the only bare words we probe on hover. */
@@ -106,21 +109,21 @@ export class Session {
     ),
   );
   /** Hover sources: pointer over the editor, the text cursor, pointer over grid/table. */
-  private mouseLine: number | null = null;
-  private cursorLine: number | null = null;
+  private mouseLine: number | null = $state(null);
+  private cursorLine: number | null = $state(null);
   /**
-   * A resolved grid/table hover: the members to highlight, the editor line
-   * their declaration sits on, and the items to summarise in the inlay. An
-   * empty `members` with a tooltip is a padding cell (tooltip only).
+   * What the pointer is over in the grid/table — an *intent* (record + index),
+   * resolved against the current models by `resolveHover`, so it can never
+   * point at a member of a superseded analysis.
    */
-  private memberHover: {
-    members: MemberRef[];
-    line: number | null;
-    items: (Leaf | Group)[];
-    tooltip: { html: string; x: number; y: number } | null;
-  } | null = null;
+  private hoverIntent: HoverIntent | null = $state.raw(null);
   /** Last input wins: after keyboard cursor movement the cursor beats the (still) hovered line until the mouse moves again. */
-  private preferCursor = false;
+  private preferCursor = $state(false);
+
+  /** The effective hover: grid/table intent first, then the pointer, then the cursor. */
+  readonly hover: Hover = $derived(resolveHover(this.hoverInputs));
+  /** Record owning the hovered line, for record-follows-cursor in tabs mode. */
+  private readonly hoverPrimary: string | null = $derived(hoveredPrimary(this.hoverInputs));
 
   constructor(private readonly compiler: Compiler) {
     this.analyzer = new Analyzer(compiler);
@@ -181,12 +184,24 @@ export class Session {
         const same = prev.size === aligns.size && [...aligns].every(([k, v]) => prev.get(k) === v);
         if (!same) store.memberAligns = aligns;
       });
-      // A new analysis invalidates any cached grid/table hover (its leaf indices
-      // refer to the previous models). The pointer re-hovers as soon as it moves.
+      // A new analysis drops the grid/table hover: the pointer will re-enter a
+      // row and produce a fresh intent. (Resolution is index-safe either way.)
       $effect(() => {
         void store.analysis; // track
-        this.memberHover = null;
-        this.applyHover();
+        this.hoverIntent = null;
+      });
+      // The resolved hover is derived; this is the only place it reaches the store.
+      $effect(() => {
+        store.hover = this.hover;
+      });
+      // Command (deliberately *not* part of the derivation): in tabs mode the
+      // record under the cursor becomes the selected one.
+      $effect(() => {
+        const primary = this.hoverPrimary;
+        if (store.view !== 'tabs' || primary === null) return;
+        if (store.activeRecordKey !== primary && store.models.has(primary)) {
+          store.selectedRecord = primary;
+        }
       });
       // Keep the URL fragment in sync.
       let hashTimer: ReturnType<typeof setTimeout> | null = null;
@@ -262,22 +277,17 @@ export class Session {
   /** Pointer moved over an editor line (null = left the editor). */
   hoverLine(line: number | null): void {
     this.mouseLine = line;
-    this.applyHover();
   }
 
   /** The text cursor moved. Keyboard moves take precedence over a stale hover. */
   setCursorLine(line: number | null, byKeyboard = false): void {
     this.cursorLine = line;
     if (byKeyboard) this.preferCursor = true;
-    this.applyHover();
   }
 
   /** Any pointer movement over the editor hands control back to the mouse. */
   noteMouseActivity(): void {
-    if (this.preferCursor) {
-      this.preferCursor = false;
-      this.applyHover();
-    }
+    this.preferCursor = false;
   }
 
   /**
@@ -285,80 +295,34 @@ export class Session {
    * without a member (padding cell) shows just the tooltip; null/null ends
    * the hover.
    */
-  hoverMember(ref: MemberRef | null, tooltip: { html: string; x: number; y: number } | null): void {
-    if (!ref) {
-      this.memberHover = tooltip ? { members: [], line: null, items: [], tooltip } : null;
-      this.applyHover();
-      return;
-    }
-    const leaf = store.models.get(ref.record)?.leaves[ref.leaf];
-    if (!leaf) {
-      this.memberHover = null;
-    } else {
-      const loc = this.leafLocations.get(ref.record)?.get(ref.leaf);
-      this.memberHover = { members: [ref], line: loc?.line ?? null, items: [leaf], tooltip };
-    }
-    this.applyHover();
+  hoverMember(ref: MemberRef | null, tooltip: TooltipAnchor | null): void {
+    this.hoverIntent = ref
+      ? { kind: 'leaf', record: ref.record, leaf: ref.leaf, tooltip }
+      : tooltip
+        ? { kind: 'tooltip', tooltip }
+        : null;
   }
 
   /**
-   * Table hover on a parent (group) row: highlight all the group's leaves and
-   * point to the group's own declaration line. The group summarises its extent
-   * (offset/size/align) in the inlay.
+   * Table hover on a parent (group) row: highlights all the group's leaves and
+   * points to the group's own declaration line.
    */
-  hoverGroup(
-    record: string,
-    groupIndex: number,
-    tooltip: { html: string; x: number; y: number } | null,
-  ): void {
-    const group = store.models.get(record)?.groups[groupIndex];
-    if (!group) {
-      this.memberHover = null;
-    } else {
-      const loc = this.groupLocations.get(record)?.get(groupIndex);
-      this.memberHover = {
-        members: group.leafIndexes.map((leaf) => ({ record, leaf })),
-        line: loc?.line ?? null,
-        items: [group],
-        tooltip,
-      };
-    }
-    this.applyHover();
+  hoverGroup(record: string, groupIndex: number, tooltip: TooltipAnchor | null): void {
+    this.hoverIntent = { kind: 'group', record, group: groupIndex, tooltip };
   }
 
-  /**
-   * Resolve the effective hover: pointer over grid/table wins, then the pointer
-   * over the editor, then the text cursor. In tabs mode the record owning the
-   * hovered line becomes the selected one, so what is shown always corresponds
-   * to the cursor.
-   */
-  private applyHover(): void {
-    if (this.memberHover) {
-      const { members, line, items, tooltip } = this.memberHover;
-      store.setHover({
-        members,
-        line,
-        inlay: items.length ? describeItems(items) : null,
-        tooltip,
-      });
-      return;
-    }
-    const line = this.preferCursor
-      ? (this.cursorLine ?? this.mouseLine)
-      : (this.mouseLine ?? this.cursorLine);
-    const info = line !== null ? this.lines.get(line) : undefined;
-    if (!info) {
-      store.setHover(null);
-      return;
-    }
-    if (
-      store.view === 'tabs' &&
-      store.activeRecordKey !== info.primary &&
-      store.models.has(info.primary)
-    ) {
-      store.selectedRecord = info.primary;
-    }
-    store.setHover({ members: info.members, line, inlay: describeItems(info.items) });
+  /** Everything `resolveHover` needs, tracked reactively. */
+  private get hoverInputs(): HoverInputs {
+    return {
+      intent: this.hoverIntent,
+      mouseLine: this.mouseLine,
+      cursorLine: this.cursorLine,
+      preferCursor: this.preferCursor,
+      models: store.models,
+      lines: this.index.lines,
+      leafLocations: this.index.leafLocations,
+      groupLocations: this.index.groupLocations,
+    };
   }
 
   /**
@@ -434,30 +398,6 @@ function describeRecord(r: RecordLayout, analysis: Analysis): string {
   return `**\`${recordKey(r)}\`** — ${n} member${n === 1 ? '' : 's'}\n\n| | |\n|---|---|\n${rows.join('\n')}`;
 }
 
-/** "offset 16 · 8 B · align 8" for the items declared on a line. */
-export function describeItems(items: (Leaf | Group)[]): string {
-  const one = items.length === 1;
-  const it = items[0];
-  if (!it) return '';
-  if (one && 'kind' in it && it.kind === 'bitfield') {
-    return `offset ${fmtOffset(it.offsetBits)} · ${it.sizeBits} b`;
-  }
-  const start = Math.min(...items.map((i) => i.offsetBits));
-  const end = Math.max(...items.map((i) => i.offsetBits + (i.sizeBits ?? 0)));
-  const sizeBytes = (end - start) / 8;
-  const parts = [`offset ${fmtOffset(start)}`];
-  if (one && it.sizeBits === null) parts.push('size ?');
-  else {
-    parts.push(
-      `${one && 'estimated' in it && it.estimated ? '≈' : ''}${Number.isInteger(sizeBytes) ? sizeBytes : sizeBytes.toFixed(1)} B`,
-    );
-  }
-  if (one && it.align) parts.push(`align ${it.align} B`);
-  else if (!one) parts.unshift(`${items.length} members`);
-  return parts.join(' · ');
-}
-
-/** Byte offset with an explicit unit: "12 B", or "12 B + 3 b" inside a bit-field storage unit. */
-export function fmtOffset(bits: number): string {
-  return bits % 8 === 0 ? `${bits / 8} B` : `${Math.floor(bits / 8)} B + ${bits % 8} b`;
-}
+// The hover formatters live with the hover resolution they belong to; re-exported
+// here because the UI has always imported them from the session.
+export { describeItems, fmtOffset };

@@ -25,10 +25,12 @@ preserves behavior; the existing suite is the guardrail.
       `collectMemberAligns`, 6 tests); `lines`/leaf+group locations are now a
       `$derived` index over `(models, dump)`. Dedup-by-key breaks the
       memberAligns→models→owners feedback loop.
-- [ ] **0.4 Derived hover** — setters record _intent_ only
-      (`{kind:'leaf'|'group'|'tooltip', …}`); `hover` becomes `$derived` over
-      current models/locations (fixes stale snapshots). Record-follows-hover moves
-      out of derivation into a dedicated command `$effect`.
+- [x] **0.4 Derived hover** — setters record _intent_ only
+      (`{kind:'leaf'|'group'|'tooltip', …}`); `hover` is `$derived` over current
+      models/locations via the pure `resolveHover` (`hover.ts`, 12 tests), so a
+      stale intent resolves to nothing instead of the wrong member. All six
+      manual `applyHover()` calls are gone; record-follows-hover is its own
+      command `$effect`.
 - [ ] **0.5 Declarative `editorView`** — one `$derived`
       `{value, language, diagnostics, circles, highlight, inlay}` and a single
       effect diffing it into Monaco. Color logic leaves the effect.
