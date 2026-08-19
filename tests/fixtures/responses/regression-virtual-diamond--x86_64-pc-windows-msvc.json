@@ -305,8 +305,12 @@
     "name": "Derived",
     "nonVirtualAlignBits": 64,
     "nonVirtualSizeBits": 256,
-    "paddingBits": 96,
+    "paddingBits": 152,
     "paddingRuns": [
+     {
+      "endBits": 64,
+      "startBits": 8
+     },
      {
       "endBits": 192,
       "startBits": 128
@@ -334,7 +338,7 @@
        "isUnion": false,
        "kind": "base",
        "leafIndexes": [
-        2
+        1
        ],
        "location": {
         "col": 32,
@@ -358,7 +362,7 @@
        "isUnion": false,
        "kind": "vbase",
        "leafIndexes": [
-        4
+        3
        ],
        "location": {
         "col": 18,
@@ -378,19 +382,6 @@
       }
      ],
      "leaves": [
-      {
-       "alignBits": 64,
-       "kind": "special",
-       "location": null,
-       "name": "Derived vtable pointer",
-       "offsetBits": 0,
-       "ownerId": 2,
-       "ownerName": "Derived",
-       "path": [],
-       "sharesAddress": false,
-       "sizeBits": 64,
-       "type": null
-      },
       {
        "alignBits": 64,
        "kind": "special",
@@ -467,8 +458,12 @@
       }
      ],
      "markers": [],
-     "paddingBytes": 12,
+     "paddingBytes": 19,
      "paddingRuns": [
+      {
+       "endBits": 64,
+       "startBits": 8
+      },
       {
        "endBits": 192,
        "startBits": 128
@@ -480,35 +475,29 @@
      ],
      "tree": [
       {
-       "children": [],
-       "kind": "leaf",
-       "overlaps": true,
-       "ref": 0
-      },
-      {
        "children": [
         {
          "children": [],
          "kind": "leaf",
          "overlaps": false,
-         "ref": 2
+         "ref": 1
         }
        ],
        "kind": "group",
-       "overlaps": true,
+       "overlaps": false,
        "ref": 0
       },
       {
        "children": [],
        "kind": "leaf",
        "overlaps": false,
-       "ref": 1
+       "ref": 0
       },
       {
        "children": [],
        "kind": "leaf",
        "overlaps": false,
-       "ref": 3
+       "ref": 2
       },
       {
        "children": [
@@ -516,7 +505,7 @@
          "children": [],
          "kind": "leaf",
          "overlaps": false,
-         "ref": 4
+         "ref": 3
         }
        ],
        "kind": "group",
@@ -527,12 +516,6 @@
     },
     "sizeBits": 320,
     "vtableSlots": [
-     {
-      "kind": "vptr",
-      "label": "Derived vtable pointer",
-      "offsetBits": 0,
-      "sizeBits": 64
-     },
      {
       "kind": "vbptr",
       "label": "Derived vbtable pointer",
@@ -653,7 +636,7 @@
        "isUnion": false,
        "kind": "base",
        "leafIndexes": [
-        3
+        1
        ],
        "location": {
         "col": 32,
@@ -679,10 +662,9 @@
        "isUnion": false,
        "kind": "base",
        "leafIndexes": [
+        0,
         1,
-        2,
-        3,
-        4
+        2
        ],
        "location": {
         "col": 18,
@@ -706,7 +688,7 @@
        "isUnion": false,
        "kind": "vbase",
        "leafIndexes": [
-        6
+        4
        ],
        "location": {
         "col": 18,
@@ -726,34 +708,6 @@
       }
      ],
      "leaves": [
-      {
-       "alignBits": 64,
-       "kind": "special",
-       "location": null,
-       "name": "Diamond vtable pointer",
-       "offsetBits": 0,
-       "ownerId": 3,
-       "ownerName": "Diamond",
-       "path": [],
-       "sharesAddress": false,
-       "sizeBits": 64,
-       "type": null
-      },
-      {
-       "alignBits": 64,
-       "kind": "special",
-       "location": null,
-       "name": "Derived vtable pointer",
-       "offsetBits": 0,
-       "ownerId": 2,
-       "ownerName": "Derived",
-       "path": [
-        "Derived"
-       ],
-       "sharesAddress": false,
-       "sizeBits": 64,
-       "type": null
-      },
       {
        "alignBits": 64,
        "kind": "special",
@@ -854,8 +808,12 @@
       }
      ],
      "markers": [],
-     "paddingBytes": 18,
+     "paddingBytes": 25,
      "paddingRuns": [
+      {
+       "endBits": 64,
+       "startBits": 8
+      },
       {
        "endBits": 192,
        "startBits": 128
@@ -871,30 +829,24 @@
      ],
      "tree": [
       {
-       "children": [],
-       "kind": "leaf",
-       "overlaps": true,
-       "ref": 0
-      },
-      {
        "children": [
-        {
-         "children": [],
-         "kind": "leaf",
-         "overlaps": true,
-         "ref": 1
-        },
         {
          "children": [
           {
            "children": [],
            "kind": "leaf",
            "overlaps": false,
-           "ref": 3
+           "ref": 1
           }
          ],
          "kind": "group",
-         "overlaps": true,
+         "overlaps": false,
+         "ref": 0
+        },
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
          "ref": 0
         },
         {
@@ -902,23 +854,17 @@
          "kind": "leaf",
          "overlaps": false,
          "ref": 2
-        },
-        {
-         "children": [],
-         "kind": "leaf",
-         "overlaps": false,
-         "ref": 4
         }
        ],
        "kind": "group",
-       "overlaps": true,
+       "overlaps": false,
        "ref": 1
       },
       {
        "children": [],
        "kind": "leaf",
        "overlaps": false,
-       "ref": 5
+       "ref": 3
       },
       {
        "children": [
@@ -926,7 +872,7 @@
          "children": [],
          "kind": "leaf",
          "overlaps": false,
-         "ref": 6
+         "ref": 4
         }
        ],
        "kind": "group",
@@ -936,14 +882,7 @@
      ]
     },
     "sizeBits": 384,
-    "vtableSlots": [
-     {
-      "kind": "vptr",
-      "label": "Diamond vtable pointer",
-      "offsetBits": 0,
-      "sizeBits": 64
-     }
-    ]
+    "vtableSlots": []
    }
   ],
   "target": {

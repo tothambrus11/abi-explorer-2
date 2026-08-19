@@ -692,8 +692,8 @@
        "isUnion": false,
        "kind": "vbase",
        "leafIndexes": [
-        3,
-        4
+        2,
+        3
        ],
        "location": {
         "col": 18,
@@ -713,19 +713,6 @@
       }
      ],
      "leaves": [
-      {
-       "alignBits": 64,
-       "kind": "special",
-       "location": null,
-       "name": "Diamond vtable pointer",
-       "offsetBits": 0,
-       "ownerId": 3,
-       "ownerName": "Diamond",
-       "path": [],
-       "sharesAddress": false,
-       "sizeBits": 64,
-       "type": null
-      },
       {
        "alignBits": 64,
        "kind": "special",
@@ -807,20 +794,14 @@
       {
        "children": [],
        "kind": "leaf",
-       "overlaps": true,
+       "overlaps": false,
        "ref": 0
       },
       {
        "children": [],
        "kind": "leaf",
-       "overlaps": true,
-       "ref": 1
-      },
-      {
-       "children": [],
-       "kind": "leaf",
        "overlaps": false,
-       "ref": 2
+       "ref": 1
       },
       {
        "children": [
@@ -828,13 +809,13 @@
          "children": [],
          "kind": "leaf",
          "overlaps": false,
-         "ref": 3
+         "ref": 2
         },
         {
          "children": [],
          "kind": "leaf",
          "overlaps": false,
-         "ref": 4
+         "ref": 3
         }
        ],
        "kind": "group",
@@ -845,12 +826,6 @@
     },
     "sizeBits": 256,
     "vtableSlots": [
-     {
-      "kind": "vptr",
-      "label": "Diamond vtable pointer",
-      "offsetBits": 0,
-      "sizeBits": 64
-     },
      {
       "kind": "vbptr",
       "label": "Diamond vbtable pointer",
