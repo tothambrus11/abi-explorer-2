@@ -13,7 +13,7 @@
 import { AbiAnalyzer, type AnalysedRecord, type Analysis } from '$compiler/AbiAnalyzer';
 import type { AbiClient } from '$compiler/AbiClient';
 import type { CompileOptions } from '$core/options';
-import { directMembers } from '$core/render';
+import { describeRecord, describeSpelling, subjectAt } from './type-hover';
 import { decodeShareState, encodeShareState, type ShareState } from '$core/url-state';
 import { store, type Hover, type MemberRef } from './store.svelte';
 import {
@@ -365,11 +365,9 @@ export class Session {
   }
 
   /**
-   * Documentation hover at (line, word). What the word *is* comes from the
-   * analysis — a record or type name written exactly there, or the declared
-   * type of the member on that line — and its size from the record it names or
-   * a spelling probe. Anything else is probed as written: clang decides
-   * whether it is a type.
+   * Documentation hover at (line, word). What the word *is* is decided by the
+   * pure `subjectAt`; what is left here is the one thing it cannot do — measure
+   * a spelling the analysis has no record for, which costs a query.
    */
   async describeType(
     line: number,
@@ -378,82 +376,23 @@ export class Session {
   ): Promise<string | null> {
     const analysis = store.analysis;
     if (!analysis) return null;
-
-    const covers = (at: { line: number; col: number } | null, len: number) =>
-      at !== null &&
-      at.line === line &&
-      word.startColumn >= at.col &&
-      word.startColumn < at.col + Math.max(1, len);
-
-    // 1. A record whose name is written exactly here.
-    const here = analysis.records.filter(
-      (r) => r.record.location?.isMainFile && covers(r.record.location, r.record.name.length),
-    );
-    if (here.length) {
-      return here
-        .slice(0, 4)
-        .map((r) => describeRecord(r))
-        .join('\n\n---\n\n');
+    const subject = subjectAt(line, word, {
+      analysis,
+      lines: this.index,
+      knownSpellings: this.knownSpellings,
+    });
+    if (!subject) return null; // member names, keywords, numbers…: no query for these
+    if (subject.kind === 'records') {
+      return subject.records.map((r) => describeRecord(r)).join('\n\n---\n\n');
     }
-
-    // 2. A type name declared here.
-    let spelling: string;
-    let alias: string | null = null;
-    const typedef = analysis.typedefs.find(
-      (t) => t.location?.isMainFile && covers(t.location, t.name.length),
-    );
-    if (typedef) {
-      if (typedef.recordId !== null) {
-        const rec = analysis.byId.get(typedef.recordId);
-        if (rec) return describeRecord(rec);
-      }
-      spelling = typedef.name;
-      alias = typedef.canonicalType;
-    } else {
-      // 3. The type part of a member declaration: the member's declared type.
-      const info = this.lines.get(line);
-      const first = info?.items[0];
-      if (info && first && word.startColumn < info.anchor.col && typeOf(first)) {
-        spelling = typeOf(first)!;
-      } else if (this.knownSpellings.has(word.word)) {
-        spelling = word.word; // 4. a name clang reported as a type somewhere in the TU
-      } else {
-        return null; // member names, keywords, numbers…: no query for these
-      }
-    }
-    const named = analysis.byName.get(spelling);
-    if (named) return describeRecord(named);
     // A spelling probe is a full re-parse of the user's TU; pass the hover's
     // cancellation on so an abandoned hover does not hold the single wasm clang.
-    const pr = await this.analyzer.probeSpelling(analysis, spelling, signal).catch(() => null);
-    if (!pr || pr.bits <= 0) return null;
-    const size = pr.bits % 8 ? `${pr.bits} b` : `**${pr.bits / 8}** B`;
-    const canon = alias && alias !== spelling ? `\n\n\`= ${alias}\`` : '';
-    return `**\`${spelling}\`**${canon}\n\n| | |\n|---|---|\n| sizeof | ${size} |\n| alignof | **${pr.align}** B |`;
+    const measured = await this.analyzer
+      .probeSpelling(analysis, subject.spelling, signal)
+      .catch(() => null);
+    if (!measured || measured.bits <= 0) return null;
+    return describeSpelling(subject.spelling, subject.alias, measured);
   }
-}
-
-/** The declared type of a leaf or a group, however it was spelled. */
-function typeOf(item: { type: string | null }): string | null {
-  return item.type;
-}
-
-function describeRecord(entry: AnalysedRecord): string {
-  const r = entry.record;
-  const model = entry.model;
-  // Members of the record itself — a compound member counts once, not once per
-  // field inside it.
-  const n = directMembers(model).filter((u) => !('kind' in u && u.kind === 'special')).length;
-  const padding = model.paddingBytes;
-  const rows = [`| sizeof | **${r.sizeBytes}** B |`, `| alignof | **${r.align}** B |`];
-  if (padding !== null) {
-    const pct = r.sizeBytes ? ` (${Math.round((100 * padding) / r.sizeBytes)}%)` : '';
-    rows.push(`| padding | ${padding} B${pct} |`);
-  }
-  if (r.dsize !== undefined) rows.push(`| dsize | ${r.dsize} B |`);
-  if (r.nvsize !== undefined) rows.push(`| nvsize | ${r.nvsize} B |`);
-  if (r.nvalign !== undefined) rows.push(`| nvalign | ${r.nvalign} B |`);
-  return `**\`${entry.key}\`** — ${n} member${n === 1 ? '' : 's'}\n\n| | |\n|---|---|\n${rows.join('\n')}`;
 }
 
 // The hover formatters live with the hover resolution they belong to; re-exported
