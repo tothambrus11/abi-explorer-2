@@ -3,6 +3,7 @@ dist/
 dev-dist/
 playwright-report/
 test-results/
+coverage/
 *.local
 # Large clang-wasm assets are fetched at runtime from the npm registry (see
 # src/compiler/clang.worker.ts) or vendored locally with tools/vendor-clang.sh.

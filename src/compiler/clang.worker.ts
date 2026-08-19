@@ -208,7 +208,12 @@ async function compile(argv0: string, args: string[], files: Record<string, stri
 }
 
 let queue: Promise<void> = Promise.resolve();
-/** Ids of queued compiles the client no longer wants; skipped when their turn comes. */
+/**
+ * Ids of queued compiles the client no longer wants; skipped when their turn
+ * comes. A cancel that arrives after its compile already started can never be
+ * matched, so ids are pruned as later ones are handled (the client's ids only
+ * increase) — otherwise the set grows for the whole session.
+ */
 const cancelled = new Set<number>();
 
 self.onmessage = (ev: MessageEvent<unknown>) => {
@@ -235,7 +240,9 @@ async function handle(msg: Exclude<ReturnType<typeof parseRequest>, null>): Prom
         version: first !== undefined && first !== '' ? first : 'clang (wasm)',
       });
     } else if (msg.type === 'compile') {
-      if (cancelled.delete(msg.id)) return; // client gave up while this was queued
+      const dropped = cancelled.delete(msg.id); // client gave up while this was queued
+      for (const id of cancelled) if (id < msg.id) cancelled.delete(id);
+      if (dropped) return;
       const r = await compile(msg.argv0, msg.args, msg.files);
       post({ type: 'result', id: msg.id, ...r });
     }

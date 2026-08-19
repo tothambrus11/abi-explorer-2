@@ -15,6 +15,7 @@ export default ts.config(
       'docs/',
       'playwright-report/',
       'test-results/',
+      'coverage/',
       '.cache/',
     ],
   },

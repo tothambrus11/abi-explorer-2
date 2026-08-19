@@ -21,20 +21,6 @@ void self.skipWaiting();
 clientsClaim();
 cleanupOutdatedCaches();
 
-// Caches of the pre-Vite service worker (hand-written sw.js): evict them once.
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches
-      .keys()
-      .then((names) =>
-        Promise.all(
-          names
-            .filter((n) => n === 'abix-shell-v1' || n === 'abix-runtime-v1')
-            .map((n) => caches.delete(n)),
-        ),
-      ),
-  );
-});
 precacheAndRoute(self.__WB_MANIFEST);
 
 // Caches of the pre-workbox service worker (workbox only prunes its own).

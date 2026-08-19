@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { recordsAtLine } from '$state/inspected-record';
+import { declLineFor, recordsAtLine } from '$state/inspected-record';
 import type { DeclLocation } from '$core/ast-locations';
 import type { RenderModel } from '$core/types';
 
@@ -55,5 +55,30 @@ describe('recordsAtLine', () => {
     const decls = [rec('Pair', 1, 3)];
     const m = models(['struct Pair<int>', 'Pair<int>'], ['struct Pair<char>', 'Pair<char>']);
     expect(recordsAtLine(2, decls, m).sort()).toEqual(['struct Pair<char>', 'struct Pair<int>']);
+  });
+});
+
+describe('declLineFor', () => {
+  const models = new Map([
+    ['struct Outer', model('Outer')],
+    ['struct Outer::Inner', model('Outer::Inner')],
+  ]);
+
+  it('finds the line a record is declared on, matching by unqualified name', () => {
+    expect(declLineFor('struct Outer::Inner', nested, models)).toBe(3);
+    expect(declLineFor('struct Outer', nested, models)).toBe(2);
+  });
+
+  it('prefers the definition over a forward declaration', () => {
+    const decls: DeclLocation[] = [
+      { kind: 'record', name: 'Outer', line: 1, col: 8 }, // `struct Outer;`
+      rec('Outer', 5, 9), // the definition
+    ];
+    expect(declLineFor('struct Outer', decls, models)).toBe(5);
+  });
+
+  it('is null for an unknown record or one with no declaration', () => {
+    expect(declLineFor('struct Gone', nested, models)).toBeNull();
+    expect(declLineFor('struct Outer', [], models)).toBeNull();
   });
 });
