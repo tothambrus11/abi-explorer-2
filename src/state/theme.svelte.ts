@@ -15,7 +15,7 @@ import {
   type Theme,
   type ThemeMode,
   type ThemeSpec,
-} from '$ui/themes';
+} from '$core/themes';
 
 const KEY = 'abix-theme';
 const CUSTOM_KEY = 'abix-custom-themes';

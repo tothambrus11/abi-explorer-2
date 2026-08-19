@@ -4,7 +4,23 @@
 // in localStorage (see $state/theme.svelte.ts). The categorical member palette
 // is tied to the mode (validated light/dark sets), not to the individual theme.
 
-import type * as monaco from 'monaco-editor';
+/**
+ * The editor-theme shape, declared structurally so the theme model stays free
+ * of any editor dependency; `ui/monaco.ts` hands these straight to
+ * `monaco.editor.defineTheme`, which accepts them by structure.
+ */
+export interface EditorTokenRule {
+  token: string;
+  foreground?: string;
+  background?: string;
+  fontStyle?: string;
+}
+export interface EditorThemeData {
+  base: 'vs' | 'vs-dark';
+  inherit: boolean;
+  rules: EditorTokenRule[];
+  colors: Record<string, string>;
+}
 
 export type ThemeMode = 'light' | 'dark';
 
@@ -75,7 +91,7 @@ export interface Theme extends ThemeSpec {
   preset: boolean;
   /** CSS custom properties applied on :root. */
   tokens: Record<string, string>;
-  monaco: monaco.editor.IStandaloneThemeData;
+  monaco: EditorThemeData;
 }
 
 /** Field labels for the editor UI. */
@@ -227,7 +243,7 @@ export function compileTheme(spec: ThemeSpec, preset = false): Theme {
     '--c-8': m.c8,
     '--c-special': m.special,
   };
-  const rules: monaco.editor.ITokenThemeRule[] = [
+  const rules: EditorTokenRule[] = [
     { token: '', foreground: strip(sx.fg) },
     { token: 'comment', foreground: strip(sx.comment), fontStyle: 'italic' },
     { token: 'keyword', foreground: strip(sx.keyword) },

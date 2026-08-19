@@ -14,7 +14,7 @@
     SYNTAX_FIELDS,
     toHex6,
     type ThemeSpec,
-  } from './themes';
+  } from '$core/themes';
   import { tooltip } from './tooltip';
 
   const { detached = false }: { detached?: boolean } = $props();

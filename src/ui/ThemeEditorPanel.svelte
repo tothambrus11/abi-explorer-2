@@ -13,7 +13,7 @@
     PAGE_FIELDS,
     SYNTAX_FIELDS,
     type ThemeSpec,
-  } from './themes';
+  } from '$core/themes';
   import { tooltip } from './tooltip';
   import ColorPicker from './ColorPicker.svelte';
 

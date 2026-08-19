@@ -1,5 +1,5 @@
 /* Default (Glacier, light) tokens as a no-JS fallback. Themes are applied at
-   runtime by src/state/theme.svelte.ts from src/ui/themes.ts. */
+   runtime by src/state/theme.svelte.ts from src/core/themes.ts. */
 
 :root {
   color-scheme: light;

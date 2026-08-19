@@ -5,7 +5,7 @@ import * as monaco from './monaco-slim';
 import EditorWorker from 'monaco-editor/editor/editor.worker.js?worker';
 import type { Diagnostic } from '$core/types';
 import type { Language } from '$core/options';
-import { THEMES, type Theme } from './themes';
+import { THEMES, type Theme } from '$core/themes';
 
 (self as unknown as { MonacoEnvironment: unknown }).MonacoEnvironment = {
   getWorker: () => new EditorWorker(),
