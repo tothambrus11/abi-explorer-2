@@ -13,7 +13,7 @@
 
 /* eslint-disable no-console -- a CLI: its output is the interface */
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, lstat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 
@@ -30,6 +30,15 @@ const base =
   `https://github.com/${REPO}/releases/download/${version}/`;
 
 const sha256 = (buf) => createHash('sha256').update(buf).digest('hex');
+
+// A symlink means someone ran clang-abi-wasm's dev-link.sh and is iterating on
+// a local build. Overwriting that with a release would replace their working
+// copy with the last published one, silently, in the middle of a change.
+if (existsSync(DEST) && (await lstat(DEST)).isSymbolicLink()) {
+  console.log(`public/vendor/abi is a symlink to a local build — leaving it alone.`);
+  console.log('Remove the link to fetch a release instead.');
+  process.exit(0);
+}
 
 async function get(name) {
   const url = new URL(name, base).href;
