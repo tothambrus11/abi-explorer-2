@@ -87,14 +87,18 @@ describe('buildLineIndex', () => {
     expect(idx.leafLocations.get('S')!.get(0)!.line).toBe(2);
   });
 
-  it('a line with several fields gets the neutral ring', () => {
-    const models = new Map([model('S', [leaf('lo', 'S', 0), leaf('hi', 'S', 8)])]);
-    // both declared on line 5 (e.g. `uint8_t lo, hi;`)
-    const fields = [fieldLoc('S', 'lo', 5), fieldLoc('S', 'hi', 5)];
+  it('a line declaring several fields marks each of them', () => {
+    const models = new Map([
+      model('S', [leaf('lo', 'S', 0), leaf('hi', 'S', 8, { colorClass: 'c-2' })]),
+    ]);
+    // `uint8_t lo, hi;` — two declarators, at their own columns.
+    const fields = [fieldLoc('S', 'lo', 5, { col: 11 }), fieldLoc('S', 'hi', 5, { col: 15 })];
     const idx = buildLineIndex(models, fields);
     const l = idx.lines.get(5)!;
-    expect(l.colorClass).toBe('c-compound');
     expect(l.members).toHaveLength(2);
+    expect(l.marks.map((m) => m.colorClass)).toEqual(['c-1', 'c-2']);
+    // The line as a whole has no single colour.
+    expect(l.colorClass).toBe('c-compound');
   });
 
   it('a group on a line yields the ring and subsumes its leaves', () => {
@@ -110,7 +114,8 @@ describe('buildLineIndex', () => {
     ];
     const idx = buildLineIndex(models, fields);
     const l15 = idx.lines.get(15)!;
-    expect(l15.colorClass).toBe('c-compound');
+    // A compound member is one unit, so it carries the colour its leaves share.
+    expect(l15.colorClass).toBe('c-1');
     // The group highlights both of its leaves.
     expect(l15.members.map((m) => m.leaf).sort()).toEqual([0, 1]);
     expect(idx.groupLocations.get('Message')!.get(0)!.line).toBe(15);
@@ -180,7 +185,8 @@ describe('marks (several declarators on one line)', () => {
     const idx2 = buildLineIndex(m, [fieldLoc('Message', 'hdr', 15, { col: 17 })]);
     const marks = idx2.lines.get(15)!.marks;
     expect(marks).toHaveLength(1);
-    expect(marks[0]!.colorClass).toBe('c-compound');
+    // One unit, one colour — shared with everything inside it.
+    expect(marks[0]!.colorClass).toBe('c-1');
     expect(marks[0]!.members.map((x) => x.leaf).sort()).toEqual([0, 1]);
   });
 });

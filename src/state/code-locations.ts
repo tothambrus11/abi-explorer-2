@@ -9,8 +9,18 @@ import { findRecord, type RecordIndex } from '$core/probes';
 import type { Group, Leaf, RenderModel } from '$core/types';
 import type { MemberRef } from './store.svelte';
 
-/** No single field owns this mark (a compound member, or several declarators). */
+/** No colour could be resolved for a mark (should not normally happen). */
 export const COMPOUND = 'c-compound';
+
+/**
+ * Is a member with this path directly nameable on the record itself? Direct
+ * fields are, and so are fields injected by anonymous aggregates (`msg.crc_lo`),
+ * but a field of a named compound member is reached through it (`msg.hdr.kind`).
+ */
+const ANON = '(anonymous)';
+export function nameable(path: readonly string[]): boolean {
+  return path.every((p) => p === ANON);
+}
 
 /**
  * One declarator written on a line: `uint8_t lo, hi;` has two marks, a nested
@@ -26,10 +36,16 @@ export interface MemberMark {
   /** Items from the declaring record (a group, or one leaf). */
   items: (Leaf | Group)[];
   /**
-   * Marker colour: a single byte-occupying field's own colour, else
-   * `c-compound` — a compound member has no single colour of its own.
+   * Marker colour: the colour of the direct member this declarator introduces.
    */
   colorClass: string;
+  /**
+   * Records for which this declarator is a *directly nameable* member — a field
+   * of the record itself, or one injected by an anonymous aggregate. Only these
+   * earn a circle: what lives inside a compound member is seen by inspecting
+   * that member's own record.
+   */
+  directRecords: string[];
 }
 
 /** Everything the editor needs to know about one source line. */
@@ -122,6 +138,24 @@ export function collectMemberAligns(fields: FieldLocation[]): Map<string, number
   return aligns;
 }
 
+/**
+ * The colour standing for a declarator: a field's own colour, or the colour a
+ * compound member's leaves share. A unit spanning several colours — an
+ * anonymous aggregate, whose fields are members in their own right — has none,
+ * and shows the neutral ring instead.
+ */
+function markColour(
+  models: Map<string, RenderModel>,
+  cell: { record: string; items: (Leaf | Group)[]; leaves: Set<number> },
+): string {
+  const first = cell.items[0];
+  if (first && 'colorClass' in first) return first.colorClass ?? COMPOUND;
+  const leaves = models.get(cell.record)?.leaves;
+  if (!leaves) return COMPOUND;
+  const colours = new Set([...cell.leaves].map((li) => leaves[li]?.colorClass));
+  return colours.size === 1 ? ([...colours][0] ?? COMPOUND) : COMPOUND;
+}
+
 /** Map render models + AST field locations to a per-line index for the editor. */
 export function buildLineIndex(
   models: Map<string, RenderModel>,
@@ -167,7 +201,7 @@ export function buildLineIndex(
       const cell = cellAt(loc);
       for (const li of g.leafIndexes) cell.leaves.add(li);
       cell.items.push(g);
-      if (g.path.length === 0) cell.direct = true;
+      if (nameable(g.path)) cell.direct = true;
     }
     for (const [li, loc] of leafLocs) {
       // A group already covering this leaf *at this declarator* subsumes it, so
@@ -182,7 +216,7 @@ export function buildLineIndex(
       const cell = cellAt(loc);
       cell.leaves.add(li);
       cell.items.push(leaf);
-      if (leaf.depth === 0) cell.direct = true;
+      if (nameable(leaf.path)) cell.direct = true;
     }
   }
 
@@ -201,17 +235,18 @@ export function buildLineIndex(
     const marks: MemberMark[] = [...byCol.entries()]
       .sort((a, b) => a[0] - b[0])
       .map(([col, group]) => {
-        // Colour from the declaring record's own items: a lone leaf keeps its
-        // colour, a compound member (or several items) has none.
+        // Colour comes from a record that declares this member directly; every
+        // leaf of a unit shares one colour, so a compound member has one too.
         const owner = group.find((c) => c.direct) ?? group[0]!;
-        const item = owner.items.length === 1 ? owner.items[0]! : null;
+        const colour = markColour(models, owner);
         return {
           col,
           // An anonymous member has no written name; keep a one-character span.
           endCol: col + Math.max(1, owner.loc.name.length),
           members: group.flatMap((c) => [...c.leaves].map((leaf) => ({ record: c.record, leaf }))),
           items: owner.items,
-          colorClass: item && !('leafIndexes' in item) ? (item.colorClass ?? COMPOUND) : COMPOUND,
+          colorClass: colour,
+          directRecords: group.filter((c) => c.direct).map((c) => c.record),
         };
       });
 

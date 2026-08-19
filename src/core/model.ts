@@ -287,10 +287,34 @@ function estimateBits(
   return Math.max(8, parentEnd - row.offsetBits);
 }
 
-/** Assign categorical color slots to leaves (specials get their own hatch style). */
+/**
+ * Assign categorical colour slots one level deep: a colour identifies a *direct
+ * member* of this record. A compound member (nested record, base, anonymous
+ * aggregate) is one unit, so every leaf inside it shares its colour — the grid
+ * then shows `hdr` as one block rather than a stripe per nested field, and no
+ * colour means two different things at once. Look inside a member by inspecting
+ * its own record. Specials (vptr and friends) keep their hatch style.
+ */
 export function assignColors(model: RenderModel, paletteSize = 8): void {
-  let i = 0;
-  for (const leaf of model.leaves) {
-    leaf.colorClass = leaf.kind === 'special' ? 'c-special' : `c-${(i++ % paletteSize) + 1}`;
+  const slot = (i: number) => `c-${(i % paletteSize) + 1}`;
+  let next = 0;
+  const assigned = new Set<number>();
+  // Named compound members first: each claims one colour for all of its leaves.
+  // An anonymous aggregate is transparent — its fields are nameable on the
+  // record itself (`msg.crc_lo`), so they are members in their own right.
+  for (const g of model.groups) {
+    if (g.path.length > 0 || g.name === '(anonymous)') continue;
+    const colour = slot(next++);
+    for (const li of g.leafIndexes) {
+      const leaf = model.leaves[li];
+      if (!leaf || assigned.has(li)) continue;
+      leaf.colorClass = leaf.kind === 'special' ? 'c-special' : colour;
+      assigned.add(li);
+    }
   }
+  // Then the record's own direct fields, in declaration order.
+  model.leaves.forEach((leaf, li) => {
+    if (assigned.has(li)) return;
+    leaf.colorClass = leaf.kind === 'special' ? 'c-special' : slot(next++);
+  });
 }

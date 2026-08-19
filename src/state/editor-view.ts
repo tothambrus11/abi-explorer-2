@@ -24,7 +24,9 @@ export function memberDots(lines: Iterable<LineInfo>, shown: ReadonlySet<string>
   const dots: MemberDot[] = [];
   for (const l of lines) {
     for (const mark of l.marks) {
-      if (!mark.members.some((m) => shown.has(m.record))) continue;
+      // A circle marks a member of a record on screen — not a field that merely
+      // lives inside one of its compound members.
+      if (!mark.directRecords.some((r) => shown.has(r))) continue;
       dots.push({ line: l.line, col: mark.col, colorClass: mark.colorClass });
     }
   }

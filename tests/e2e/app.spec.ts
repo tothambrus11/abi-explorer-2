@@ -104,9 +104,15 @@ test.describe('ABI Explorer', () => {
     await waitReady(page);
     await page.selectOption('#example', '2');
     await expect(page.locator('#record-chips .chip')).toHaveCount(3);
-    // A line that only introduces a compound member gets a neutral ring, not a
-    // field colour (its bytes belong to several differently-coloured leaves).
-    await expect(page.locator('.monaco-editor .member-dot.member-c-compound')).not.toHaveCount(0);
+    // A named compound member is one unit, so its circle carries one colour —
+    // the same colour its nested fields share in the table.
+    const hdrDot = page.locator('.monaco-editor .view-line', { hasText: 'struct Header hdr' });
+    const hdrColour = await hdrDot
+      .locator('.member-dot')
+      .evaluate((e) => [...e.classList].find((c) => c.startsWith('member-c-')));
+    expect(hdrColour).not.toBe('member-c-compound');
+    // An anonymous aggregate spans several members, so it keeps the ring.
+    await expect(page.locator('.monaco-editor .member-dot.member-c-compound')).toHaveCount(1);
     // Hovering a compound member in code lights up its parent (group) row plus
     // each of its leaves in the grouped table.
     await hoverWord(page, 'struct Header hdr;', 'hdr');
@@ -146,6 +152,7 @@ test.describe('ABI Explorer', () => {
         els.map((e) => [...e.classList].find((c) => c.startsWith('member-c-'))),
       );
     expect(classes.filter((c) => c === 'member-c-compound')).toHaveLength(1);
+    // crc_lo and crc_hi are nameable on the record, so they are distinct members.
     expect(new Set(classes.filter((c) => c !== 'member-c-compound')).size).toBe(2);
   });
 

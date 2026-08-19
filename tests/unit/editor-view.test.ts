@@ -2,12 +2,18 @@ import { describe, it, expect } from 'vitest';
 import { memberDots } from '$state/editor-view';
 import type { LineInfo, MemberMark } from '$state/code-locations';
 
-const mark = (col: number, colorClass: string, records: string[]): MemberMark => ({
+const mark = (
+  col: number,
+  colorClass: string,
+  records: string[],
+  directRecords = records,
+): MemberMark => ({
   col,
   endCol: col + 3,
   members: records.map((record, i) => ({ record, leaf: i })),
   items: [],
   colorClass,
+  directRecords,
 });
 const line = (n: number, marks: MemberMark[]): LineInfo => ({
   line: n,
@@ -40,6 +46,15 @@ describe('memberDots', () => {
   it('skips marks whose records are not on screen', () => {
     const lines = [line(4, [mark(3, 'c-1', ['Other'])])];
     expect(memberDots(lines, new Set(['S']))).toEqual([]);
+  });
+
+  it('skips a mark that is only nested in the shown record', () => {
+    // `kind` is declared in Header but merely lives inside Message's `hdr`.
+    const lines = [line(4, [mark(12, 'c-1', ['Header', 'Message'], ['Header'])])];
+    expect(memberDots(lines, new Set(['Message']))).toEqual([]);
+    expect(memberDots(lines, new Set(['Header']))).toEqual([
+      { line: 4, col: 12, colorClass: 'c-1' },
+    ]);
   });
 
   it('keeps a mark shared by several records (stacked view)', () => {

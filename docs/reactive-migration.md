@@ -45,8 +45,11 @@ preserves behavior; the existing suite is the guardrail.
       (explicit pick > cursor > previous), 11 tests + a real-clang span test.
       Picking a record from the tabs now moves the caret to its declaration, so
       the explicit choice _is_ the cursor's choice — closes issue #3.
-- [ ] **1.2** per-inspected-record colour/level model (compound members —
-      named, base, anonymous — as single units).
+- [x] **1.2** One-level colour model: a colour identifies a _directly nameable
+      member_ of the record. A named compound member (or base) is one unit whose
+      leaves share its colour; an anonymous aggregate is transparent, since its
+      fields are nameable on the record itself. Circles are drawn only for marks
+      that a record on screen declares directly.
 - [x] **1.3** Per-declarator marks: `LineInfo.marks` carries one entry per
       member written on a line (column, members, colour), and `markAtColumn`
       resolves a column to one of them — a lone declarator keeps the whole line
@@ -57,7 +60,7 @@ preserves behavior; the existing suite is the guardrail.
 - [x] **2.1** Inline circles: a decoration on the first character of each
       member's name, padded left so the circle sits before the name and pushes
       the rest of the line — one per declarator, so `struct { uint8_t crc_lo,
-  crc_hi; };` shows a ring for the anonymous member and a colour for each
+crc_hi; };` shows a ring for the anonymous member and a colour for each
       field. (Monaco's injected-text option is internal to inlay hints.)
 - [x] **2.2** Hover and cursor carry a column, so `markAtColumn` picks the exact
       member on a shared line; the editor shows a subtle line tint plus a strong
