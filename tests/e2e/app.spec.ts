@@ -334,6 +334,26 @@ test.describe('ABI Explorer', () => {
     );
   });
 
+  test('the standard library resolves on every kind of target, and says how', async ({ page }) => {
+    await waitReady(page);
+    await page.selectOption('#example', '9'); // C++ standard library (libc++)
+    await expect.poll(() => statValues(page)).toEqual(['72', '8', '0']);
+    // musl's own tree on Linux, and the footer says so.
+    await expect(page.locator('#header-config')).toContainText('libc++ · musl (x86_64)');
+
+    // A target musl has no headers for: it still resolves, over this target's
+    // own scalar types, and the footer says which layer answered.
+    await page.selectOption('#target', 'aarch64-apple-macosx');
+    await expect(page.locator('#header-config')).toContainText('libc++ · musl (portable)');
+    await expect(page.locator('#results')).toBeVisible();
+    await expect(page.locator('.record .title')).toContainText('Probe');
+
+    // …including Windows, where nothing of the MSVC runtime is shipped.
+    await page.selectOption('#target', 'x86_64-pc-windows-msvc');
+    await expect(page.locator('#header-config')).toContainText('musl (portable)');
+    await expect(page.locator('.record .title')).toContainText('Probe');
+  });
+
   test('stacked view shows all records and links hovers across sections', async ({ page }) => {
     await waitReady(page);
     await page.selectOption('#example', '2');

@@ -11,7 +11,7 @@
 // and padding arrive together, because they were never separate questions.
 
 import { buildFlags, type CompileOptions } from '$core/options';
-import { fromWire, type WireRecord, type WireResponse } from '$core/render';
+import { fromWire, type WireHeaders, type WireRecord, type WireResponse } from '$core/render';
 import type { Diagnostic, RecordLayout, RenderModel, SourceLocation } from '$core/types';
 
 /** What this needs from clang-abi-wasm. Async because the real one is a worker. */
@@ -82,6 +82,13 @@ export interface Analysis {
   diagnostics: Diagnostic[];
   /** As clang would have printed them, ANSI escapes and all. */
   diagnosticsText: string;
+  /**
+   * Which standard headers answered this query. Worth showing: on a target
+   * musl has no tree for, the C declarations are portable ones over this
+   * target's own scalar types, and libc++'s locale layer is not available —
+   * which is why `<iostream>` resolves on Linux and not on Darwin.
+   */
+  headers: WireHeaders | null;
 }
 
 /** Stable identity for a record within one analysis. */
@@ -282,5 +289,6 @@ export function toAnalysis(
     typedefs,
     diagnostics,
     diagnosticsText: response.diagnosticsText,
+    headers: response.headers,
   };
 }

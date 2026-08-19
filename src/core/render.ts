@@ -145,12 +145,23 @@ export interface WireDiagnostic {
   ranges: WireRange[];
 }
 
+/** What the query was answered against, where that is a choice. */
+export interface WireHeaders {
+  cLibrary: string | null;
+  /** An architecture name for musl's own tree, `generic` for the portable one. */
+  cLibraryArch: string | null;
+  cxxLibrary: string | null;
+  localization: boolean;
+  threads: boolean;
+}
+
 export interface WireResponse {
   ok: boolean;
   error: string | null;
   exitCode: number;
   clangVersion: string;
   target: { pointerSizeBits: number; normalizedTriple: string } | null;
+  headers: WireHeaders | null;
   diagnostics: WireDiagnostic[];
   diagnosticsText: string;
   typedefs: WireTypedef[];

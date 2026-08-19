@@ -17,6 +17,13 @@
   "diagnosticsText": "",
   "error": null,
   "exitCode": 0,
+  "headers": {
+   "cLibrary": "musl",
+   "cLibraryArch": "generic",
+   "cxxLibrary": null,
+   "localization": false,
+   "threads": false
+  },
   "ok": true,
   "records": [
    {

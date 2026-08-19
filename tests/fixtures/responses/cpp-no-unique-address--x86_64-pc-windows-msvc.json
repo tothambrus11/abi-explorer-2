@@ -38,6 +38,13 @@
   "diagnosticsText": "\u001b[1minput.cc:4:5: \u001b[0m\u001b[0;1;35mwarning: \u001b[0m\u001b[1munknown attribute 'no_unique_address' ignored\u001b[0m\n    4 |   [[no_unique_address]] Empty e;\u001b[0m\n      | \u001b[0;1;32m    ^~~~~~~~~~~~~~~~~\n\u001b[0m",
   "error": null,
   "exitCode": 0,
+  "headers": {
+   "cLibrary": "musl",
+   "cLibraryArch": "generic",
+   "cxxLibrary": "libc++",
+   "localization": false,
+   "threads": true
+  },
   "ok": true,
   "records": [
    {
