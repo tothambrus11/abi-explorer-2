@@ -634,6 +634,47 @@ export const PRESET_SPECS: ThemeSpec[] = [
   ),
 ];
 
+/**
+ * Shape check for a spec from outside the app — localStorage, an imported file,
+ * an older version of either.
+ */
+export function isThemeSpec(x: unknown): x is ThemeSpec {
+  if (!x || typeof x !== 'object') return false;
+  const s = x as Partial<ThemeSpec>;
+  return (
+    typeof s.id === 'string' &&
+    typeof s.name === 'string' &&
+    (s.mode === 'light' || s.mode === 'dark') &&
+    !!s.page &&
+    !!s.syntax &&
+    !!s.editor
+  );
+}
+
+/** Fill in groups added after a spec was saved. */
+export function migrateSpec(s: ThemeSpec): ThemeSpec {
+  const partial = (s as Partial<ThemeSpec>).members;
+  return { ...s, members: { ...DEFAULT_MEMBERS[s.mode], ...(partial ?? {}) } };
+}
+
+/**
+ * The definitive check: a spec is usable only if it compiles into a *complete*
+ * theme. Compiling without throwing is not enough — reading colours off
+ * something that is shape-valid but wrong (`page: 'red'`) yields undefined
+ * everywhere rather than an error, and the app would paint itself with invalid
+ * CSS variables. A theme that throws would be worse still: it takes the UI down
+ * at startup, while the derivation runs.
+ */
+export function isUsableSpec(x: unknown): x is ThemeSpec {
+  if (!isThemeSpec(x)) return false;
+  try {
+    const t = compileTheme(migrateSpec(x), false);
+    return Object.values(t.tokens).every((v) => typeof v === 'string' && v !== '');
+  } catch {
+    return false;
+  }
+}
+
 export const THEMES: Theme[] = PRESET_SPECS.map((s) => compileTheme(s, true));
 export const DEFAULT_LIGHT = 'glacier';
 export const DEFAULT_DARK = 'nocturne';

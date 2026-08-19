@@ -7,9 +7,10 @@ export type ColorGroup = 'page' | 'syntax' | 'editor' | 'members';
 
 import {
   compileTheme,
+  isUsableSpec,
+  migrateSpec,
   DEFAULT_DARK,
   DEFAULT_LIGHT,
-  DEFAULT_MEMBERS,
   PRESET_SPECS,
   THEMES,
   type Theme,
@@ -42,41 +43,9 @@ function saveJson(key: string, value: unknown): void {
   }
 }
 
-/** Basic shape check for specs read from storage. */
-function isSpec(x: unknown): x is ThemeSpec {
-  if (!x || typeof x !== 'object') return false;
-  const s = x as Partial<ThemeSpec>;
-  return (
-    typeof s.id === 'string' &&
-    typeof s.name === 'string' &&
-    (s.mode === 'light' || s.mode === 'dark') &&
-    !!s.page &&
-    !!s.syntax &&
-    !!s.editor
-  );
-}
-/** Fill in fields added after a spec was saved. */
-function migrate(s: ThemeSpec): ThemeSpec {
-  const partial = (s as Partial<ThemeSpec>).members;
-  return { ...s, members: { ...DEFAULT_MEMBERS[s.mode], ...(partial ?? {}) } };
-}
-/**
- * The definitive check: a spec is usable only if it compiles. Storage and
- * imports are untrusted (hand-edited, older versions), and a spec that throws
- * inside the `all` derivation would take the whole app down at startup.
- */
-function isUsableSpec(x: unknown): x is ThemeSpec {
-  if (!isSpec(x)) return false;
-  try {
-    compileTheme(migrate(x), false);
-    return true;
-  } catch {
-    return false;
-  }
-}
 function loadCustomSpecs(): ThemeSpec[] {
   const raw = loadJson<unknown>(CUSTOM_KEY, []);
-  return (Array.isArray(raw) ? raw : []).filter(isUsableSpec).map(migrate);
+  return (Array.isArray(raw) ? raw : []).filter(isUsableSpec).map(migrateSpec);
 }
 function loadPersisted(): Persisted {
   const raw = loadJson<unknown>(KEY, {});
@@ -218,7 +187,7 @@ class ThemeStore {
       const id = 'custom-' + Math.random().toString(36).slice(2, 8);
       const spec0 = { ...raw, id, name: raw.name ?? 'Imported theme' } as ThemeSpec;
       if (!isUsableSpec(spec0)) return null; // validated (compiled) before it is persisted
-      const spec = migrate(spec0);
+      const spec = migrateSpec(spec0);
       this.custom = [...this.custom, spec];
       this.persistCustom();
       this.select(id);

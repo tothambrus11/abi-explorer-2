@@ -3,10 +3,9 @@
 // tricky orchestration lives here (one tested unit) so callers only describe
 // *what* to run and *from which inputs*; `value`/`status`/`error` are reactive.
 //
-// Split in two:
-//   - `AsyncRunner`  — pure imperative logic (timers, AbortController, dedup),
-//                      unit-tested without any reactive context.
-//   - `bindResource` — the one-line reactive glue: re-trigger on input change.
+// The runner itself is plain imperative logic (timers, AbortController, dedup)
+// so it can be unit-tested without a reactive context; callers trigger it from
+// an `$effect` over whatever inputs they track.
 
 export type ResourceStatus = 'idle' | 'running' | 'ok' | 'error';
 
@@ -80,16 +79,4 @@ export class AsyncRunner<I, T> {
     this.timer = null;
     this.ac?.abort();
   }
-}
-
-/**
- * Reactively drive a runner from `inputs()`: whenever the tracked reactive
- * reads inside `inputs` change, the runner is re-triggered. Must be called in a
- * reactive context (a component or an `$effect.root`). The runner owns its own
- * lifecycle; call `runner.dispose()` when tearing down the surrounding root.
- */
-export function bindResource<I, T>(inputs: () => I, runner: AsyncRunner<I, T>): void {
-  $effect(() => {
-    runner.trigger(inputs());
-  });
 }
