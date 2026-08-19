@@ -250,6 +250,18 @@ export function isAnonymousRecord(rec: RecordLayout): boolean {
 }
 
 /** Remove every balanced `<...>` group from a type/record name. */
+/**
+ * Drop the elaborated-type-specifier clang prints before a record name
+ * (`struct Foo` -> `Foo`). One definition, because the variants that grew in
+ * separate modules had already drifted: some knew about MSVC's `__interface`
+ * and some did not, so an `__interface` member failed to resolve wherever the
+ * shorter list was used.
+ */
+const RECORD_KEYWORD_RE = /^(?:struct|class|union|__interface|enum)\s+/;
+export function stripRecordKeyword(type: string): string {
+  return type.replace(RECORD_KEYWORD_RE, '');
+}
+
 export function stripTemplateArgs(name: string): string {
   let out = '';
   let depth = 0;

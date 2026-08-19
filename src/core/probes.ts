@@ -9,7 +9,7 @@
 // type-string interpretation happens on our side.
 
 import type { ProbeResult, RecordLayout } from './types';
-import { isAnonymousRecord, isInternalRecord } from './layout-parser';
+import { isAnonymousRecord, isInternalRecord, stripRecordKeyword } from './layout-parser';
 import { parseDiagnostics } from './diagnostics';
 
 /** Static probes compiled as a second TU next to the user's code. */
@@ -42,8 +42,6 @@ export function buildScalarTable(records: RecordLayout[]): ScalarTable {
 /** Record-name variants -> record (so `struct Foo`, `Foo`, `ns::Foo` all resolve). */
 export type RecordIndex = Map<string, RecordLayout>;
 
-const RECORD_KW_RE = /^(?:struct|class|union|__interface|enum)\s+/;
-
 function anonKey(name: string): string {
   return name.replace(/\((?:anonymous|unnamed)(?: [a-z]+)? at ([^)]*)\)/g, '(anon at $1)');
 }
@@ -61,7 +59,7 @@ export function buildRecordIndex(records: RecordLayout[]): RecordIndex {
 /** Look a type spelling (as printed in a layout dump) up in the record index. */
 export function findRecord(type: string, index: RecordIndex): RecordLayout | undefined {
   const t = type.trim().replace(/^(?:const|volatile)\s+/, '');
-  const bare = t.replace(RECORD_KW_RE, '');
+  const bare = stripRecordKeyword(t);
   return index.get(bare) ?? index.get(anonKey(bare)) ?? index.get(t);
 }
 

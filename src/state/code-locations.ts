@@ -4,7 +4,7 @@
 
 import type { FieldLocation } from '$core/ast-locations';
 import { matchItemsToLocations, unqualifiedName } from '$core/ast-locations';
-import { isAnonymousRecord } from '$core/layout-parser';
+import { isAnonymousRecord, stripRecordKeyword } from '$core/layout-parser';
 import { findRecord, type RecordIndex } from '$core/probes';
 import { isNameable } from '$core/model';
 import type { Group, Leaf, RenderModel } from '$core/types';
@@ -109,7 +109,7 @@ export function collectLocateOwners(
     for (const l of model.leaves) owners.add(top(l.owner));
     for (const g of model.groups) {
       owners.add(top(g.owner));
-      const typeName = g.type.replace(/^(?:struct|union|class)\s+/, '');
+      const typeName = stripRecordKeyword(g.type);
       const rec = findRecord(typeName, recordIndex);
       if ((!rec || isAnonymousRecord(rec)) && !isLibrary(typeName)) {
         owners.add(unqualifiedName(typeName));

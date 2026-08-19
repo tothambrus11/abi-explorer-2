@@ -6,7 +6,7 @@ import { Analyzer, type Analysis } from '$compiler/Analyzer';
 import type { Compiler } from '$compiler/Compiler';
 import type { CompileOptions } from '$core/options';
 import type { AstInfo, DeclLocation } from '$core/ast-locations';
-import { recordKey } from '$core/layout-parser';
+import { recordKey, stripRecordKeyword } from '$core/layout-parser';
 import { buildRenderModel, directMembers } from '$core/model';
 import { findRecord } from '$core/probes';
 import type { RecordLayout } from '$core/types';
@@ -324,7 +324,7 @@ export class Session {
     const group = store.models.get(record)?.groups[groupIndex];
     const analysis = store.analysis;
     if (!group || !analysis) return false;
-    const type = group.type.replace(/^(?:struct|union|class|__interface)\s+/, '');
+    const type = stripRecordKeyword(group.type);
     const target = findRecord(type, analysis.recordIndex);
     if (!target || !analysis.userRecords.includes(target)) return false;
     const key = recordKey(target);

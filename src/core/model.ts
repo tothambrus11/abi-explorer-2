@@ -21,6 +21,10 @@ import {
   type ScalarTable,
 } from './probes';
 import { unqualifiedName } from './ast-locations';
+import { stripRecordKeyword } from './layout-parser';
+
+/** How clang names a member with no name of its own, and how we label it. */
+const ANON = '(anonymous)';
 
 export interface ModelInputs {
   scalars: ScalarTable;
@@ -174,7 +178,7 @@ export function buildRenderModel(record: RecordLayout, inputs: ModelInputs): Ren
         // Record-typed member (named type, or anonymous struct/union member).
         const memberRec = row.type ? findRecord(row.type, recordIndex) : undefined;
         const isAnon = name === '';
-        const label = isAnon ? '(anonymous)' : name;
+        const label = isAnon ? ANON : name;
         const first = leaves.length;
         const own: Measure = isAnon
           ? { bits: memberRec ? memberRec.sizeBytes * 8 : null, align: memberRec?.align ?? null }
@@ -227,7 +231,7 @@ export function buildRenderModel(record: RecordLayout, inputs: ModelInputs): Ren
         kind: 'field',
         row,
         path,
-        name: name || '(anonymous)',
+        name: name || ANON,
         type: row.type,
         offsetBits: row.offsetBits,
         sizeBits: bits,
@@ -313,7 +317,7 @@ function range(a: number, b: number): number[] {
 }
 
 function baseLabel(row: LayoutRow): string {
-  const name = (row.type ?? '').replace(/^(?:struct|class|union)\s+/, '');
+  const name = stripRecordKeyword(row.type ?? '');
   return row.rowKind === 'vbase' || row.rowKind === 'primary-vbase' ? `virtual ${name}` : name;
 }
 
@@ -332,8 +336,6 @@ function estimateBits(
   }
   return Math.max(8, parentEnd - row.offsetBits);
 }
-
-const ANON = '(anonymous)';
 
 /**
  * Is a member with this path a member *of the record itself*? Direct fields are,
