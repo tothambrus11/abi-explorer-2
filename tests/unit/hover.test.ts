@@ -68,6 +68,7 @@ function inputs(over: Partial<HoverInputs> = {}): HoverInputs {
         primary: 'S',
         colorClass: 'c-1',
         location: loc(7),
+        marks: [],
       },
     ],
   ]);

@@ -69,8 +69,9 @@ test.describe('ABI Explorer', () => {
     expect(aligns.slice(0, 6)).toEqual(['1 B', '4 B', '1 B', '8 B', '1 B', '8 B']);
   });
 
-  test('gutter dots, line hover, inlay and type hover popup', async ({ page }) => {
+  test('member circles, line hover, inlay and type hover popup', async ({ page }) => {
     await waitReady(page);
+    // One circle per member declarator, inline before the member's name.
     await expect(page.locator('.monaco-editor .member-dot')).toHaveCount(6);
     await hoverWord(page, 'uint64_t id;', 'id');
     await expect(page.locator('.field-table tr.hovered .fname')).toHaveText(['id']);
@@ -128,6 +129,18 @@ test.describe('ABI Explorer', () => {
       'crc_lo',
       'crc_hi',
     ]);
+    // `struct { uint8_t crc_lo, crc_hi; };` declares three things on one line:
+    // the anonymous member itself (a compound — neutral ring) and its two
+    // fields, each with its own colour. One circle per declarator.
+    const multi = page.locator('.monaco-editor .view-line', { hasText: 'crc_lo' });
+    await expect(multi.locator('.member-dot')).toHaveCount(3);
+    const classes = await multi
+      .locator('.member-dot')
+      .evaluateAll((els) =>
+        els.map((e) => [...e.classList].find((c) => c.startsWith('member-c-'))),
+      );
+    expect(classes.filter((c) => c === 'member-c-compound')).toHaveLength(1);
+    expect(new Set(classes.filter((c) => c !== 'member-c-compound')).size).toBe(2);
   });
 
   test('grouped table: hovering a parent row and collapsing it', async ({ page }) => {

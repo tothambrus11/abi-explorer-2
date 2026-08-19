@@ -182,28 +182,31 @@ input.input {
 .member-c-special {
   --dot: var(--c-special);
 }
-/* A container line (nested record / base): no single colour, so a hollow ring. */
+/* A compound member (nested record / base): no single colour, so a hollow ring. */
 .monaco-editor .member-dot.member-c-compound::before {
   background: transparent;
   border: 1.6px solid var(--text-muted);
   box-sizing: border-box;
 }
 
-/* Monaco decorations (global: rendered outside component scope) */
+/* Monaco decorations (global: rendered outside component scope).
+   The member circle is injected text sitting just before the member's name, so
+   a line declaring several members shows one circle each. */
 .monaco-editor .member-dot {
+  position: relative;
   cursor: pointer;
+  padding-left: 13px;
 }
 .monaco-editor .member-dot::before {
   content: '';
   position: absolute;
-  left: 50%;
+  left: 2px;
   top: 50%;
-  width: 10px;
-  height: 10px;
-  margin: -5px 0 0 -5px;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
   border-radius: 50%;
   background: var(--dot, var(--text-muted));
-  box-shadow: 0 0 0 1.5px var(--editor-bg);
   transition: transform 0.12s;
 }
 .monaco-editor .member-dot:hover::before {

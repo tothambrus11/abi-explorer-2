@@ -31,6 +31,8 @@ export interface WordAt {
 
 export interface MemberDot {
   line: number;
+  /** 1-based column of the member's name; the circle is injected before it. */
+  col: number;
   colorClass: string;
 }
 
@@ -215,11 +217,16 @@ export function createEditor(container: HTMLElement, opts: CreateEditorOptions):
       monaco.editor.setModelMarkers(model, 'clang', markers);
     },
     setMemberDots(list) {
+      // The circle is drawn by the decoration on the first character of the
+      // member's name: CSS gives that span left padding, so the circle sits
+      // before the name and pushes the rest of the line along — and a line
+      // declaring several members shows one circle per member. (Monaco's
+      // injected-text option is internal to inlay hints and not usable here.)
       dots.set(
         list.map((d) => ({
-          range: new monaco.Range(d.line, 1, d.line, 1),
+          range: new monaco.Range(d.line, d.col, d.line, d.col + 1),
           options: {
-            glyphMarginClassName: 'member-dot member-' + d.colorClass,
+            inlineClassName: 'member-dot member-' + d.colorClass,
             stickiness: monaco.editor.TrackedRangeStickiness.NeverGrowsWhenTypingAtEdges,
           },
         })),

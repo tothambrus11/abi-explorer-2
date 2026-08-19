@@ -42,11 +42,7 @@
     language: store.options.lang,
     diagnostics: store.analysis?.diagnostics ?? [],
     // Dots only for what is on screen: the active record in tabs mode, all when stacked.
-    dots: memberDots(
-      session.lines.values(),
-      store.models,
-      new Set(store.sections.map((s) => s.key)),
-    ),
+    dots: memberDots(session.lines.values(), new Set(store.sections.map((s) => s.key))),
     highlight: store.hover.line,
     inlay: store.hover.inlay,
   });

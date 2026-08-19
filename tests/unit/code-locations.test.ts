@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildLineIndex, collectMemberAligns } from '$state/code-locations';
+import { buildLineIndex, collectMemberAligns, markAtColumn } from '$state/code-locations';
 import type { FieldLocation } from '$core/ast-locations';
 import type { Group, Leaf, RenderModel } from '$core/types';
 
@@ -128,6 +128,60 @@ describe('buildLineIndex', () => {
     expect(l4.members.map((m) => m.record).sort()).toEqual(['Header', 'Message']);
     // …but the colour reflects Header's single-field line, not a ring.
     expect(l4.colorClass).toBe('c-1');
+  });
+});
+
+describe('marks (several declarators on one line)', () => {
+  // `uint8_t lo, hi;` — two members, two marks, distinct colours.
+  const models = new Map([
+    model('S', [leaf('lo', 'S', 0), leaf('hi', 'S', 8, { colorClass: 'c-7' })]),
+  ]);
+  const fields = [fieldLoc('S', 'lo', 5, { col: 11 }), fieldLoc('S', 'hi', 5, { col: 15 })];
+  const idx = buildLineIndex(models, fields);
+  const l5 = idx.lines.get(5)!;
+
+  it('gives each declarator its own mark, left to right, keeping its colour', () => {
+    expect(l5.marks.map((m) => [m.col, m.colorClass])).toEqual([
+      [11, 'c-1'],
+      [15, 'c-7'],
+    ]);
+    expect(l5.marks.map((m) => m.members)).toEqual([
+      [{ record: 'S', leaf: 0 }],
+      [{ record: 'S', leaf: 1 }],
+    ]);
+  });
+
+  it('the line as a whole still has no single colour', () => {
+    expect(l5.colorClass).toBe('c-compound');
+  });
+
+  it('a column resolves to the declarator it falls in', () => {
+    expect(markAtColumn(l5, 11)!.col).toBe(11);
+    expect(markAtColumn(l5, 14)!.col).toBe(11); // inside `lo`, before `hi`
+    expect(markAtColumn(l5, 15)!.col).toBe(15);
+    expect(markAtColumn(l5, 99)!.col).toBe(15); // past the last one
+    expect(markAtColumn(l5, 1)!.col).toBe(11); // before the first: the leading one
+  });
+
+  it('a single-declarator line is one forgiving hit area', () => {
+    const one = buildLineIndex(new Map([model('S', [leaf('a', 'S', 0)])]), [
+      fieldLoc('S', 'a', 2, { col: 12 }),
+    ]);
+    const info = one.lines.get(2)!;
+    expect(info.marks).toHaveLength(1);
+    expect(markAtColumn(info, 1)!.col).toBe(12); // anywhere on the line hits it
+    expect(markAtColumn(info, 80)!.col).toBe(12);
+  });
+
+  it('a compound member is one mark covering all of its leaves', () => {
+    const leaves = [leaf('kind', 'Header', 0), leaf('len', 'Header', 16)];
+    const groups = [group('hdr', 'Message', [0, 1])];
+    const m = new Map([model('Message', leaves, groups)]);
+    const idx2 = buildLineIndex(m, [fieldLoc('Message', 'hdr', 15, { col: 17 })]);
+    const marks = idx2.lines.get(15)!.marks;
+    expect(marks).toHaveLength(1);
+    expect(marks[0]!.colorClass).toBe('c-compound');
+    expect(marks[0]!.members.map((x) => x.leaf).sort()).toEqual([0, 1]);
   });
 });
 

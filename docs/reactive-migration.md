@@ -47,11 +47,18 @@ preserves behavior; the existing suite is the guardrail.
       the explicit choice _is_ the cursor's choice — closes issue #3.
 - [ ] **1.2** per-inspected-record colour/level model (compound members —
       named, base, anonymous — as single units).
-- [ ] **1.3** member-range index `(line,col) → member` for precise hover/cursor.
+- [x] **1.3** Per-declarator marks: `LineInfo.marks` carries one entry per
+      member written on a line (column, members, colour), and `markAtColumn`
+      resolves a column to one of them — a lone declarator keeps the whole line
+      as a forgiving hit area.
 
 ## Phase 2 — editor decorations
 
-- [ ] **2.1** inline circles as injected-text `before` decorations (multi/line).
+- [x] **2.1** Inline circles: a decoration on the first character of each
+      member's name, padded left so the circle sits before the name and pushes
+      the rest of the line — one per declarator, so `struct { uint8_t crc_lo,
+    crc_hi; };` shows a ring for the anonymous member and a colour for each
+      field. (Monaco's injected-text option is internal to inlay hints.)
 - [ ] **2.2** two-layer highlight (line tint + name token) + hover info inlay.
 
 ## Phase 3 — grid + tree
