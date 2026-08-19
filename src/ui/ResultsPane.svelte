@@ -2,12 +2,14 @@
   import { store } from '$state/store.svelte';
   import type { Session } from '$state/session.svelte';
   import { recordKey } from '$core/layout-parser';
+  import { CLANG_DOWNLOAD_BYTES } from '$core/metered';
   import RecordSection from './RecordSection.svelte';
   import Rows3 from '@lucide/svelte/icons/rows-3';
   import PanelTop from '@lucide/svelte/icons/panel-top';
   import { tooltip } from './tooltip';
 
   const { session }: { session: Session } = $props();
+  const DOWNLOAD_MB = Math.round(CLANG_DOWNLOAD_BYTES / 1048576);
   const loading = $derived(store.compiler.state !== 'ready');
   const stacked = $derived(store.view === 'stack');
   const empty = $derived(store.analysis !== null && store.visibleRecords.length === 0);
@@ -40,7 +42,22 @@
 </script>
 
 <section class="pane">
-  {#if loading}
+  {#if store.awaitingDownloadConsent}
+    <!-- Metered connection: don't spend the user's data without asking (issue #1). -->
+    <div class="loading consent">
+      <p id="consent-text">
+        You appear to be on a metered or slow connection. Analysing layouts needs a one-time
+        <strong>~27 MB</strong> download of clang (cached afterwards, and the app then works offline).
+      </p>
+      <button
+        id="allow-download"
+        class="allow"
+        onclick={() => {
+          session.allowDownload();
+        }}>Download clang ({DOWNLOAD_MB} MB)</button
+      >
+    </div>
+  {:else if loading}
     <div class="loading" class:failed={store.compiler.state === 'failed'}>
       <div class="track"><div class="fill" style:width="{loadPct}%"></div></div>
       <p id="load-text">{loadText}</p>
@@ -132,6 +149,31 @@
   .note {
     color: var(--text-muted);
     font-size: 12px;
+  }
+  .consent {
+    max-width: 42ch;
+    margin: 0 auto;
+    text-align: center;
+  }
+  .consent p {
+    color: var(--text-secondary);
+  }
+  .allow {
+    font: inherit;
+    font-weight: 600;
+    color: var(--accent-ink, #fff);
+    background: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    padding: 7px 14px;
+    cursor: pointer;
+  }
+  .allow:hover {
+    filter: brightness(1.08);
+  }
+  .allow:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
   .empty {
     color: var(--text-secondary);

@@ -66,6 +66,11 @@ class Store {
   hover: Hover = $state.raw(EMPTY_HOVER);
   /** `<unqualified owner> <field>` -> explicit alignment from the AST (filled in by the session). */
   memberAligns: Map<string, number> = $state.raw(new Map<string, number>());
+  /**
+   * The clang download is waiting for the user to opt in (metered connection,
+   * nothing cached yet). Set by the session; cleared once they accept.
+   */
+  awaitingDownloadConsent = $state(false);
   /** A service worker controls this page (assets are cached). */
   swControlled = $state(false);
   swVersionAvailable = $state(false);

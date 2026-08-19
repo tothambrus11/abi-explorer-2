@@ -14,6 +14,7 @@ import { decodeShareState, encodeShareState, type ShareState } from '$core/url-s
 import { store, type MemberRef } from './store.svelte';
 import { AsyncRunner } from './async-resource.svelte';
 import { computeAnalysisStatus } from './status';
+import { grantConsent, shouldAskBeforeDownload } from './download-gate';
 import {
   buildLineIndex,
   collectLocateOwners,
@@ -130,7 +131,17 @@ export class Session {
     const offStatus = this.compiler.onStatus((s) => {
       store.compiler = s;
     });
-    void this.compiler.start().catch(() => {});
+    // On a metered connection (issue #1) the ~27 MB download waits for an
+    // explicit opt-in; anywhere else — or once the bundle is cached — it starts
+    // straight away.
+    void shouldAskBeforeDownload()
+      .then((ask) => {
+        if (ask) store.awaitingDownloadConsent = true;
+        else this.startCompiler();
+      })
+      .catch(() => {
+        this.startCompiler();
+      });
 
     const stopRoot = $effect.root(() => {
       // Drive the compile resource from source/options. Dedup-by-input means the
@@ -228,6 +239,17 @@ export class Session {
     const frag = await encodeShareState(this.shareState());
     history.replaceState(null, '', '#' + frag);
     return location.href;
+  }
+
+  private startCompiler(): void {
+    store.awaitingDownloadConsent = false;
+    void this.compiler.start().catch(() => {});
+  }
+
+  /** The user opted into the download on a metered connection; remember and go. */
+  allowDownload(): void {
+    grantConsent();
+    this.startCompiler();
   }
 
   /** Force a compile now (e.g. Ctrl+Enter), even if the input is unchanged. */

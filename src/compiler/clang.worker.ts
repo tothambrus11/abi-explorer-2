@@ -11,9 +11,9 @@
 
 import { parseRequest, type Response as WorkerResponse } from './protocol';
 
-const CLANG_VERSION = '22.0.0-git20542-10';
-const NPM_TARBALL = `https://registry.npmjs.org/@yowasp/clang/-/clang-${CLANG_VERSION}.tgz`;
-export const CLANG_CACHE_NAME = 'abix-clang-' + CLANG_VERSION;
+import { CLANG_CACHE_NAME, CLANG_TARBALL_URL as NPM_TARBALL } from './clang-assets';
+
+export { CLANG_CACHE_NAME };
 const ASSETS = [
   'llvm.core.wasm',
   'llvm.core2.wasm',

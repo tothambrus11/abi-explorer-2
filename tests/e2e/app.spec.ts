@@ -37,6 +37,31 @@ test.describe('ABI Explorer', () => {
     await expect.poll(() => statValues(page)).toEqual(['40', '8', '13']);
   });
 
+  test('metered connection: the download waits for an explicit opt-in', async ({ page }) => {
+    // Pretend the browser reports Data Saver before any app code runs.
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, 'connection', {
+        configurable: true,
+        get: () => ({ saveData: true, effectiveType: '4g' }),
+      });
+    });
+    await page.goto('/');
+    // Nothing is fetched until the user agrees; the results pane stays gated.
+    await expect(page.locator('#allow-download')).toBeVisible();
+    await expect(page.locator('#consent-text')).toContainText('27 MB');
+    await expect(page.locator('#results')).toHaveCount(0);
+
+    await page.click('#allow-download');
+    await expect(page.locator('#allow-download')).toHaveCount(0);
+    await expect(page.locator('#results')).toBeVisible({ timeout: 240_000 });
+
+    // The choice is remembered: a second visit on the same metered link goes
+    // straight to loading.
+    await page.goto('/');
+    await expect(page.locator('#allow-download')).toHaveCount(0);
+    await expect(page.locator('#results')).toBeVisible({ timeout: 240_000 });
+  });
+
   test('every member is measured (no estimates) with alignment shown', async ({ page }) => {
     await waitReady(page);
     await expect(page.locator('.estimate-note')).toHaveCount(0);
