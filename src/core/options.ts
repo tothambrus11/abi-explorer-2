@@ -75,10 +75,28 @@ export function driverFor(lang: Language): 'clang' | 'clang++' {
 // the pipeline, and driver modes like -E produce no layouts.
 const ALLOWED_FLAG_RE =
   /^(?:-f(?!syntax-only$)[A-Za-z0-9=+_.-]+|-m[A-Za-z0-9=+_.-]+|-W[A-Za-z0-9=+_.-]*|-std=[A-Za-z0-9+.:]+|-D[A-Za-z_][A-Za-z0-9_]*(?:=.*)?|-U[A-Za-z_][A-Za-z0-9_]*|-isystem\/[A-Za-z0-9_.+/-]+|-I\/[A-Za-z0-9_.+/-]+|-O[0-3sz]?|--?target=[A-Za-z0-9_.-]+|-w|-pedantic(?:-errors)?|-ansi|-nostdinc(?:\+\+)?)$/;
-/** Flags that take their value as the next token. */
+/**
+ * Flags that take their value as the next token. The value must never itself
+ * look like a flag: `-target -o` would otherwise be accepted as a pair and put
+ * a bare `-o` into argv, where reasoning about which tokens are flags breaks
+ * down. Every value pattern below therefore pins its first character.
+ */
 const TAKES_ARG = new Set(['-Xclang', '-include', '-D', '-U', '-I', '-isystem', '-target']);
-const XCLANG_ARG_RE = /^-[A-Za-z][A-Za-z0-9=+_.-]*$/; // a cc1 flag, not a file/-o
-const PATH_ARG_RE = /^[A-Za-z0-9_.+/-]+$/;
+/**
+ * `-Xclang` hands the next token straight to the frontend, where the flags that
+ * select an *action* live — `-ast-dump`, `-ast-print`, `-ast-list`,
+ * `-dump-tokens`, `-emit-obj`, `-E`, `-S`, `-analyze`… Any one of them replaces
+ * the record-layout dump this whole app reads, so a shared link carrying one
+ * would silently produce no layouts at all.
+ *
+ * Frontend *feature* flags all begin with `-f`, so that is the rule: an
+ * allowlist, like every other entry here, rather than a list of the actions we
+ * happened to think of. It still admits the layout-related cc1 flags worth
+ * reaching for — `-fdump-record-layouts-simple`, `-fdump-record-layouts-canonical`,
+ * `-fdump-vtable-layouts`, `-fno-access-control`, `-fms-layout-compatibility=…`.
+ */
+const XCLANG_ARG_RE = /^-f[A-Za-z0-9=+_.-]*$/;
+const PATH_ARG_RE = /^[A-Za-z0-9_./+][A-Za-z0-9_.+/-]*$/;
 
 export function isAllowedFlag(flag: string): boolean {
   return ALLOWED_FLAG_RE.test(flag);
@@ -95,9 +113,9 @@ export function splitExtraFlags(text: string): [string[], string[]] {
     if (TAKES_ARG.has(f) && next !== undefined) {
       const ok =
         f === '-Xclang'
-          ? XCLANG_ARG_RE.test(next) && !/^-(?:o|ast-print|E|S|emit)/.test(next)
+          ? XCLANG_ARG_RE.test(next)
           : f === '-target'
-            ? /^[A-Za-z0-9_.-]+$/.test(next)
+            ? /^[A-Za-z0-9_][A-Za-z0-9_.-]*$/.test(next)
             : f === '-D' || f === '-U'
               ? /^[A-Za-z_][A-Za-z0-9_]*(?:=.*)?$/.test(next)
               : PATH_ARG_RE.test(next);
