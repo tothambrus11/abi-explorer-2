@@ -57,9 +57,12 @@ preserves behavior; the existing suite is the guardrail.
 - [x] **2.1** Inline circles: a decoration on the first character of each
       member's name, padded left so the circle sits before the name and pushes
       the rest of the line — one per declarator, so `struct { uint8_t crc_lo,
-    crc_hi; };` shows a ring for the anonymous member and a colour for each
+  crc_hi; };` shows a ring for the anonymous member and a colour for each
       field. (Monaco's injected-text option is internal to inlay hints.)
-- [ ] **2.2** two-layer highlight (line tint + name token) + hover info inlay.
+- [x] **2.2** Hover and cursor carry a column, so `markAtColumn` picks the exact
+      member on a shared line; the editor shows a subtle line tint plus a strong
+      highlight on that member's own name. Positions compare by value, since the
+      editor's own refresh would otherwise feed the derived hover in a loop.
 
 ## Phase 3 — grid + tree
 

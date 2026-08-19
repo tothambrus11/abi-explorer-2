@@ -123,7 +123,13 @@ test.describe('ABI Explorer', () => {
     ]);
     // The union parent carries a tag; its children are flagged as overlapping.
     await expect(page.locator('.field-table tr.group.hovered .tag.union')).toBeVisible();
+    // Column-precise: on a line declaring several members, the pointer picks
+    // exactly one — `crc_lo` alone, not the whole anonymous member…
     await hoverWord(page, 'crc_lo, crc_hi', 'crc_lo');
+    await expect(page.locator('.field-table tr.hovered .fname')).toHaveText(['crc_lo']);
+    await expect(page.locator('.monaco-editor .member-name-hovered')).toHaveCount(1);
+    // …while the anonymous member's own declarator still selects all of it.
+    await hoverWord(page, 'crc_lo, crc_hi', 'struct');
     await expect(page.locator('.field-table tr.hovered .fname')).toHaveText([
       '(anonymous)',
       'crc_lo',

@@ -215,6 +215,12 @@ input.input {
 .monaco-editor .member-line-hovered {
   background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
+/* The member's own name: on a line declaring several members, this is what
+   says which one is meant. */
+.monaco-editor .member-name-hovered {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 3px;
+}
 .monaco-editor .member-inlay {
   color: var(--text-muted);
   font-family: var(--font-mono);

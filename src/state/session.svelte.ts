@@ -17,6 +17,7 @@ import {
   fmtOffset,
   hoveredPrimary,
   resolveHover,
+  type EditorPos,
   type HoverInputs,
   type HoverIntent,
   type TooltipAnchor,
@@ -34,6 +35,9 @@ import {
 } from './code-locations';
 
 export type { LineInfo };
+
+const samePos = (a: EditorPos | null, b: EditorPos | null): boolean =>
+  a === b || (a !== null && b !== null && a.line === b.line && a.col === b.col);
 
 interface CompileInput {
   source: string;
@@ -110,8 +114,8 @@ export class Session {
     ),
   );
   /** Hover sources: pointer over the editor, the text cursor, pointer over grid/table. */
-  private mouseLine: number | null = $state(null);
-  private cursorLine: number | null = $state(null);
+  private mouse: EditorPos | null = $state.raw(null);
+  private cursor: EditorPos | null = $state.raw(null);
   /**
    * What the pointer is over in the grid/table — an *intent* (record + index),
    * resolved against the current models by `resolveHover`, so it can never
@@ -293,15 +297,21 @@ export class Session {
 
   // ---------------------------------------------------------- hover ----
 
-  /** Pointer moved over an editor line (null = left the editor). */
-  hoverLine(line: number | null): void {
-    this.mouseLine = line;
+  /**
+   * Pointer moved in the editor (null = left it). Positions are compared by
+   * value: re-reporting the same one must not invalidate the derived hover, or
+   * the editor's own refresh would feed itself in a loop.
+   */
+  hoverLine(pos: EditorPos | null): void {
+    if (samePos(this.mouse, pos)) return;
+    this.mouse = pos;
   }
 
   /** The text cursor moved. Keyboard moves take precedence over a stale hover. */
-  setCursorLine(line: number | null, byKeyboard = false): void {
-    this.cursorLine = line;
+  setCursorLine(pos: EditorPos | null, byKeyboard = false): void {
     if (byKeyboard) this.preferCursor = true;
+    if (samePos(this.cursor, pos)) return;
+    this.cursor = pos;
   }
 
   /** Any pointer movement over the editor hands control back to the mouse. */
@@ -334,8 +344,8 @@ export class Session {
   private get hoverInputs(): HoverInputs {
     return {
       intent: this.hoverIntent,
-      mouseLine: this.mouseLine,
-      cursorLine: this.cursorLine,
+      mouse: this.mouse,
+      cursor: this.cursor,
       preferCursor: this.preferCursor,
       models: store.models,
       lines: this.index.lines,

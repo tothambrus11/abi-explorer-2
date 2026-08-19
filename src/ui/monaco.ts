@@ -42,12 +42,13 @@ export interface EditorHandle {
   setLanguage(lang: Language): void;
   setDiagnostics(diags: Diagnostic[]): void;
   setMemberDots(dots: MemberDot[]): void;
-  highlightLine(line: number | null): void;
+  /** Subtle whole-line tint plus, when given, a strong highlight on the member's name. */
+  highlightLine(line: number | null, name?: { startCol: number; endCol: number } | null): void;
   setInlay(line: number | null, text: string | null): void;
   /** cb(line|null) as the pointer moves across lines (gutter or text). */
-  onLineHover(cb: (line: number | null) => void): void;
+  onLineHover(cb: (pos: { line: number; col: number } | null) => void): void;
   /** cb(line, byKeyboard) when the text cursor moves. */
-  onCursorLine(cb: (line: number, byKeyboard: boolean) => void): void;
+  onCursorLine(cb: (pos: { line: number; col: number }, byKeyboard: boolean) => void): void;
   /** Move the caret to a line and scroll it into view (an explicit navigation). */
   setCursor(line: number): void;
   /** cb() on any pointer movement over the editor. */
@@ -124,12 +125,11 @@ export function createEditor(container: HTMLElement, opts: CreateEditorOptions):
   };
   editor.addContentWidget(inlayWidget);
   let suppress = false;
-  let hoverLine: number | null = null;
-  let hoverCb: ((line: number | null) => void) | null = null;
-  let cursorCb: ((line: number, byKeyboard: boolean) => void) | null = null;
+  let hoverCb: ((pos: { line: number; col: number } | null) => void) | null = null;
+  let cursorCb: ((pos: { line: number; col: number }, byKeyboard: boolean) => void) | null = null;
   let activityCb: (() => void) | null = null;
   editor.onDidChangeCursorPosition((e) =>
-    cursorCb?.(e.position.lineNumber, e.source === 'keyboard'),
+    cursorCb?.({ line: e.position.lineNumber, col: e.position.column }, e.source === 'keyboard'),
   );
   const changeCbs: (() => void)[] = [];
   const submitCbs: (() => void)[] = [];
@@ -160,17 +160,22 @@ export function createEditor(container: HTMLElement, opts: CreateEditorOptions):
     },
   });
 
+  let hoverAt: { line: number; col: number } | null = null;
+  let hoverPos: string | null = null;
   editor.onMouseMove((e) => {
     activityCb?.();
-    const line = e.target.position?.lineNumber ?? null;
-    if (line !== hoverLine) {
-      hoverLine = line;
-      hoverCb?.(line);
+    const pos = e.target.position;
+    const key = pos ? `${pos.lineNumber}:${pos.column}` : null;
+    if (key !== hoverPos) {
+      hoverPos = key;
+      hoverAt = pos ? { line: pos.lineNumber, col: pos.column } : null;
+      hoverCb?.(hoverAt);
     }
   });
   editor.onMouseLeave(() => {
-    if (hoverLine !== null) {
-      hoverLine = null;
+    if (hoverPos !== null) {
+      hoverPos = null;
+      hoverAt = null;
       hoverCb?.(null);
     }
   });
@@ -232,17 +237,27 @@ export function createEditor(container: HTMLElement, opts: CreateEditorOptions):
         })),
       );
     },
-    highlightLine(line) {
-      lineDeco.set(
-        line
-          ? [
-              {
-                range: new monaco.Range(line, 1, line, 1),
-                options: { isWholeLine: true, className: 'member-line-hovered' },
-              },
-            ]
-          : [],
-      );
+    highlightLine(line, name) {
+      if (!line) {
+        lineDeco.set([]);
+        return;
+      }
+      // Two layers: a subtle tint over the whole line for scannability, and a
+      // strong highlight on the member's own name so a line declaring several
+      // members still points at exactly one.
+      const decos: monaco.editor.IModelDeltaDecoration[] = [
+        {
+          range: new monaco.Range(line, 1, line, 1),
+          options: { isWholeLine: true, className: 'member-line-hovered' },
+        },
+      ];
+      if (name) {
+        decos.push({
+          range: new monaco.Range(line, name.startCol, line, name.endCol),
+          options: { className: 'member-name-hovered' },
+        });
+      }
+      lineDeco.set(decos);
     },
     setInlay(line, text) {
       if (!line || !text || line > model.getLineCount()) {
@@ -266,13 +281,14 @@ export function createEditor(container: HTMLElement, opts: CreateEditorOptions):
     },
     onCursorLine(cb) {
       cursorCb = cb;
-      cb(editor.getPosition()?.lineNumber ?? 1, false);
+      const p = editor.getPosition();
+      cb({ line: p?.lineNumber ?? 1, col: p?.column ?? 1 }, false);
     },
     onMouseActivity(cb) {
       activityCb = cb;
     },
     refreshHover() {
-      if (hoverLine !== null) hoverCb?.(hoverLine);
+      if (hoverAt) hoverCb?.({ ...hoverAt });
     },
     onChange(cb) {
       changeCbs.push(cb);

@@ -19,6 +19,8 @@ export const COMPOUND = 'c-compound';
 export interface MemberMark {
   /** 1-based column of the member's name. */
   col: number;
+  /** 1-based column just past the name, for the strong highlight. */
+  endCol: number;
   /** Members to highlight for this mark (across records). */
   members: MemberRef[];
   /** Items from the declaring record (a group, or one leaf). */
@@ -205,6 +207,8 @@ export function buildLineIndex(
         const item = owner.items.length === 1 ? owner.items[0]! : null;
         return {
           col,
+          // An anonymous member has no written name; keep a one-character span.
+          endCol: col + Math.max(1, owner.loc.name.length),
           members: group.flatMap((c) => [...c.leaves].map((leaf) => ({ record: c.record, leaf }))),
           items: owner.items,
           colorClass: item && !('leafIndexes' in item) ? (item.colorClass ?? COMPOUND) : COMPOUND,

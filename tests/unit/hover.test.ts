@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { effectiveLine, hoveredPrimary, resolveHover, type HoverInputs } from '$state/hover';
+import { effectivePos, hoveredPrimary, resolveHover, type HoverInputs } from '$state/hover';
 import type { FieldLocation } from '$core/ast-locations';
 import type { Group, Leaf, RenderModel } from '$core/types';
 import type { LineInfo } from '$state/code-locations';
@@ -74,8 +74,8 @@ function inputs(over: Partial<HoverInputs> = {}): HoverInputs {
   ]);
   return {
     intent: null,
-    mouseLine: null,
-    cursorLine: null,
+    mouse: null,
+    cursor: null,
     preferCursor: false,
     models: new Map([['S', m]]),
     lines,
@@ -93,14 +93,16 @@ function inputs(over: Partial<HoverInputs> = {}): HoverInputs {
   };
 }
 
-describe('effectiveLine', () => {
+const at = (line: number, col = 1) => ({ line, col });
+
+describe('effectivePos', () => {
   it('prefers the mouse, falling back to the cursor', () => {
-    expect(effectiveLine({ mouseLine: 3, cursorLine: 9, preferCursor: false })).toBe(3);
-    expect(effectiveLine({ mouseLine: null, cursorLine: 9, preferCursor: false })).toBe(9);
+    expect(effectivePos({ mouse: at(3), cursor: at(9), preferCursor: false })).toEqual(at(3));
+    expect(effectivePos({ mouse: null, cursor: at(9), preferCursor: false })).toEqual(at(9));
   });
   it('prefers the cursor after a keyboard move, falling back to the mouse', () => {
-    expect(effectiveLine({ mouseLine: 3, cursorLine: 9, preferCursor: true })).toBe(9);
-    expect(effectiveLine({ mouseLine: 3, cursorLine: null, preferCursor: true })).toBe(3);
+    expect(effectivePos({ mouse: at(3), cursor: at(9), preferCursor: true })).toEqual(at(9));
+    expect(effectivePos({ mouse: at(3), cursor: null, preferCursor: true })).toEqual(at(3));
   });
 });
 
@@ -109,13 +111,14 @@ describe('resolveHover', () => {
     expect(resolveHover(inputs())).toEqual({
       members: [],
       line: null,
+      nameRange: null,
       inlay: null,
       tooltip: null,
     });
   });
 
   it('resolves an editor line to its members and inlay', () => {
-    const h = resolveHover(inputs({ mouseLine: 7 }));
+    const h = resolveHover(inputs({ mouse: at(7) }));
     expect(h.members).toEqual([{ record: 'S', leaf: 0 }]);
     expect(h.line).toBe(7);
     expect(h.inlay).toBe('offset 0 B · 4 B · align 4 B');
@@ -125,7 +128,7 @@ describe('resolveHover', () => {
   it('a leaf intent wins over the editor and carries its tooltip', () => {
     const tooltip = { html: 'x', x: 1, y: 2 };
     const h = resolveHover(
-      inputs({ mouseLine: 7, intent: { kind: 'leaf', record: 'S', leaf: 1, tooltip } }),
+      inputs({ mouse: at(7), intent: { kind: 'leaf', record: 'S', leaf: 1, tooltip } }),
     );
     expect(h.members).toEqual([{ record: 'S', leaf: 1 }]);
     expect(h.line).toBe(8); // leaf 1's own declaration, not the hovered line
@@ -162,7 +165,7 @@ describe('resolveHover', () => {
         intent: { kind: 'leaf', record: 'S', leaf: 5, tooltip: null },
       }),
     );
-    expect(h).toEqual({ members: [], line: null, inlay: null, tooltip: null });
+    expect(h).toEqual({ members: [], line: null, nameRange: null, inlay: null, tooltip: null });
   });
 
   it('an intent for a record that no longer exists resolves to nothing', () => {
@@ -173,18 +176,76 @@ describe('resolveHover', () => {
   });
 });
 
+describe('resolveHover with several declarators on a line', () => {
+  // `uint8_t lo, hi;` — the column decides which one is meant.
+  const twoMarks = () => {
+    const m = model([leaf('lo', 0, 8), leaf('hi', 8, 8)]);
+    const lines = new Map<number, LineInfo>([
+      [
+        5,
+        {
+          line: 5,
+          members: [
+            { record: 'S', leaf: 0 },
+            { record: 'S', leaf: 1 },
+          ],
+          items: m.leaves,
+          primary: 'S',
+          colorClass: 'c-compound',
+          location: loc(5),
+          marks: [
+            {
+              col: 11,
+              endCol: 13,
+              members: [{ record: 'S', leaf: 0 }],
+              items: [m.leaves[0]!],
+              colorClass: 'c-1',
+            },
+            {
+              col: 15,
+              endCol: 17,
+              members: [{ record: 'S', leaf: 1 }],
+              items: [m.leaves[1]!],
+              colorClass: 'c-2',
+            },
+          ],
+        },
+      ],
+    ]);
+    return inputs({ models: new Map([['S', m]]), lines });
+  };
+
+  it('picks the member the column falls in, and highlights its name', () => {
+    const first = resolveHover({ ...twoMarks(), mouse: { line: 5, col: 12 } });
+    expect(first.members).toEqual([{ record: 'S', leaf: 0 }]);
+    expect(first.nameRange).toEqual({ line: 5, startCol: 11, endCol: 13 });
+
+    const second = resolveHover({ ...twoMarks(), mouse: { line: 5, col: 16 } });
+    expect(second.members).toEqual([{ record: 'S', leaf: 1 }]);
+    expect(second.nameRange).toEqual({ line: 5, startCol: 15, endCol: 17 });
+    // Each summarises only its own member.
+    expect(first.inlay).not.toBe(second.inlay);
+  });
+
+  it('the caret between them belongs to the one it is past', () => {
+    expect(resolveHover({ ...twoMarks(), mouse: { line: 5, col: 14 } }).members).toEqual([
+      { record: 'S', leaf: 0 },
+    ]);
+  });
+});
+
 describe('hoveredPrimary', () => {
   it('is the declaring record of the hovered line', () => {
-    expect(hoveredPrimary(inputs({ mouseLine: 7 }))).toBe('S');
+    expect(hoveredPrimary(inputs({ mouse: at(7) }))).toBe('S');
   });
   it('is null for grid/table hovers (they never switch the tab)', () => {
     expect(
       hoveredPrimary(
-        inputs({ mouseLine: 7, intent: { kind: 'leaf', record: 'S', leaf: 0, tooltip: null } }),
+        inputs({ mouse: at(7), intent: { kind: 'leaf', record: 'S', leaf: 0, tooltip: null } }),
       ),
     ).toBeNull();
   });
   it('is null off any known line', () => {
-    expect(hoveredPrimary(inputs({ mouseLine: 99 }))).toBeNull();
+    expect(hoveredPrimary(inputs({ mouse: at(99) }))).toBeNull();
   });
 });

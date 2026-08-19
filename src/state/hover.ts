@@ -8,7 +8,7 @@
 
 import type { FieldLocation } from '$core/ast-locations';
 import type { Group, Leaf, RenderModel } from '$core/types';
-import type { LineInfo } from './code-locations';
+import { markAtColumn, type LineInfo } from './code-locations';
 import type { Hover, MemberRef } from './store.svelte';
 
 export interface TooltipAnchor {
@@ -24,13 +24,19 @@ export type HoverIntent =
   /** A padding cell: a tooltip with no member behind it. */
   | { kind: 'tooltip'; tooltip: TooltipAnchor };
 
+/** A position in the editor. */
+export interface EditorPos {
+  line: number;
+  col: number;
+}
+
 export interface HoverInputs {
   /** Grid/table intent — wins over the editor when present. */
   intent: HoverIntent | null;
   /** Pointer position in the editor. */
-  mouseLine: number | null;
+  mouse: EditorPos | null;
   /** Text cursor position. */
-  cursorLine: number | null;
+  cursor: EditorPos | null;
   /** After a keyboard move the cursor beats a stale pointer until the mouse moves. */
   preferCursor: boolean;
   models: Map<string, RenderModel>;
@@ -39,11 +45,19 @@ export interface HoverInputs {
   groupLocations: Map<string, Map<number, FieldLocation>>;
 }
 
-export const EMPTY_HOVER: Hover = { members: [], line: null, inlay: null, tooltip: null };
+export const EMPTY_HOVER: Hover = {
+  members: [],
+  line: null,
+  nameRange: null,
+  inlay: null,
+  tooltip: null,
+};
 
-/** The editor line the hover comes from, honouring the keyboard/mouse preference. */
-export function effectiveLine(i: Pick<HoverInputs, 'mouseLine' | 'cursorLine' | 'preferCursor'>) {
-  return i.preferCursor ? (i.cursorLine ?? i.mouseLine) : (i.mouseLine ?? i.cursorLine);
+/** The editor position the hover comes from, honouring the keyboard/mouse preference. */
+export function effectivePos(
+  i: Pick<HoverInputs, 'mouse' | 'cursor' | 'preferCursor'>,
+): EditorPos | null {
+  return i.preferCursor ? (i.cursor ?? i.mouse) : (i.mouse ?? i.cursor);
 }
 
 /**
@@ -52,17 +66,35 @@ export function effectiveLine(i: Pick<HoverInputs, 'mouseLine' | 'cursorLine' | 
  */
 export function hoveredPrimary(i: HoverInputs): string | null {
   if (i.intent) return null; // grid/table hovers never switch the tab
-  const line = effectiveLine(i);
-  return (line !== null ? i.lines.get(line)?.primary : undefined) ?? null;
+  const pos = effectivePos(i);
+  return (pos ? i.lines.get(pos.line)?.primary : undefined) ?? null;
 }
 
 /** Resolve the effective hover. */
 export function resolveHover(i: HoverInputs): Hover {
   if (i.intent) return resolveIntent(i.intent, i);
-  const line = effectiveLine(i);
-  const info = line !== null ? i.lines.get(line) : undefined;
-  if (!info || line === null) return EMPTY_HOVER;
-  return { members: info.members, line, inlay: describeItems(info.items), tooltip: null };
+  const pos = effectivePos(i);
+  const info = pos ? i.lines.get(pos.line) : undefined;
+  if (!info || !pos) return EMPTY_HOVER;
+  // Which declarator on the line the caret/pointer is in. Falls back to the
+  // whole line when the AST gave us no columns to split it by.
+  const mark = markAtColumn(info, pos.col);
+  if (!mark) {
+    return {
+      members: info.members,
+      line: pos.line,
+      nameRange: null,
+      inlay: describeItems(info.items),
+      tooltip: null,
+    };
+  }
+  return {
+    members: mark.members,
+    line: pos.line,
+    nameRange: { line: pos.line, startCol: mark.col, endCol: mark.endCol },
+    inlay: describeItems(mark.items),
+    tooltip: null,
+  };
 }
 
 function resolveIntent(intent: HoverIntent, i: HoverInputs): Hover {
@@ -77,6 +109,7 @@ function resolveIntent(intent: HoverIntent, i: HoverInputs): Hover {
     return {
       members: [{ record: intent.record, leaf: intent.leaf }],
       line: loc?.line ?? null,
+      nameRange: nameRangeOf(loc),
       inlay: describeItems([leaf]),
       tooltip: intent.tooltip,
     };
@@ -89,9 +122,15 @@ function resolveIntent(intent: HoverIntent, i: HoverInputs): Hover {
   return {
     members,
     line: loc?.line ?? null,
+    nameRange: nameRangeOf(loc),
     inlay: describeItems([group]),
     tooltip: intent.tooltip,
   };
+}
+
+function nameRangeOf(loc: FieldLocation | undefined): Hover['nameRange'] {
+  if (!loc) return null;
+  return { line: loc.line, startCol: loc.col, endCol: loc.col + Math.max(1, loc.name.length) };
 }
 
 /** "offset 16 B · 8 B · align 8 B" for the items declared on a line. */

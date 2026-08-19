@@ -40,13 +40,21 @@ export interface Hover {
   members: MemberRef[];
   /** Editor line to highlight. */
   line: number | null;
+  /** The member's own name, for the strong highlight on a shared line. */
+  nameRange: { line: number; startCol: number; endCol: number } | null;
   /** Inlay text after that line. */
   inlay: string | null;
   /** Anchor for the tooltip (grid/table hover only). */
   tooltip: { html: string; x: number; y: number } | null;
 }
 
-const EMPTY_HOVER: Hover = { members: [], line: null, inlay: null, tooltip: null };
+const EMPTY_HOVER: Hover = {
+  members: [],
+  line: null,
+  nameRange: null,
+  inlay: null,
+  tooltip: null,
+};
 
 const VIEW_KEY = 'abix-view';
 

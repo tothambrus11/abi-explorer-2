@@ -4,6 +4,7 @@ import type { LineInfo, MemberMark } from '$state/code-locations';
 
 const mark = (col: number, colorClass: string, records: string[]): MemberMark => ({
   col,
+  endCol: col + 3,
   members: records.map((record, i) => ({ record, leaf: i })),
   items: [],
   colorClass,

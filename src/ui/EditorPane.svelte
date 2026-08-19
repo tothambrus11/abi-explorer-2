@@ -24,11 +24,11 @@
     editor.onSubmit(() => {
       session.compileNow();
     });
-    editor.onLineHover((line) => {
-      session.hoverLine(line);
+    editor.onLineHover((pos) => {
+      session.hoverLine(pos);
     });
-    editor.onCursorLine((line, byKeyboard) => {
-      session.setCursorLine(line, byKeyboard);
+    editor.onCursorLine((pos, byKeyboard) => {
+      session.setCursorLine(pos, byKeyboard);
     });
     editor.onMouseActivity(() => {
       session.noteMouseActivity();
@@ -44,6 +44,7 @@
     // Dots only for what is on screen: the active record in tabs mode, all when stacked.
     dots: memberDots(session.lines.values(), new Set(store.sections.map((s) => s.key))),
     highlight: store.hover.line,
+    nameRange: store.hover.nameRange,
     inlay: store.hover.inlay,
   });
 
@@ -66,7 +67,7 @@
     editor?.refreshHover();
   });
   $effect(() => {
-    editor?.highlightLine(view.highlight);
+    editor?.highlightLine(view.highlight, view.nameRange);
     editor?.setInlay(view.highlight, view.inlay);
   });
   // A one-shot navigation command (picking a record from the tab bar), not a
