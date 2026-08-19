@@ -173,6 +173,28 @@ test.describe('ABI Explorer', () => {
     await expect(page.locator('.field-table .fname', { hasText: 'kind' })).toHaveCount(1);
   });
 
+  test('drilling: a compound member opens its own record', async ({ page }) => {
+    await waitReady(page);
+    await page.selectOption('#example', '2');
+    await expect(page.locator('.record .title')).toContainText('Message');
+
+    // Clicking the `hdr` row inspects struct Header, and the caret follows.
+    await page.locator('.field-table tr.group .open', { hasText: 'hdr' }).first().click();
+    await expect(page.locator('.record .title')).toContainText('Header');
+    await expect(
+      page.locator('#record-chips .chip', { hasText: 'Header' }).first(),
+    ).toHaveAttribute('aria-selected', 'true');
+    // Header's own fields are now the top-level members, each with a circle.
+    await expect(page.locator('.field-table .fname')).toHaveText(['kind', 'len']);
+
+    // An anonymous member has no name to write, but is still inspectable: it is
+    // shown even though it is not listed as a record of its own.
+    await page.selectOption('#example', '2');
+    await expect(page.locator('.record .title')).toContainText('Message');
+    await page.locator('.field-table tr.group .open', { hasText: '(anonymous)' }).first().click();
+    await expect(page.locator('.field-table .fname')).toHaveText(['crc_lo', 'crc_hi']);
+  });
+
   // Issue #3: an explicit tab pick must not be undone by the cursor rule.
   test('picking a record from the tabs moves the caret to its declaration', async ({ page }) => {
     await waitReady(page);

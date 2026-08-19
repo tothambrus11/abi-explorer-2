@@ -70,7 +70,10 @@ crc_hi; };` shows a ring for the anonymous member and a colour for each
 ## Phase 3 — grid + tree
 
 - [ ] **3.1** base bands in the byte grid (vptr / inherited fields / base padding).
-- [ ] **3.2** tree ↔ inspection drill (hover previews, click commits).
+- [x] **3.2** Drilling: clicking a compound member's name in the tree inspects
+      the record it is an instance of (hover still only previews). An explicitly
+      selected record is always shown, so a nested anonymous member — which is
+      not listed as a record of its own — can be opened too.
 
 ## Non-goals
 

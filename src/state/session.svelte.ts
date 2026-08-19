@@ -290,6 +290,24 @@ export class Session {
     if (line !== null) this.revealRequest = { line, seq: ++this.revealSeq };
   }
 
+  /**
+   * Drill into a compound member: inspect the record it is an instance of.
+   * Returns false when the member has no record to open (a plain field, or a
+   * type this analysis did not lay out).
+   */
+  inspectGroup(record: string, groupIndex: number): boolean {
+    const group = store.models.get(record)?.groups[groupIndex];
+    const analysis = store.analysis;
+    if (!group || !analysis) return false;
+    const type = group.type.replace(/^(?:struct|union|class|__interface)\s+/, '');
+    const target = findRecord(type, analysis.recordIndex);
+    if (!target || !analysis.userRecords.includes(target)) return false;
+    const key = recordKey(target);
+    if (key === record) return false; // already there
+    this.selectRecord(key);
+    return true;
+  }
+
   /** Force a compile now (e.g. Ctrl+Enter), even if the input is unchanged. */
   compileNow(): void {
     this.compile.trigger({ source: store.source, options: { ...store.options } }, { force: true });

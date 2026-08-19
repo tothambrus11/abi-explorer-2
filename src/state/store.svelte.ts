@@ -106,10 +106,25 @@ class Store {
 
   /** The record shown in tabs mode (falls back to the last one). */
   activeRecordKey = $derived.by(() => {
-    const recs = this.visibleRecords;
+    const recs = this.modelRecords;
     if (recs.length === 0) return null;
     const found = recs.find((r) => recordKey(r) === this.selectedRecord);
     return recordKey(found ?? recs[recs.length - 1]!);
+  });
+
+  /**
+   * Records to build models for: the visible ones, plus whichever record was
+   * explicitly selected — drilling into a nested anonymous member should show
+   * it even though it is not listed on its own.
+   */
+  modelRecords = $derived.by(() => {
+    const recs = [...this.visibleRecords];
+    const sel = this.selectedRecord;
+    if (sel !== null && !recs.some((r) => recordKey(r) === sel)) {
+      const extra = this.analysis?.userRecords.find((r) => recordKey(r) === sel);
+      if (extra) recs.push(extra);
+    }
+    return recs;
   });
 
   /** Render models for every visible record (built once per analysis). */
@@ -117,7 +132,7 @@ class Store {
     const a = this.analysis;
     const out = new Map<string, RenderModel>();
     if (!a) return out;
-    for (const rec of this.visibleRecords) {
+    for (const rec of this.modelRecords) {
       const model = buildRenderModel(rec, { ...a, memberAligns: this.memberAligns });
       assignColors(model);
       out.set(recordKey(rec), model);

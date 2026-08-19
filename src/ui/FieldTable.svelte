@@ -58,6 +58,10 @@
     const { x, y } = anchor(e);
     session.hoverGroup(record, gi, { html: groupTooltipHtml(model.groups[gi]!), x, y });
   }
+  /** Drill into a compound member: inspect the record it is an instance of. */
+  function openGroup(gi: number) {
+    session.inspectGroup(record, gi);
+  }
   const leave = () => {
     session.hoverMember(null, null);
   };
@@ -102,6 +106,9 @@
             onmouseenter={(e) => {
               enterGroup(node.ref, e);
             }}
+            ondblclick={() => {
+              openGroup(node.ref);
+            }}
           >
             <td class="chip-col"></td>
             <td class="name" style:padding-left="{indent}px">
@@ -118,7 +125,15 @@
               {:else}
                 <span class="twist-gap"></span>
               {/if}
-              <span class="fname gname">{group.name}</span>
+              <button
+                type="button"
+                class="fname gname open"
+                title="Inspect {group.type || group.name}"
+                onclick={(e) => {
+                  e.stopPropagation();
+                  openGroup(node.ref);
+                }}>{group.name}</button
+              >
               {#if group.isBase}<span class="tag">base</span>{/if}
               {#if group.isUnion}<span class="tag union">union</span>{/if}
               {#if node.overlaps}<span class="tag overlap" title="shares bytes with a sibling"
@@ -180,6 +195,26 @@
   }
   tr.group .gname {
     font-weight: 600;
+  }
+  /* A compound member opens its own record. */
+  .open {
+    font: inherit;
+    font-weight: 600;
+    color: inherit;
+    background: none;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    text-decoration: underline dotted color-mix(in srgb, currentColor 45%, transparent);
+    text-underline-offset: 3px;
+  }
+  .open:hover {
+    color: var(--accent);
+  }
+  .open:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 3px;
   }
   .chip-col {
     width: 20px;
