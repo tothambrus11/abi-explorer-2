@@ -1,5 +1,14 @@
 # Reactive architecture migration
 
+**Historical.** This migration is done, and the pipeline it was done to has
+since been replaced: clang-abi-wasm answers a layout query in one call, so the
+second async resource (the AST-locate dump), the `memberAligns` feedback loop it
+fed, and `collectLocateOwners`/`collectMemberAligns` are all gone. What survived
+is the shape this document was arguing for — one resource, a pure derived model,
+thin effects — and it survived a rewrite of everything underneath it, which is
+the argument. Read it as a record of why the code looks the way it does, not as
+a description of the code.
+
 Goal: separate three layers that are currently tangled in `session.svelte.ts` —
 **raw inputs** (`$state`), **derived model** (`$derived`, side-effect free), and
 **effects** (`$effect`, thin syncs to imperative sinks). Remove the manual

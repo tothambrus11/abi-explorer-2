@@ -52,8 +52,8 @@ export function defaultStdFor(lang: Language): string {
 }
 
 // Flags that make sense for a layout query. Anything else typed into "extra
-// flags" (or restored from a URL) is dropped: -o / -### / -x would wedge the
-// query, and driver modes like -E produce no layouts.
+// flags" (or restored from a URL) is dropped: -o, -###, -E and -x change what
+// the compiler is being asked to do rather than how it lays records out.
 //
 // The target is not among them, deliberately. It is a field of the request and
 // the UI shows which one is selected; a `-target` in the flag box would change
@@ -63,23 +63,21 @@ const ALLOWED_FLAG_RE =
   /^(?:-f(?!syntax-only$)[A-Za-z0-9=+_.-]+|-m[A-Za-z0-9=+_.-]+|-W[A-Za-z0-9=+_.-]*|-std=[A-Za-z0-9+.:]+|-D[A-Za-z_][A-Za-z0-9_]*(?:=.*)?|-U[A-Za-z_][A-Za-z0-9_]*|-isystem\/[A-Za-z0-9_.+/-]+|-I\/[A-Za-z0-9_.+/-]+|-O[0-3sz]?|-w|-pedantic(?:-errors)?|-ansi|-nostdinc(?:\+\+)?)$/;
 /**
  * Flags that take their value as the next token. The value must never itself
- * look like a flag: `-target -o` would otherwise be accepted as a pair and put
- * a bare `-o` into argv, where reasoning about which tokens are flags breaks
+ * look like a flag: `-include -o` would otherwise be accepted as a pair and
+ * put a bare `-o` through, where reasoning about which tokens are flags breaks
  * down. Every value pattern below therefore pins its first character.
  */
 const TAKES_ARG = new Set(['-Xclang', '-include', '-D', '-U', '-I', '-isystem']);
 /**
  * `-Xclang` hands the next token straight to the frontend, where the flags that
- * select an *action* live — `-ast-dump`, `-ast-print`, `-ast-list`,
- * `-dump-tokens`, `-emit-obj`, `-E`, `-S`, `-analyze`… Any one of them replaces
- * the record-layout dump this whole app reads, so a shared link carrying one
- * would silently produce no layouts at all.
+ * select an *action* live — `-ast-dump`, `-emit-obj`, `-E`, `-analyze`… The
+ * module runs its own action and ignores those, but "harmless today" is not a
+ * reason to pass a shared link's arbitrary token to a compiler.
  *
  * Frontend *feature* flags all begin with `-f`, so that is the rule: an
  * allowlist, like every other entry here, rather than a list of the actions we
- * happened to think of. It still admits the layout-related cc1 flags worth
- * reaching for — `-fdump-record-layouts-simple`, `-fdump-record-layouts-canonical`,
- * `-fdump-vtable-layouts`, `-fno-access-control`, `-fms-layout-compatibility=…`.
+ * happened to think of. It still admits the ones worth reaching for —
+ * `-fms-layout-compatibility=…`, `-fnew-alignment=…`.
  */
 const XCLANG_ARG_RE = /^-f[A-Za-z0-9=+_.-]*$/;
 const PATH_ARG_RE = /^[A-Za-z0-9_./+][A-Za-z0-9_.+/-]*$/;
