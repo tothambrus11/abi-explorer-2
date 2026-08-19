@@ -23,13 +23,22 @@ export function fmtGroupSize(sizeBits: number | null): string {
   return sizeBits === null ? 'size ?' : `${fmt.format(sizeBits / 8)} B`;
 }
 
+/** "occupies 12 B (sizeof 16 B)" when a member takes fewer bytes than its type. */
+function extentLine(occupies: number | null, typeSize: number | null): string {
+  if (occupies === null) return 'size unknown';
+  const here = `occupies ${fmt.format(occupies / 8)} B`;
+  return typeSize !== null && typeSize > occupies
+    ? `${here} · sizeof ${fmt.format(typeSize / 8)} B`
+    : here;
+}
+
 /** Tooltip body for a compound member (record-typed field or base subobject). */
 export function groupTooltipHtml(g: Group): string {
   const tags = [g.isBase ? 'base' : '', g.isUnion ? 'union' : ''].filter(Boolean).join(' · ');
   const lines = [
     `<strong>${escapeHtml([...g.path, g.name].join(' :: '))}</strong>`,
     g.type ? escapeHtml(g.type) : '',
-    `offset ${fmtOffset(g.offsetBits)} · ${fmtGroupSize(g.sizeBits)}`,
+    `offset ${fmtOffset(g.offsetBits)} · ${extentLine(g.sizeBits, g.typeSizeBits)}`,
     tags,
   ];
   return lines.filter(Boolean).join('<br>');
@@ -41,6 +50,9 @@ export function memberTooltipHtml(leaf: Leaf, extra?: string): string {
     `<strong>${escapeHtml([...leaf.path, leaf.name].join(' :: '))}</strong>`,
     leaf.type ? escapeHtml(leaf.type) : '',
     `offset ${fmtOffset(leaf.offsetBits)} · ${fmtSize(leaf)}`,
+    leaf.sizeBits === 0 && leaf.row.isEmpty
+      ? 'empty type sharing an address — occupies no bytes'
+      : '',
     extra ?? '',
   ];
   return lines.filter(Boolean).join('<br>');

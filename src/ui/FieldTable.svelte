@@ -5,6 +5,17 @@
   import { store } from '$state/store.svelte';
   import { fmtOffset, type Session } from '$state/session.svelte';
   import { fmtSize, fmtGroupSize, memberTooltipHtml, groupTooltipHtml } from './format';
+  import { tooltip } from './tooltip';
+
+  const HEAD = {
+    offset: 'Bytes from the start of this record to where the member begins.',
+    size:
+      'Bytes the member occupies *inside this record*. Not always sizeof(its type): a base ' +
+      'can have its tail padding reused, an empty member sharing an address occupies none, ' +
+      'and a bit-field is measured in bits.',
+    align: 'The address boundary this member must start on.',
+    pad: 'Bytes between the end of this member and the start of the next one.',
+  };
 
   const { model, record, session }: { model: RenderModel; record: string; session: Session } =
     $props();
@@ -72,9 +83,10 @@
   <table class="field-table">
     <thead
       ><tr
-        ><th></th><th>Field</th><th>Type</th><th>Offset</th><th>Size</th><th>Align</th><th
-          >Padding after</th
-        ></tr
+        ><th></th><th>Field</th><th>Type</th><th><span use:tooltip={HEAD.offset}>Offset</span></th
+        ><th><span use:tooltip={HEAD.size}>Size</span></th><th
+          ><span use:tooltip={HEAD.align}>Align</span></th
+        ><th><span use:tooltip={HEAD.pad}>Padding after</span></th></tr
       ></thead
     >
     <tbody onmouseleave={leave}>
@@ -98,7 +110,14 @@
             </td>
             <td class="type">{leaf.kind === 'special' ? '—' : leaf.type}</td>
             <td class="num">{fmtOffset(leaf.offsetBits)}</td>
-            <td class="num" class:est={leaf.estimated}>{fmtSize(leaf)}</td>
+            <td
+              class="num"
+              class:est={leaf.estimated}
+              class:noted={leaf.sizeBits === 0 && leaf.row.isEmpty}
+              use:tooltip={leaf.sizeBits === 0 && leaf.row.isEmpty
+                ? 'Its type is empty and it shares an address with another member, so it occupies no bytes — sizeof(its type) is still 1.'
+                : null}>{fmtSize(leaf)}</td
+            >
             <td class="num">{leaf.align ? `${leaf.align} B` : ''}</td>
             <td class="num pad">{padAfter.has(node.ref) ? `+${padAfter.get(node.ref)} B` : ''}</td>
           </tr>
@@ -106,6 +125,8 @@
           {@const group = model.groups[node.ref]!}
           {@const canCollapse = node.children.length > 0}
           {@const unitColour = isNameable(group.path) ? groupColorClass(model, group) : null}
+          {@const full = group.typeSizeBits}
+          {@const short = full !== null && node.sizeBits !== null && node.sizeBits < full}
           <tr
             class="group"
             class:hovered={isHovered(node.leafIndexes)}
@@ -150,7 +171,13 @@
             </td>
             <td class="type">{group.type}</td>
             <td class="num">{fmtOffset(node.offsetBits)}</td>
-            <td class="num">{fmtGroupSize(node.sizeBits)}</td>
+            <td
+              class="num"
+              class:noted={short}
+              use:tooltip={short
+                ? `Occupies ${(node.sizeBits ?? 0) / 8} B here, though sizeof(${group.type || group.name}) is ${full / 8} B — the bytes after it are reused.`
+                : null}>{fmtGroupSize(node.sizeBits)}{short ? ' *' : ''}</td
+            >
             <td class="num">{node.align ? `${node.align} B` : ''}</td>
             <td class="num"></td>
           </tr>
@@ -289,6 +316,17 @@
   }
   .num.est {
     color: var(--text-muted);
+  }
+  /* A size that is not simply sizeof(the type). */
+  .num.noted {
+    text-decoration: underline dotted color-mix(in srgb, currentColor 50%, transparent);
+    text-underline-offset: 3px;
+    cursor: help;
+  }
+  th span {
+    cursor: help;
+    text-decoration: underline dotted color-mix(in srgb, currentColor 45%, transparent);
+    text-underline-offset: 3px;
   }
   .pad {
     color: var(--c-2);

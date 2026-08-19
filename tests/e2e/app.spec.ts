@@ -253,6 +253,30 @@ test.describe('ABI Explorer', () => {
     await expect(header).toHaveAttribute('aria-selected', 'true');
   });
 
+  test('sizes say what they mean: sizeof vs bytes occupied here', async ({ page }) => {
+    await waitReady(page);
+    // The record summary names the C++ operators rather than vague words.
+    await expect(page.locator('.summary .label').first()).toHaveText('sizeof');
+    await expect(page.locator('.summary .label').nth(1)).toHaveText('alignof');
+
+    await page.selectOption('#example', '6'); // virtual inheritance (diamond)
+    await expect(page.locator('#record-chips .chip')).toHaveCount(4, { timeout: 60_000 });
+    await page.locator('#record-chips .chip', { hasText: 'struct D ' }).click();
+    await expect(page.locator('.record .title')).toContainText('struct D');
+
+    // Every base of D occupies less than sizeof(its type) — B and C lose the
+    // shared A, and the virtual A itself is placed at its non-virtual size — so
+    // all three size cells are marked and explain themselves.
+    const noted = page.locator('.field-table .num.noted');
+    await expect(noted).toHaveCount(3);
+    await expect(noted.first()).toContainText('*');
+    // Re-query after the layout has settled: an in-flight analysis re-renders
+    // the table and would detach the node mid-hover.
+    await expect(page.locator('.status.running')).toHaveCount(0);
+    await noted.first().hover({ force: true });
+    await expect(page.locator('[role=tooltip]')).toContainText('sizeof');
+  });
+
   test('the byte grid brackets what a base subobject contributes', async ({ page }) => {
     await waitReady(page);
     await page.selectOption('#example', '4');

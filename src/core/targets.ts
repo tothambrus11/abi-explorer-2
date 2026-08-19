@@ -253,4 +253,97 @@ Pair<double> pd;            /* instantiate to see layout */
 Pair<char>   pc;
 `,
   },
+  {
+    name: 'C++ virtual inheritance (diamond)',
+    lang: 'c++',
+    source: `struct A { virtual ~A(); int a; };
+
+struct B : virtual A { int b; };   /* A is shared… */
+struct C : virtual A { int c; };
+
+struct D : B, C { int d; };        /* …so D holds one A, placed last */
+
+/* Switch the target to x86_64-pc-windows-msvc to compare ABIs:
+   MSVC uses vbtable/vftable pointers and does not reuse tail padding. */
+`,
+  },
+  {
+    name: 'Tail padding reuse',
+    lang: 'c++',
+    source: `struct Base { int i; char c; };   /* sizeof 8, but only 5 bytes of data */
+
+struct Derived : Base { char d; };
+/* Base occupies 8 B here — d cannot land in Base's tail padding,
+   because Base is standard-layout. Give Base a virtual function
+   and watch d move into the padding instead. */
+`,
+  },
+  {
+    name: 'C++ no_unique_address',
+    lang: 'c++',
+    source: `struct Empty {};
+
+struct WithNua {                      /* e shares i's address: sizeof 4 */
+  [[no_unique_address]] Empty e;
+  int i;
+};
+
+struct WithPlain {                    /* e needs its own byte: sizeof 8 */
+  Empty e;
+  int i;
+};
+`,
+  },
+  {
+    name: 'C++ standard library (libc++)',
+    lang: 'c++',
+    source: `#include <string>
+#include <vector>
+
+struct Probe {
+  std::string s;          /* short-string optimization: a union inside */
+  std::vector<int> v;     /* three pointers */
+  std::vector<bool> vb;   /* the bitset specialization */
+};
+
+/* These are libc++'s layouts. libstdc++ and MSVC's STL lay the same
+   types out differently, so read them as "libc++ on this target". */
+`,
+  },
+  {
+    name: 'Pointers to members (MSVC)',
+    lang: 'c++',
+    source: `struct Host;                  /* incomplete: the most general representation */
+
+struct S {
+  int Host::*pm;              /* data member pointer */
+  void (Host::*pmf)();        /* member function pointer */
+};
+
+/* Pick x86_64-pc-windows-msvc: 12 B and 24 B, because MSVC must cover
+   every inheritance shape while Host is unknown. On Itanium both are
+   a fixed size instead. */
+`,
+  },
+  {
+    name: 'Flexible array & over-alignment',
+    lang: 'c',
+    source: `#include <stdint.h>
+
+struct Packet {             /* the trailing array adds no size */
+  uint32_t length;
+  char data[];
+};
+
+struct CacheLine {          /* _Alignas on a member raises the whole record */
+  _Alignas(64) int x;
+};
+
+struct Holder {             /* one member forces Holder to 64 B too */
+  char c;
+  struct CacheLine line;
+  char d;
+};
+`,
+  },
 ];

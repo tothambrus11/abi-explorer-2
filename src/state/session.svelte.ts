@@ -132,6 +132,12 @@ export class Session {
    */
   revealRequest: { line: number; seq: number } | null = $state.raw(null);
   private revealSeq = 0;
+  /**
+   * Cursor position when a record was picked explicitly. While the cursor is
+   * still there, the pick outranks the cursor rule — otherwise a pick made
+   * before source locations have loaded is undone the moment they arrive.
+   */
+  private pickedAt: EditorPos | null = $state.raw(null);
 
   /** The effective hover: grid/table intent first, then the pointer, then the cursor. */
   readonly hover: Hover = $derived(resolveHover(this.hoverInputs));
@@ -207,10 +213,19 @@ export class Session {
       $effect(() => {
         store.hover = this.hover;
       });
-      // Command (deliberately *not* part of the derivation): in tabs mode the
-      // record under the cursor becomes the selected one.
+      // Command (deliberately *not* part of the derivation): in tabs mode,
+      // *moving* the cursor onto a record selects it. It has to react to the
+      // cursor changing rather than hold as an invariant — otherwise picking a
+      // record from the tab bar is reverted on the spot, since the cursor is
+      // still sitting in whatever record it was in.
+      let lastPrimary: string | null = null;
       $effect(() => {
         const primary = this.hoverPrimary;
+        // An explicit pick stands until the cursor is actually moved.
+        if (this.pickedAt !== null && samePos(this.pickedAt, this.cursor)) return;
+        this.pickedAt = null;
+        if (primary === lastPrimary) return;
+        lastPrimary = primary;
         if (store.view !== 'tabs' || primary === null) return;
         if (store.activeRecordKey !== primary && store.models.has(primary)) {
           store.selectedRecord = primary;
@@ -286,6 +301,7 @@ export class Session {
    */
   selectRecord(key: string): void {
     store.selectedRecord = key;
+    this.pickedAt = this.cursor;
     const line = declLineFor(key, this.decls, store.models);
     if (line !== null) this.revealRequest = { line, seq: ++this.revealSeq };
   }

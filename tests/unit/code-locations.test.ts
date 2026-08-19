@@ -36,6 +36,7 @@ function group(
     sizeBits: 64,
     align: 8,
     leafIndexes,
+    typeSizeBits: null,
     isBase: false,
     isUnion: false,
     ...extra,

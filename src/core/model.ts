@@ -52,6 +52,8 @@ export function buildRenderModel(record: RecordLayout, inputs: ModelInputs): Ren
     memberAligns?.get(unqualifiedName(owner.name) + ' ' + name);
   const leaves: Leaf[] = [];
   const groups: Group[] = [];
+  /** Indices of leaves whose type is an empty class (clang's `(empty)` marker). */
+  const emptyMembers: number[] = [];
   const markers: Marker[] = [];
   const unresolved = new Set<string>();
   const sizeBits = record.sizeBytes * 8;
@@ -125,6 +127,7 @@ export function buildRenderModel(record: RecordLayout, inputs: ModelInputs): Ren
           sizeBits: row.isEmpty ? 0 : baseRec ? (baseRec.nvsize ?? baseRec.sizeBytes) * 8 : null,
           align: baseRec?.align ?? null,
           leafIndexes: range(first, leaves.length),
+          typeSizeBits: baseRec ? baseRec.sizeBytes * 8 : null,
           isBase: true,
           isUnion: false,
         });
@@ -192,6 +195,7 @@ export function buildRenderModel(record: RecordLayout, inputs: ModelInputs): Ren
           sizeBits: ownBits,
           align: own.align ?? memberRec?.align ?? null,
           leafIndexes: range(first, leaves.length),
+          typeSizeBits: memberRec ? memberRec.sizeBytes * 8 : null,
           isBase: false,
           isUnion: memberRec?.kind === 'union' || /^union\b/.test(row.type ?? ''),
         });
@@ -208,6 +212,7 @@ export function buildRenderModel(record: RecordLayout, inputs: ModelInputs): Ren
         bits = estimateBits(rows, i, row, parentEnd, inUnion);
         estimated = true;
       }
+      if (row.isEmpty) emptyMembers.push(leaves.length);
       leaves.push({
         kind: 'field',
         row,
@@ -225,6 +230,7 @@ export function buildRenderModel(record: RecordLayout, inputs: ModelInputs): Ren
   };
 
   visit(record.rows, [], sizeBits, record.kind === 'union', record, { rec: record, prefix: '' });
+  resolveEmptyMembers(leaves, emptyMembers);
 
   const paddings = computePadding(record.sizeBytes, leaves);
   const paddingBytes = paddings.reduce((n, p) => n + (p.end - p.start), 0);
@@ -238,6 +244,28 @@ export function buildRenderModel(record: RecordLayout, inputs: ModelInputs): Ren
     paddingBytes,
     unresolved: [...unresolved],
   };
+}
+
+/**
+ * A member whose type is an empty class occupies one byte if it needs a unique
+ * address, and none at all when it shares one — which is what
+ * `[[no_unique_address]]` permits, and what libc++'s allocator members rely on.
+ * Clang's layout says which: if another subobject already covers that byte, the
+ * member is sharing it. Left at its type's `sizeof` it would be drawn as a
+ * one-byte block overlapping its neighbour.
+ */
+function resolveEmptyMembers(leaves: Leaf[], indices: number[]): void {
+  for (const i of indices) {
+    const leaf = leaves[i]!;
+    const shares = leaves.some(
+      (other, j) =>
+        j !== i &&
+        other.sizeBits > 0 &&
+        other.offsetBits <= leaf.offsetBits &&
+        leaf.offsetBits < other.offsetBits + other.sizeBits,
+    );
+    if (shares) leaf.sizeBits = 0;
+  }
 }
 
 function computePadding(sizeBytes: number, leaves: Leaf[]): PaddingRun[] {

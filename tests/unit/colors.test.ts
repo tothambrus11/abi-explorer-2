@@ -26,6 +26,7 @@ const group = (name: string, leafIndexes: number[], path: string[] = []): Group 
   sizeBits: 8,
   align: 1,
   leafIndexes,
+  typeSizeBits: null,
   isBase: false,
   isUnion: false,
 });

@@ -76,6 +76,11 @@ export interface Group {
   sizeBits: number | null;
   align: number | null;
   leafIndexes: number[];
+  /**
+   * `sizeof` of the member's own type, when known. The bytes it occupies here
+   * (`sizeBits`) can be smaller: a base may have its tail padding reused.
+   */
+  typeSizeBits: number | null;
   isBase: boolean;
   /** The member is a union (its fields share storage / overlap). */
   isUnion: boolean;

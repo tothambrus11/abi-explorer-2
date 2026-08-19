@@ -33,6 +33,7 @@ const group = (name: string, leafIndexes: number[], extra: Partial<Group> = {}):
   sizeBits: 64,
   align: 8,
   leafIndexes,
+  typeSizeBits: null,
   isBase: false,
   isUnion: false,
   ...extra,

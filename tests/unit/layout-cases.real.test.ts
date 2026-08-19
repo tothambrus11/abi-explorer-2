@@ -220,6 +220,53 @@ struct Holder { char c; Cache line; char d; };`,
     ]);
   }, 180_000);
 
+  it('an empty member takes a byte only when it needs its own address', async () => {
+    const a = await analyze(
+      `struct Empty {};
+struct WithNua { [[no_unique_address]] Empty e; int i; };
+struct WithPlain { Empty e; int i; };`,
+      'c++',
+      'x86_64-unknown-linux-gnu',
+    );
+    // Sharing an address with `i`: the member occupies nothing, and the record
+    // is the size of `i` alone.
+    const nua = modelOf(a, 'WithNua');
+    expect(nua.record.sizeBytes).toBe(4);
+    expect(nua.leaves.map((l) => [l.name, l.offsetBits / 8, l.sizeBits])).toEqual([
+      ['e', 0, 0],
+      ['i', 0, 32],
+    ]);
+    expect(anyOverlap(buildLayoutTree(nua))).toBe(false);
+
+    // Without the attribute it needs a unique address, so it really does take a
+    // byte and pushes `i` to offset 4.
+    const plain = modelOf(a, 'WithPlain');
+    expect(plain.record.sizeBytes).toBe(8);
+    expect(plain.leaves.map((l) => [l.name, l.offsetBits / 8, l.sizeBits])).toEqual([
+      ['e', 0, 8],
+      ['i', 4, 32],
+    ]);
+  }, 180_000);
+
+  it('libc++ containers: the compressed allocator occupies nothing', async () => {
+    const a = await analyze(
+      `#include <vector>
+struct Probe { std::vector<bool> v; };`,
+      'c++',
+      'x86_64-unknown-linux-gnu',
+    );
+    const m = modelOf(a, 'Probe');
+    expect(m.record.sizeBytes).toBe(24);
+    // Three words plus an allocator that shares __begin_'s address.
+    expect(m.leaves.map((l) => [l.name, l.offsetBits / 8, l.sizeBits / 8])).toEqual([
+      ['__begin_', 0, 8],
+      ['__size_', 8, 8],
+      ['__cap_', 16, 8],
+      ['__alloc_', 0, 0],
+    ]);
+    expect(anyOverlap(buildLayoutTree(m))).toBe(false);
+  }, 180_000);
+
   it('each template instantiation is its own record', async () => {
     const a = await analyze(
       `template <class T> struct Pair { T a; T b; };
