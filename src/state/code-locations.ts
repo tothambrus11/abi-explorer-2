@@ -10,7 +10,7 @@
 // column falls in.
 
 import { anchorOf, type Anchor, type Group, type Leaf, type RenderModel } from '$core/types';
-import { isNameable } from '$core/render';
+import { isNameable, sharedColorClass } from '$core/render';
 import type { MemberRef } from './store.svelte';
 
 /** No single colour stands for this mark. */
@@ -85,8 +85,11 @@ export type LineIndex = Map<number, LineInfo>;
 function markColour(model: RenderModel, items: (Leaf | Group)[], leaves: Set<number>): string {
   const first = items[0];
   if (first && 'colorClass' in first) return first.colorClass ?? COMPOUND;
-  const colours = new Set([...leaves].map((li) => model.leaves[li]?.colorClass));
-  return colours.size === 1 ? ([...colours][0] ?? COMPOUND) : COMPOUND;
+  // One definition of "the colour these leaves stand for", shared with the
+  // field table — including the part where a vtable pointer does not count as
+  // a second colour. Two copies of this rule is how the grid, the table and
+  // the gutter came to disagree about every polymorphic base.
+  return sharedColorClass(model, leaves) ?? COMPOUND;
 }
 
 /** Map the visible render models to a per-line index for the editor. */

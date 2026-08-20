@@ -605,6 +605,60 @@ test.describe('ABI Explorer', () => {
     await expect(page.locator('.record .title')).toContainText('Probe');
   });
 
+  test('inherited members: every row lights its own bytes, and is named in the legend', async ({
+    page,
+  }) => {
+    // A record with three bases and three vtable pointers, which is where both
+    // halves of this went wrong. The grid painted the inherited members in
+    // their own colours; the table drew no chip beside a single base row and
+    // the gutter drew the neutral ring, because the vtable pointer inside each
+    // base counted as a second colour and made the base look multi-coloured.
+    await waitReady(page);
+    await page.selectOption('#example', '6'); // C++ virtual inheritance (diamond)
+    await expect.poll(() => page.locator('#record-chips .chip').count()).toBeGreaterThan(3);
+    await page.locator('#record-chips .chip', { hasText: 'struct D' }).click();
+    await expect(page.locator('.field-table tbody tr')).toHaveCount(10);
+
+    const bytes = (t: string | null) => Number(/(-?\d+)\s*B/.exec(t ?? '')?.[1] ?? NaN);
+    const rows = page.locator('.field-table tbody tr');
+    const seen: string[] = [];
+    for (let i = 0; i < (await rows.count()); i++) {
+      const row = rows.nth(i);
+      const name = (await row.locator('td.name').textContent())?.trim() ?? '';
+      const at = bytes(await row.locator('td').nth(3).textContent());
+      const size = bytes(await row.locator('td').nth(4).textContent());
+      await row.hover();
+      const lit = await page.evaluate(() =>
+        [...document.querySelectorAll('.grid .cell')]
+          .map((c, b) => (c.classList.contains('hovered') ? b : -1))
+          .filter((b) => b >= 0),
+      );
+      // Exactly its own bytes — not one more, which is what "a border around
+      // most of the other sections" would look like.
+      const expected = Array.from({ length: size }, (_, k) => at + k);
+      expect(lit, `${name} (@${at}, ${size} B)`).toEqual(expected);
+
+      const chip = row.locator('td.chip-col .chip');
+      if ((await chip.count()) > 0) {
+        // Just the colour token: the class also carries Svelte's scope hash.
+        const cls = (await chip.getAttribute('class')) ?? '';
+        seen.push(/\bc-[\w-]+/.exec(cls)?.[0] ?? cls);
+      }
+    }
+
+    // Each of the three bases is named in the legend, in a colour of its own —
+    // and `d`, the one member D declares itself.
+    expect(seen.sort()).toEqual(['c-1', 'c-2', 'c-3', 'c-4']);
+
+    // The gutter agrees: no neutral rings where a declarator introduces one
+    // base. `c-compound` is for a declarator that genuinely stands for several.
+    const dots = await page.evaluate(() =>
+      [...document.querySelectorAll('[class*="member-dot"]')].map((d) => d.className),
+    );
+    expect(dots.length).toBeGreaterThan(0);
+    expect(dots.filter((c) => c.includes('member-c-compound'))).toEqual([]);
+  });
+
   test('stacked view shows all records and links hovers across sections', async ({ page }) => {
     await waitReady(page);
     await page.selectOption('#example', '2');

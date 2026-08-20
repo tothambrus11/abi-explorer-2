@@ -6,7 +6,15 @@
 // and a failure names the record either way.
 
 import { describe, it, expect } from 'vitest';
-import { flattenVisible } from '$core/render';
+import {
+  assignColors,
+  flattenVisible,
+  groupColorClass,
+  isNameable,
+  SPECIAL_COLOR,
+} from '$core/render';
+import { resolveHover, type HoverIntent } from '$state/hover';
+import { buildLineIndex, COMPOUND } from '$state/code-locations';
 import type { RenderModel, TreeNode } from '$core/types';
 
 export interface Subject {
@@ -21,22 +29,56 @@ const ANON_LABEL = '(anonymous)';
 const allNodes = (nodes: TreeNode[]): TreeNode[] =>
   nodes.flatMap((n) => [n, ...allNodes(n.children)]);
 
+/** The key the laws resolve hovers against; any name will do for one model. */
+const KEY = 'r';
+
 /**
- * What hovering a table row paints in the byte grid: `ByteGrid` lights a byte
- * when any leaf covering it is in `store.hover.members`, and a row contributes
- * exactly its own leaves (`resolveIntent` in `$state/hover`).
+ * Which bytes the grid lights when a table row is hovered — by *asking the
+ * resolver*, not by restating it.
+ *
+ * This used to walk `node.leafIndexes` directly, on the reasoning that a row
+ * contributes exactly its own leaves. That is half of what happens: a hover
+ * also carries `ranges`, the whole extent of what was hovered, and `ByteGrid`
+ * lights padding inside that extent as well. A law that reimplements the thing
+ * it is checking can only ever agree with the version of it that was true when
+ * it was written, so this one calls `resolveHover` and reads the two fields
+ * `ByteGrid` reads.
  */
-function highlightedBytes(model: RenderModel, node: TreeNode): number {
-  const size = model.record.sizeBytes;
+function litBytes(model: RenderModel, node: TreeNode): Set<number> {
+  const intent: HoverIntent =
+    node.kind === 'leaf'
+      ? { kind: 'leaf', record: KEY, leaf: node.ref, tooltip: null }
+      : { kind: 'group', record: KEY, group: node.ref, tooltip: null };
+  const hover = resolveHover({
+    intent,
+    mouse: null,
+    cursor: null,
+    preferCursor: false,
+    models: new Map([[KEY, model]]),
+    lines: new Map(),
+    records: [],
+    current: KEY,
+  });
   const bytes = new Set<number>();
-  for (const li of node.leafIndexes) {
-    const leaf = model.leaves[li];
+  // A coloured cell lights when its leaf is in `members`…
+  for (const m of hover.members) {
+    if (m.record !== KEY) continue;
+    const leaf = model.leaves[m.leaf];
     if (!leaf) continue;
-    const from = Math.max(0, Math.floor(leaf.offsetBits / 8));
-    const to = Math.min(size, Math.ceil((leaf.offsetBits + leaf.sizeBits) / 8));
-    for (let b = from; b < to; b++) bytes.add(b);
+    for (
+      let b = Math.floor(leaf.offsetBits / 8);
+      b < Math.ceil((leaf.offsetBits + leaf.sizeBits) / 8);
+      b++
+    ) {
+      bytes.add(b);
+    }
   }
-  return bytes.size;
+  // …and a padding cell when it falls inside `ranges`.
+  for (const r of hover.ranges) {
+    if (r.record !== KEY) continue;
+    for (let b = r.start; b < r.end; b++) bytes.add(b);
+  }
+  return bytes;
 }
 
 /**
@@ -141,16 +183,16 @@ export function modelLaws(what: string, subjects: () => Subject[]): void {
     });
   });
 
-  describe(`${what}: table and grid agree`, () => {
-    const rows = (model: RenderModel) => flattenVisible(model.tree, new Set()).map((r) => r.node);
+  const rows = (model: RenderModel) => flattenVisible(model.tree, new Set()).map((r) => r.node);
 
+  describe(`${what}: table and grid agree`, () => {
     it('a row lights up the grid exactly when it claims to occupy bytes', () => {
       forEvery(({ label, model }) => {
         for (const node of rows(model)) {
-          const lit = highlightedBytes(model, node);
+          const lit = litBytes(model, node);
           expect(
-            lit > 0,
-            `${label} / ${node.kind} ${node.ref}: size ${node.sizeBits} bits, ${lit} bytes lit`,
+            lit.size > 0,
+            `${label} / ${node.kind} ${node.ref}: size ${node.sizeBits} bits, ${lit.size} bytes lit`,
           ).toBe(node.sizeBits > 0);
         }
       });
@@ -159,14 +201,138 @@ export function modelLaws(what: string, subjects: () => Subject[]): void {
     it("never lights a byte outside the row's own extent", () => {
       forEvery(({ label, model }) => {
         for (const node of rows(model)) {
-          const lit = highlightedBytes(model, node);
-          // Bytes the row's own bit range touches — a 32-bit field starting at
-          // bit 1 straddles five bytes, not four.
-          const extent =
-            Math.ceil((node.offsetBits + node.sizeBits) / 8) - Math.floor(node.offsetBits / 8);
-          // Padding inside a compound member is covered by no leaf, so the lit
-          // count is a subset of the extent — never more than it.
-          expect(lit, `${label} / ${node.kind} ${node.ref}`).toBeLessThanOrEqual(extent);
+          // Every byte the row's own bit range touches — a 32-bit field
+          // starting at bit 1 straddles five bytes, not four. Stated as the
+          // set rather than the count: a row lighting the right *number* of
+          // the wrong bytes is exactly the failure worth catching, and a
+          // count cannot see it.
+          const lo = Math.floor(node.offsetBits / 8);
+          const hi = Math.ceil((node.offsetBits + node.sizeBits) / 8);
+          const stray = [...litBytes(model, node)].filter((b) => b < lo || b >= hi);
+          expect(
+            stray,
+            `${label} / ${node.kind} ${node.ref} lights bytes outside [${lo}, ${hi})`,
+          ).toEqual([]);
+        }
+      });
+    });
+  });
+
+  describe(`${what}: the legend`, () => {
+    /** A unit as `assignColors` means it: a direct compound member of this record. */
+    const units = (model: RenderModel) =>
+      model.groups.filter((g) => isNameable(g.path) && g.name !== ANON_LABEL);
+
+    it('paints every leaf of a unit in the unit’s own colour', () => {
+      // What `assignColors` is for: a colour identifies a *direct member*, so
+      // `hdr` is one block in the grid rather than a stripe per nested field.
+      // Vtable pointers are the deliberate exception — they are a category.
+      forEvery(({ label, model }) => {
+        for (const g of units(model)) {
+          const colours = new Set(
+            g.leafIndexes
+              .map((li) => model.leaves[li]!.colorClass)
+              .filter((c) => c !== SPECIAL_COLOR),
+          );
+          expect(colours.size, `${label}: ${g.name} spans ${[...colours].join(', ')}`).toBeLessThan(
+            2,
+          );
+        }
+      });
+    });
+
+    it('can name the colour of every unit it paints', () => {
+      // The field table draws a chip from `groupColorClass` and the editor a
+      // dot from the same rule; null means "no single colour stands for this",
+      // which is true of an anonymous aggregate and of nothing else. It was
+      // also true of every polymorphic base, because the vtable pointer inside
+      // it counted as a second colour — so `B base` had no chip and no dot
+      // while the grid painted its bytes blue.
+      forEvery(({ label, model }) => {
+        for (const g of units(model)) {
+          if (g.leafIndexes.length === 0) continue; // an empty base paints nothing
+          expect(groupColorClass(model, g), `${label}: ${g.name} has no colour to show`).not.toBe(
+            null,
+          );
+        }
+      });
+    });
+
+    /** The colours the table offers as chips, in row order. */
+    const chipsOf = (model: RenderModel): string[] => {
+      const chips: string[] = [];
+      for (const node of rows(model)) {
+        if (node.kind === 'leaf') {
+          const leaf = model.leaves[node.ref]!;
+          if (isNameable(leaf.path) && leaf.colorClass !== SPECIAL_COLOR) {
+            chips.push(leaf.colorClass!);
+          }
+        } else {
+          const g = model.groups[node.ref]!;
+          const c = isNameable(g.path) ? groupColorClass(model, g) : null;
+          if (c !== null && c !== SPECIAL_COLOR) chips.push(c);
+        }
+      }
+      return chips;
+    };
+
+    it('names every colour the grid paints', () => {
+      // The table is the grid's legend: a reader who sees a colour must be
+      // able to find the row it belongs to, and the table must not offer a
+      // colour that is nowhere in the picture.
+      forEvery(({ label, model }) => {
+        const painted = new Set(
+          model.leaves.map((l) => l.colorClass).filter((c) => c && c !== SPECIAL_COLOR),
+        );
+        expect(
+          [...new Set(chipsOf(model))].sort(),
+          `${label}: chips do not cover the grid`,
+        ).toEqual([...painted].sort());
+      });
+    });
+
+    it('hands each member a colour of its own, as far as the palette reaches', () => {
+      // "No two rows share a colour" is false as stated, which is how it was
+      // written first: the palette has eight hues and a record with more
+      // direct members than that reuses them, because a ninth nobody can tell
+      // from the third is worse. The first attempt to salvage it guarded on
+      // `directMembers().length <= PALETTE_SIZE` and still failed — on a union
+      // whose slot count that helper does not agree with.
+      //
+      // So state what is actually true and leave the wrapping to arithmetic:
+      // the allocation is injective. Run it again with a palette that cannot
+      // wrap, and any repeat left is a real collision.
+      forEvery(({ label, model }) => {
+        const wide = structuredClone(model);
+        assignColors(wide, 10_000);
+        const chips = chipsOf(wide);
+        expect(chips.length, `${label}: two members were given one colour`).toBe(
+          new Set(chips).size,
+        );
+      });
+    });
+
+    it('gives a declarator introducing one member that member’s colour', () => {
+      // The gutter dot. `c-compound` is the neutral ring, for a line whose
+      // declarator genuinely stands for several colours; a line introducing a
+      // single unit has a colour and must show it.
+      forEvery(({ label, model }) => {
+        const lines = buildLineIndex(new Map([[KEY, model]]));
+        for (const info of lines.values()) {
+          for (const mark of info.marks) {
+            if (mark.items.length !== 1) continue;
+            const it = mark.items[0]!;
+            // A leaf always stands for itself; a group only when it is a unit
+            // with leaves of its own.
+            const single =
+              !('leafIndexes' in it) ||
+              (isNameable(it.path) && it.name !== ANON_LABEL && it.leafIndexes.length > 0);
+            if (!single) continue;
+            expect(
+              mark.colorClass,
+              `${label}: line ${info.line} introduces ${it.name} with no colour`,
+            ).not.toBe(COMPOUND);
+          }
         }
       });
     });

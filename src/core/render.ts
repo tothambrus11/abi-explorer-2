@@ -272,6 +272,20 @@ function hydrate(nodes: WireNode[], leaves: Leaf[], groups: Group[], depth: numb
 const ANON = '(anonymous)';
 
 /**
+ * The colour every vtable/vbtable pointer gets, whatever member it belongs to.
+ * A category, not a member colour — see `sharedColorClass`.
+ */
+export const SPECIAL_COLOR = 'c-special';
+
+/**
+ * How many categorical colours there are. A record with more direct members
+ * than this reuses them — eight distinguishable hues that survive both themes
+ * is the constraint, and running out is better than inventing a ninth nobody
+ * can tell from the third.
+ */
+export const PALETTE_SIZE = 8;
+
+/**
  * Is a member with this path a member *of the record itself*? Direct fields
  * are, and so are fields injected by an anonymous aggregate (`msg.crc_lo`), but
  * a field of a named compound member is reached through it (`msg.hdr.kind`) and
@@ -298,12 +312,46 @@ export function directMembers(model: RenderModel): (Leaf | Group)[] {
 }
 
 /**
- * The single colour a compound member stands for, or null when it spans
- * several — an anonymous aggregate, whose fields are members in their own right.
+ * The single colour a set of leaves stands for, or null when they genuinely
+ * differ — an anonymous aggregate, whose fields are members in their own right.
+ *
+ * Vtable and vbtable pointers are set aside rather than counted. `c-special`
+ * marks a category, not a member: it is what `assignColors` gives every such
+ * pointer regardless of the unit it sits in, so counting it made every
+ * *polymorphic* base look like a unit spanning two colours. The consequence
+ * was visible everywhere but here — the field table drew no chip beside
+ * `B base` and the editor drew the neutral ring instead of the base's colour,
+ * while the byte grid painted its bytes in that colour perfectly happily.
+ */
+export function sharedColorClass(model: RenderModel, leaves: Iterable<number>): string | null {
+  const colours = new Set<string | undefined>();
+  let special = false;
+  for (const li of leaves) {
+    const c = model.leaves[li]?.colorClass;
+    if (c === SPECIAL_COLOR) special = true;
+    else colours.add(c);
+  }
+  if (colours.size === 1) return [...colours][0] ?? null;
+  // Nothing but pointers: a polymorphic base with no data of its own. That is
+  // what the grid paints there, so that is what stands for it.
+  if (colours.size === 0) return special ? SPECIAL_COLOR : null;
+  return null;
+}
+
+/**
+ * The single colour a compound member stands for, or null when nothing stands
+ * for it.
+ *
+ * An anonymous aggregate is transparent — `assignColors` skips it and colours
+ * its fields individually, because they are members of the enclosing record in
+ * their own right. So it has no colour of its own, and the "spans several
+ * colours" test was only ever a proxy for that: a `union { unsigned short x; };`
+ * spans exactly one, and got a chip in the field table beside the chip on `x`,
+ * the same colour twice for one set of bytes. Say what is meant instead.
  */
 export function groupColorClass(model: RenderModel, group: Group): string | null {
-  const colours = new Set(group.leafIndexes.map((li) => model.leaves[li]?.colorClass));
-  return colours.size === 1 ? ([...colours][0] ?? null) : null;
+  if (group.name === ANON) return null;
+  return sharedColorClass(model, group.leafIndexes);
 }
 
 /**
@@ -315,7 +363,7 @@ export function groupColorClass(model: RenderModel, group: Group): string | null
  * This stays in the viewer on purpose. Which member is which is a fact about
  * the record; which colour says so is a fact about the screen.
  */
-export function assignColors(model: RenderModel, paletteSize = 8): void {
+export function assignColors(model: RenderModel, paletteSize = PALETTE_SIZE): void {
   const slot = (i: number) => `c-${(i % paletteSize) + 1}`;
   let next = 0;
   const assigned = new Set<number>();
@@ -325,13 +373,13 @@ export function assignColors(model: RenderModel, paletteSize = 8): void {
     for (const li of g.leafIndexes) {
       const leaf = model.leaves[li];
       if (!leaf || assigned.has(li)) continue;
-      leaf.colorClass = leaf.kind === 'special' ? 'c-special' : colour;
+      leaf.colorClass = leaf.kind === 'special' ? SPECIAL_COLOR : colour;
       assigned.add(li);
     }
   }
   model.leaves.forEach((leaf, li) => {
     if (assigned.has(li)) return;
-    leaf.colorClass = leaf.kind === 'special' ? 'c-special' : slot(next++);
+    leaf.colorClass = leaf.kind === 'special' ? SPECIAL_COLOR : slot(next++);
   });
 }
 
