@@ -38,7 +38,8 @@ export function grantConsent(): void {
  * There is no same-origin probe. The module is served from this origin, so a
  * probe would always succeed and the gate would never ask, while the bytes
  * still cross the user's connection. Only a previous visit having cached it
- * counts as "already here", which is what the worker's cache warm records.
+ * counts as "already here" — the worker puts the files in the Cache API as it
+ * streams them, so even a visit abandoned mid-download leaves this true.
  */
 interface Bundle {
   bytes: number;
@@ -56,8 +57,8 @@ export function activeBundle(): Bundle {
 }
 
 /**
- * Is the bundle available without a large download? Either vendored next to the
- * app, or already cached by an earlier visit.
+ * Is the bundle available without a large download — that is, did an earlier
+ * visit already put it in the Cache API?
  */
 async function availableLocally(bundle: Bundle): Promise<boolean> {
   try {
