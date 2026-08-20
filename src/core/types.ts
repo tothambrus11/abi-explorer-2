@@ -89,8 +89,10 @@ export interface Leaf {
   /** Record that declares this member, as clang names it. */
   owner: string;
   /**
-   * Its type is empty and it shares an address with something else, so it
-   * occupies nothing — which is what `[[no_unique_address]]` permits.
+   * It occupies nothing: an empty type allowed to share an address, which is
+   * what `[[no_unique_address]]` permits. It still has an offset, and the byte
+   * map draws nothing there — the bytes belong to whatever else is present, or
+   * to padding when nothing is.
    */
   sharesAddress: boolean;
   location: SourceLocation | null;

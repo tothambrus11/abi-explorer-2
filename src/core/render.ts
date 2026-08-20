@@ -47,7 +47,10 @@ export interface WireLeaf {
   path: string[];
   ownerId: number | null;
   ownerName: string;
-  /** Its type is empty and something else already covers the byte it starts on. */
+  /**
+   * Clang says it occupies no storage — an empty type allowed to share an
+   * address. It still has an offset, and nothing is drawn there.
+   */
   sharesAddress: boolean;
   location: WireLocation | null;
 }
