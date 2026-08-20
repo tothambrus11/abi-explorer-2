@@ -6,7 +6,6 @@
   import { createEditor, setEditorTheme, type EditorHandle } from './monaco';
   import { theme } from '$state/theme.svelte';
   import { memberDots } from '$state/editor-view';
-  import StatusIcon from './StatusIcon.svelte';
   import { tooltip } from './tooltip';
 
   const { session }: { session: Session } = $props();
@@ -89,8 +88,9 @@
 </script>
 
 <section class="pane">
+  <!-- Whether it compiled is on the Code tab now: it was one line above the
+       editor, where a phone has no line to spare and the tab is already there. -->
   <div class="head">
-    <StatusIcon />
     <select
       id="example"
       class="input small"

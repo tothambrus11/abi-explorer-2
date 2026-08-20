@@ -60,7 +60,7 @@
     <ChevronDown size={16} />
   </button>
   {#if open}
-    <div class="menu" role="listbox" aria-label="Themes">
+    <div class="popover menu" role="listbox" aria-label="Themes">
       {#each [['Light', light], ['Dark', dark]] as const as [label, list] (label)}
         <div class="group">{label}</div>
         {#each list as t (t.id)}
@@ -94,24 +94,18 @@
 
 <style>
   .theme {
-    position: relative;
+    /* Deliberately not positioned: the menu anchors to `.actions` in the top
+       bar instead, whose right edge is the bar's own. Anchored here it hung
+       off the chevron and ran off the left of a phone screen. */
     display: inline-flex;
     gap: 4px;
   }
   .chevron {
     width: 24px;
   }
+  /* Positioning, clamping and the frame come from `.popover` in app.css. */
   .menu {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 6px);
-    z-index: 20;
     min-width: 200px;
-    background: var(--surface-1);
-    border: 1px solid var(--border);
-    border-radius: 9px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-    padding: 6px;
   }
   .group {
     font-size: 11px;

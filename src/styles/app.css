@@ -318,3 +318,37 @@ input.input {
   width: 100%;
   overflow: hidden;
 }
+
+/* A menu hanging off a control in the top bar.
+   Anchored to the right of the nearest positioned ancestor — the whole action
+   cluster, not the single button — and clamped to the viewport. Hung off the
+   button instead, a 200px menu two thirds of the way across a 390px bar ran
+   off the *left* edge of the screen, and "Solarized Light" read "zed Light". */
+.popover {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 30;
+  box-sizing: border-box;
+  max-width: calc(100vw - 24px);
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  padding: 6px;
+}
+
+/* The dock tabs' own state (see PanelTab.svelte). Global because the spinner
+   is rendered by the icon component, so a scoped selector never reaches it —
+   which is why the previous `class="spin"` on it did nothing at all. */
+@keyframes abix-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.dock-tab .spin {
+  animation: abix-spin 1s linear infinite;
+}

@@ -41,66 +41,72 @@
 </script>
 
 <section class="controls">
-  <div class="group">
-    <div class="segmented" role="radiogroup" aria-label="Language">
-      {#each LANGS as l (l.id)}
-        <label use:tooltip={l.tip} class:soon={l.soon}
-          ><input
-            type="radio"
-            name="lang"
-            value={l.id}
-            checked={store.options.lang === l.id}
-            disabled={l.soon}
-            onchange={() => {
-              store.setLanguage(l.id);
-            }}
-          /><span>{l.label}</span></label
+  <!-- The scrolling part. `display: contents` on a wide screen, so the groups
+       are flex children of `.controls` exactly as before; a real scroll box on
+       a phone, where the row does not wrap. It exists so that the box that
+       scrolls is not also the box the options panel has to escape. -->
+  <div class="lanes">
+    <div class="group">
+      <div class="segmented" role="radiogroup" aria-label="Language">
+        {#each LANGS as l (l.id)}
+          <label use:tooltip={l.tip} class:soon={l.soon}
+            ><input
+              type="radio"
+              name="lang"
+              value={l.id}
+              checked={store.options.lang === l.id}
+              disabled={l.soon}
+              onchange={() => {
+                store.setLanguage(l.id);
+              }}
+            /><span>{l.label}</span></label
+          >
+        {/each}
+      </div>
+      {#if stds.length}
+        <select
+          id="std"
+          class="input"
+          aria-label="Language standard"
+          bind:value={store.options.std}
+          use:tooltip={'Language standard (-std=)'}
         >
-      {/each}
+          {#each stds as s (s)}<option value={s}>{s}</option>{/each}
+        </select>
+      {/if}
     </div>
-    {#if stds.length}
-      <select
-        id="std"
-        class="input"
-        aria-label="Language standard"
-        bind:value={store.options.std}
-        use:tooltip={'Language standard (-std=)'}
-      >
-        {#each stds as s (s)}<option value={s}>{s}</option>{/each}
-      </select>
-    {/if}
-  </div>
 
-  <div class="group">
-    <select
-      id="target"
-      class="input"
-      aria-label="Target"
-      value={selectValue}
-      onchange={onTarget}
-      use:tooltip={`Target triple (--target=${store.options.triple}). Layout is computed for this ABI.`}
-    >
-      {#each TARGET_GROUPS as g (g.label)}
-        <optgroup label={g.label}>
-          {#each g.targets as t (t.triple)}
-            <option value={t.triple}>{t.label} · {t.triple}</option>
-          {/each}
-        </optgroup>
-      {/each}
-      <option value={CUSTOM}>Custom triple…</option>
-    </select>
-    {#if selectValue === CUSTOM}
-      <input
-        id="custom-triple"
-        class="input mono"
-        placeholder="e.g. thumbv7em-none-eabihf"
-        spellcheck="false"
-        value={customTriple}
-        oninput={onCustom}
-        aria-label="Custom target triple"
-        use:tooltip={'Any LLVM target triple, e.g. thumbv7em-none-eabihf'}
-      />
-    {/if}
+    <div class="group">
+      <select
+        id="target"
+        class="input"
+        aria-label="Target"
+        value={selectValue}
+        onchange={onTarget}
+        use:tooltip={`Target triple (--target=${store.options.triple}). Layout is computed for this ABI.`}
+      >
+        {#each TARGET_GROUPS as g (g.label)}
+          <optgroup label={g.label}>
+            {#each g.targets as t (t.triple)}
+              <option value={t.triple}>{t.label} · {t.triple}</option>
+            {/each}
+          </optgroup>
+        {/each}
+        <option value={CUSTOM}>Custom triple…</option>
+      </select>
+      {#if selectValue === CUSTOM}
+        <input
+          id="custom-triple"
+          class="input mono"
+          placeholder="e.g. thumbv7em-none-eabihf"
+          spellcheck="false"
+          value={customTriple}
+          oninput={onCustom}
+          aria-label="Custom target triple"
+          use:tooltip={'Any LLVM target triple, e.g. thumbv7em-none-eabihf'}
+        />
+      {/if}
+    </div>
   </div>
 
   <details class="more">
@@ -174,6 +180,7 @@
 
 <style>
   .controls {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 22px;
@@ -181,6 +188,11 @@
     padding: 10px 20px;
     background: var(--surface-1);
     border-bottom: 1px solid var(--border);
+  }
+  /* No box of its own on a wide screen: the groups inside are the flex
+     children, which is what the rules below expect. */
+  .lanes {
+    display: contents;
   }
   .group {
     display: flex;
@@ -280,10 +292,17 @@
       padding: 5px 10px;
       gap: 8px;
       flex-wrap: nowrap;
+    }
+    .lanes {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1 1 auto;
+      min-width: 0;
       overflow-x: auto;
       scrollbar-width: none;
     }
-    .controls::-webkit-scrollbar {
+    .lanes::-webkit-scrollbar {
       display: none;
     }
     /* Only one group has anything to give. Letting them all shrink squeezed
@@ -340,6 +359,52 @@
     .more[open] > summary::after {
       content: '⋯';
       color: var(--text-primary);
+    }
+    /* A panel, not a row. `.more[open] { flex-basis: 100% }` works in a bar
+       that wraps; in one that does not, opening it pushed a column of
+       checkboxes out to the right of the row, over the controls and off the
+       screen — half of "List nested anonymous records" and every flag name
+       cut off. Anchored to `.controls` rather than to the summary so it spans
+       the width and cannot start off-screen, and outside `.lanes` so the
+       horizontal scroll does not clip it. */
+    .more[open] {
+      flex-basis: auto;
+      position: static;
+    }
+    .more[open] > .grid {
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      top: calc(100% + 4px);
+      z-index: 30;
+      box-sizing: border-box;
+      display: grid;
+      /* One column on a portrait phone, three on a phone held sideways —
+         where the panel has width to spare and no height at all. */
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px 20px;
+      align-items: start;
+      max-height: min(70vh, 460px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 12px 14px;
+      background: var(--surface-1);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
+    }
+    /* One per line, label first: at this width the two-column flow put a
+       select under the label it belonged to. */
+    .more[open] > .grid .opt {
+      flex-wrap: wrap;
+      gap: 6px 8px;
+    }
+    .more[open] > .grid .opt.wide {
+      flex: 1 1 auto;
+      grid-column: 1 / -1;
+    }
+    .more[open] > .grid .opt.wide .input {
+      flex-basis: 100%;
     }
   }
 </style>

@@ -9,6 +9,7 @@ import {
   type DockviewApi,
   type IContentRenderer,
   type DockviewTheme,
+  type ITabRenderer,
   type SerializedDockview,
   type AddPanelOptions,
 } from 'dockview';
@@ -21,10 +22,19 @@ import ResultsPane from './ResultsPane.svelte';
 import Diagnostics from './Diagnostics.svelte';
 import ThemeEditorPanel from './ThemeEditorPanel.svelte';
 import ColorPicker from './ColorPicker.svelte';
+import PanelTab from './PanelTab.svelte';
 
-const LAYOUT_KEY_WIDE = 'abix-dock-layout-v1';
-const LAYOUT_KEY_NARROW = 'abix-dock-layout-narrow-v1';
-const LAYOUT_KEY_SHORT = 'abix-dock-layout-short-v1';
+// v2: the tab renderers below are recorded in the serialized layout, so a
+// layout saved by v1 would keep plain tabs — and on a phone, keep Diagnostics
+// as a panel of its own under a two-line editor. Both are the defaults this
+// version exists to change, so the stored ones are retired rather than
+// migrated. The cost is one reset of hand-arranged panels.
+const LAYOUT_KEY_WIDE = 'abix-dock-layout-v2';
+const LAYOUT_KEY_NARROW = 'abix-dock-layout-narrow-v2';
+const LAYOUT_KEY_SHORT = 'abix-dock-layout-short-v2';
+/** Tab renderers: `status` shows whether the code compiled, `count` how many diagnostics. */
+const TAB_STATUS = 'tab-status';
+const TAB_COUNT = 'tab-count';
 export const PANEL_EDITOR = 'editor';
 export const PANEL_LAYOUT = 'layout';
 export const PANEL_DIAGNOSTICS = 'diagnostics';
@@ -33,7 +43,7 @@ export const PANEL_PICKER = 'color-picker';
 
 /** The panels every layout has (in creation order; positions are relative to earlier ones). */
 const CORE_PANELS: AddPanelOptions[] = [
-  { id: PANEL_EDITOR, component: PANEL_EDITOR, title: 'Code' },
+  { id: PANEL_EDITOR, component: PANEL_EDITOR, title: 'Code', tabComponent: TAB_STATUS },
   {
     id: PANEL_LAYOUT,
     component: PANEL_LAYOUT,
@@ -44,6 +54,7 @@ const CORE_PANELS: AddPanelOptions[] = [
     id: PANEL_DIAGNOSTICS,
     component: PANEL_DIAGNOSTICS,
     title: 'Diagnostics',
+    tabComponent: TAB_COUNT,
     position: { referencePanel: PANEL_EDITOR, direction: 'below' },
   },
 ];
@@ -87,6 +98,40 @@ export function mountDock(container: HTMLElement, session: Session): Dock {
 
   const api = createDockview(container, {
     theme: ABIX_THEME,
+    // Only the two panels that ask for one; everything else keeps dockview's
+    // own tab, which is what `undefined` means here.
+    createTabComponent: (options): ITabRenderer | undefined => {
+      const kind =
+        options.name === TAB_STATUS ? 'status' : options.name === TAB_COUNT ? 'count' : null;
+      if (!kind) return undefined;
+      const element = document.createElement('div');
+      element.className = 'dock-tab';
+      let instance: Record<string, unknown> | null = null;
+      return {
+        element,
+        init(params) {
+          instance = mount(PanelTab, {
+            target: element,
+            props: {
+              // `params.title`, not `params.api.title`: the api's is still
+              // undefined while the tab is being built, which rendered a tab
+              // with a close button and no name.
+              title: params.title,
+              kind,
+              // A custom tab renders its own close button: dockview's lives in
+              // the default tab, not in the frame around it.
+              close: () => {
+                params.api.close();
+              },
+            },
+          });
+        },
+        dispose() {
+          if (instance) void unmount(instance);
+          instance = null;
+        },
+      };
+    },
     disableFloatingGroups: false,
     floatingGroupBounds: 'boundedWithinViewport',
     createComponent: (options): IContentRenderer => {
@@ -147,6 +192,7 @@ export function mountDock(container: HTMLElement, session: Session): Dock {
         id: PANEL_DIAGNOSTICS,
         component: PANEL_DIAGNOSTICS,
         title: 'Diagnostics',
+        tabComponent: TAB_COUNT,
         position: { referencePanel: PANEL_LAYOUT, direction: 'within' },
       });
       api.getPanel(PANEL_LAYOUT)?.api.setActive();
@@ -165,6 +211,7 @@ export function mountDock(container: HTMLElement, session: Session): Dock {
         id: PANEL_DIAGNOSTICS,
         component: PANEL_DIAGNOSTICS,
         title: 'Diagnostics',
+        tabComponent: TAB_COUNT,
         position: { referencePanel: PANEL_LAYOUT, direction: 'within' },
       });
       api.getPanel(PANEL_LAYOUT)?.api.setActive();
