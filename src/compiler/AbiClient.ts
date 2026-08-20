@@ -10,7 +10,8 @@ import type { WireResponse } from '$core/render';
 /** How far along the module's load is. The UI reports it; nothing else reads it. */
 export type ModuleStatus =
   | { state: 'idle' }
-  | { state: 'loading'; phase: 'download' | 'unpack' | 'compile'; done: number; total: number }
+  /** `total` is 0 when the size is not known — show an indeterminate bar. */
+  | { state: 'loading'; phase: 'download' | 'compile'; done: number; total: number }
   | { state: 'ready'; version: string }
   | { state: 'failed'; message: string };
 
@@ -74,7 +75,19 @@ export class AbiClient implements AbiModule {
       value?: unknown;
       message?: string;
       version?: string;
+      phase?: 'download' | 'compile';
+      done?: number;
+      total?: number;
     };
+    if (msg.type === 'progress') {
+      this.setStatus({
+        state: 'loading',
+        phase: msg.phase ?? 'download',
+        done: msg.done ?? 0,
+        total: msg.total ?? 0,
+      });
+      return;
+    }
     if (msg.type === 'ready') {
       this.setStatus({ state: 'ready', version: msg.version ?? 'clang (wasm)' });
       this.readyResolve?.();

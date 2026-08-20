@@ -12,30 +12,31 @@
   const loading = $derived(store.compiler.state !== 'ready');
   const stacked = $derived(store.view === 'stack');
   const empty = $derived(store.analysis !== null && store.visibleRecords.length === 0);
+  const mb = (n: number) => (n / 1048576).toFixed(0);
   const loadText = $derived.by(() => {
     const c = store.compiler;
     switch (c.state) {
       case 'idle':
         return 'Starting…';
-      case 'loading': {
-        const pct = c.total ? Math.round((100 * c.done) / c.total) : 0;
-        if (c.phase === 'download') {
-          return `Downloading clang (wasm)… ${pct}% of ${(c.total / 1048576).toFixed(0)} MB`;
-        }
-        if (c.phase === 'unpack') return 'Unpacking…';
-        return `Preparing clang… ${pct}%`;
-      }
+      case 'loading':
+        if (c.phase === 'compile') return 'Preparing clang…';
+        // No total means the size is not known — a linked local build has no
+        // manifest. Say what is happening rather than invent a percentage.
+        return c.total
+          ? `Downloading clang (wasm)… ${mb(c.done)} of ${mb(c.total)} MB`
+          : 'Downloading clang (wasm)…';
       case 'ready':
         return '';
       case 'failed':
         return `Failed to load clang: ${c.message}`;
     }
   });
-  const loadPct = $derived(
-    store.compiler.state === 'loading' && store.compiler.total
-      ? Math.round((100 * store.compiler.done) / store.compiler.total)
-      : 0,
-  );
+  /** Null when there is nothing honest to fill a bar with. */
+  const loadPct = $derived.by(() => {
+    const c = store.compiler;
+    if (c.state !== 'loading' || !c.total) return null;
+    return Math.min(100, Math.round((100 * c.done) / c.total));
+  });
 </script>
 
 <section class="pane">
@@ -57,7 +58,13 @@
     </div>
   {:else if loading}
     <div class="loading" class:failed={store.compiler.state === 'failed'}>
-      <div class="track"><div class="fill" style:width="{loadPct}%"></div></div>
+      <div class="track">
+        {#if loadPct === null}
+          <div class="fill indeterminate"></div>
+        {:else}
+          <div class="fill" style:width="{loadPct}%"></div>
+        {/if}
+      </div>
       <p id="load-text">{loadText}</p>
       <p class="note">~{DOWNLOAD_MB} MB on first visit, then served from browser cache.</p>
     </div>
@@ -146,6 +153,20 @@
     width: 0;
     background: var(--accent);
     transition: width 0.2s;
+  }
+  /* No size to count against: sweep rather than sit at zero. */
+  .fill.indeterminate {
+    width: 35%;
+    transition: none;
+    animation: sweep 1.1s ease-in-out infinite;
+  }
+  @keyframes sweep {
+    0% {
+      margin-left: -35%;
+    }
+    100% {
+      margin-left: 100%;
+    }
   }
   .note {
     color: var(--text-muted);

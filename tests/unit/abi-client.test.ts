@@ -75,6 +75,29 @@ describe('AbiClient', () => {
     expect(made).toBe(1);
   });
 
+  it('turns worker progress into a status the UI can show', async () => {
+    const seen: ModuleStatus[] = [];
+    const worker = new FakeWorker();
+    const client = new AbiClient({ createWorker: () => worker });
+    client.onStatus((s) => seen.push(s));
+    const started = client.start();
+    worker.reply({ type: 'progress', phase: 'download', done: 1_000, total: 49_000 });
+    worker.reply({ type: 'progress', phase: 'download', done: 49_000, total: 49_000 });
+    worker.reply({ type: 'progress', phase: 'compile', done: 0, total: 0 });
+    worker.reply({ type: 'ready', version: 'v' });
+    await started;
+    expect(
+      seen.map((s) => (s.state === 'loading' ? `${s.phase} ${s.done}/${s.total}` : s.state)),
+    ).toEqual([
+      'idle',
+      'download 0/0', // the client's own guess, until the worker says otherwise
+      'download 1000/49000',
+      'download 49000/49000',
+      'compile 0/0',
+      'ready',
+    ]);
+  });
+
   it('answers each request with its own reply, out of order', async () => {
     // Two queries in flight: the second answers first. Correlating by id is the
     // whole reason the protocol has one.

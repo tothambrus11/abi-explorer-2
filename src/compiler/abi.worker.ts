@@ -21,6 +21,7 @@ type Request =
 
 type Response =
   | { type: 'ready'; version: string }
+  | { type: 'progress'; phase: 'download' | 'compile'; done: number; total: number }
   | { type: 'result'; id: number; value: unknown }
   | { type: 'error'; id?: number; message: string };
 
@@ -48,8 +49,88 @@ type EmscriptenFactory = (options: {
   cwrap: (name: string, ret: string, args: string[]) => (...a: unknown[]) => string;
 }>;
 
+/** The two files worth a progress bar. The glue is 300 kB and arrives first. */
+const BIG_ASSETS = ['abi_query.wasm', 'abi_query.data'] as const;
+const CACHE = 'abix-abi-module-v1';
+
+/**
+ * Fetch the big files ourselves, so the download has a number attached to it
+ * and lands in the Cache API before the module needs it.
+ *
+ * Emscripten would fetch them itself, and did — but from inside its own loader,
+ * where nothing can see how far along it is, and only *after* a successful boot
+ * was there anything to cache. A first visit interrupted halfway left nothing
+ * behind, and the loading screen claimed "0% of 0 MB" for the ten seconds it
+ * took, because the client had no numbers to report.
+ *
+ * Sizes come from the release manifest, which records the uncompressed length
+ * of every file. `Content-Length` cannot: the transport is gzipped and the
+ * reader yields decompressed bytes, so the fraction would run past 100%.
+ *
+ * Every failure here falls back to letting Emscripten do what it always did.
+ */
+async function prefetch(): Promise<Map<string, string> | null> {
+  if (typeof caches === 'undefined') return null;
+  try {
+    const sizes = new Map<string, number>();
+    try {
+      const manifest = (await (await fetch(new URL('manifest.json', BASE))).json()) as {
+        files?: Record<string, { path: string; bytes: number }>;
+      };
+      const byKey: Record<string, string> = {
+        wasm: 'abi_query.wasm',
+        headers: 'abi_query.data',
+      };
+      for (const [key, file] of Object.entries(manifest.files ?? {})) {
+        const local = byKey[key];
+        if (local) sizes.set(local, file.bytes);
+      }
+    } catch {
+      // A linked local build has no manifest; the bar goes indeterminate.
+    }
+
+    const cache = await caches.open(CACHE);
+    const total = [...sizes.values()].reduce((a, b) => a + b, 0);
+    let done = 0;
+    const urls = new Map<string, string>();
+
+    for (const name of BIG_ASSETS) {
+      const url = new URL(name, BASE).href;
+      let response = await cache.match(url);
+      if (response) {
+        // Already local: no download, and no pretending there was one.
+        done += sizes.get(name) ?? 0;
+        post({ type: 'progress', phase: 'download', done, total });
+      } else {
+        const network = await fetch(url);
+        if (!network.ok || !network.body) return null;
+        const reader = network.body.getReader();
+        const chunks: Uint8Array[] = [];
+        for (;;) {
+          const { done: finished, value } = await reader.read();
+          if (finished) break;
+          chunks.push(value);
+          done += value.byteLength;
+          post({ type: 'progress', phase: 'download', done, total });
+        }
+        response = new Response(new Blob(chunks as BlobPart[]), {
+          headers: network.headers,
+        });
+        await cache.put(url, response.clone());
+      }
+      urls.set(name, URL.createObjectURL(await response.blob()));
+    }
+    return urls;
+  } catch {
+    return null; // offline, no Cache API, a partial read — Emscripten's problem now
+  }
+}
+
 async function boot(): Promise<AbiWasmModule> {
   if (module) return module;
+
+  const local = await prefetch();
+  post({ type: 'progress', phase: 'compile', done: 0, total: 0 });
 
   // The glue is fetched and evaluated from a blob rather than imported by URL.
   // A dedicated worker's `import()` does not go through the service worker in
@@ -67,23 +148,28 @@ async function boot(): Promise<AbiWasmModule> {
     URL.revokeObjectURL(blobUrl);
   }
 
-  const instance = await factory({
-    // The blob has no directory of its own, so every sibling is named outright.
-    locateFile: (p) => new URL(p, BASE).href,
-    print: () => {},
-    printErr: () => {},
-  });
-  const rawQuery = instance.cwrap('abi_query', 'string', ['string']);
-  const rawVersion = instance.cwrap('abi_version', 'string', []);
+  try {
+    const instance = await factory({
+      // The blob has no directory of its own, so every sibling is named
+      // outright — from what we already hold, where we have it.
+      locateFile: (p) => local?.get(p) ?? new URL(p, BASE).href,
+      print: () => {},
+      printErr: () => {},
+    });
+    const rawQuery = instance.cwrap('abi_query', 'string', ['string']);
+    const rawVersion = instance.cwrap('abi_version', 'string', []);
 
-  module = {
-    query: (request) => JSON.parse(rawQuery(JSON.stringify(request))) as WireResponse,
-    targets: () =>
-      (JSON.parse(rawQuery(JSON.stringify({ listTargets: true }))) as { targets?: string[] })
-        .targets ?? [],
-    version: () => rawVersion(),
-  };
-  return module;
+    module = {
+      query: (request) => JSON.parse(rawQuery(JSON.stringify(request))) as WireResponse,
+      targets: () =>
+        (JSON.parse(rawQuery(JSON.stringify({ listTargets: true }))) as { targets?: string[] })
+          .targets ?? [],
+      version: () => rawVersion(),
+    };
+    return module;
+  } finally {
+    for (const url of local?.values() ?? []) URL.revokeObjectURL(url);
+  }
 }
 
 self.onmessage = (ev: MessageEvent<Request>) => {
@@ -113,32 +199,28 @@ self.onmessage = (ev: MessageEvent<Request>) => {
 };
 
 /**
- * Put the module's files in the Cache API so the next visit works offline.
+ * The glue, into the Cache API so the next visit works offline.
  *
  * The service worker cannot do this on its own here: a dedicated worker starts
  * alongside the registration, so its fetches on a first visit may go out before
  * anything is controlling them, and a cache-first route that never sees the
- * request never fills. Warming explicitly is what makes "works offline after
- * the first visit" true rather than merely likely — the service worker's route
- * then serves what this put there.
+ * request never fills. The two big files are cached as they stream in; this is
+ * the small one that is fetched by URL.
  *
  * Deliberately after `ready`: the user is reading their first layout while this
  * runs, and it must not delay that.
  */
-const CACHE = 'abix-abi-module-v1';
 async function warmCache(): Promise<void> {
   if (typeof caches === 'undefined') return;
   const cache = await caches.open(CACHE);
-  for (const file of ['abi_query.mjs', 'abi_query.wasm', 'abi_query.data']) {
-    const url = new URL(file, BASE).href;
-    if (await cache.match(url)) continue;
-    try {
-      // Served from the HTTP cache in practice: these were just fetched.
-      const response = await fetch(url);
-      if (response.ok) await cache.put(url, response);
-    } catch {
-      // Offline already, or the file is not there — the next visit retries.
-    }
+  const url = new URL('abi_query.mjs', BASE).href;
+  if (await cache.match(url)) return;
+  try {
+    // Served from the HTTP cache in practice: it was just fetched.
+    const response = await fetch(url);
+    if (response.ok) await cache.put(url, response);
+  } catch {
+    // Offline already — the next visit retries.
   }
 }
 

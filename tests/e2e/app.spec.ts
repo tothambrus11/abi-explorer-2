@@ -37,6 +37,69 @@ test.describe('ABI Explorer', () => {
     await expect.poll(() => statValues(page)).toEqual(['40', '8', '13']);
   });
 
+  test('the download reports what it is actually doing', async ({ page, context }) => {
+    // The loading screen used to read "0% of 0 MB" for as long as the module
+    // took, because nothing reported anything and the client had only its own
+    // initial guess to show. The worker streams the two big files itself now,
+    // so there are real numbers — and they land in the Cache API on the way
+    // past, which is what makes an interrupted first visit leave something
+    // behind rather than nothing.
+    //
+    // Throttled on purpose: over localhost the whole thing arrives inside one
+    // animation frame and there is nothing to observe.
+    const cdp = await context.newCDPSession(page);
+    await cdp.send('Network.enable');
+    await cdp.send('Network.emulateNetworkConditions', {
+      offline: false,
+      latency: 5,
+      downloadThroughput: 12 * 1024 * 1024,
+      uploadThroughput: -1,
+    });
+
+    interface Sample {
+      state: string;
+      phase?: string;
+      done?: number;
+      total?: number;
+    }
+    await page.addInitScript(() => {
+      const w = window as unknown as {
+        __seen: Sample[];
+        __abix?: { store?: { compiler: Sample } };
+      };
+      w.__seen = [];
+      const tick = () => {
+        const c = w.__abix?.store?.compiler;
+        if (c) w.__seen.push({ ...c });
+        if (c?.state !== 'ready') requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    await page.goto('/');
+    await expect(page.locator('#results')).toBeVisible({ timeout: 240_000 });
+
+    const seen = await page.evaluate(() => (window as unknown as { __seen: Sample[] }).__seen);
+    const downloads = seen.filter((x) => x.state === 'loading' && x.phase === 'download');
+    expect(downloads.length, 'the download was reported at all').toBeGreaterThan(1);
+    // A real size, from the module's own manifest, and it moves.
+    const last = downloads.at(-1)!;
+    expect(last.total).toBeGreaterThan(1_000_000);
+    expect(last.done).toBeGreaterThan(downloads[0]!.done!);
+    expect(last.done).toBeLessThanOrEqual(last.total!);
+    expect(
+      seen.some((x) => x.phase === 'compile'),
+      'and then it says it is preparing clang',
+    ).toBe(true);
+
+    // The bytes are in the cache before the module is even instantiated, so a
+    // visit abandoned during the download still leaves the next one offline.
+    const cached = await page.evaluate(async () => {
+      const cache = await caches.open('abix-abi-module-v1');
+      return (await cache.keys()).map((r) => new URL(r.url).pathname.split('/').pop());
+    });
+    expect(cached).toEqual(expect.arrayContaining(['abi_query.wasm', 'abi_query.data']));
+  });
+
   test('metered connection: the download waits for an explicit opt-in', async ({ page }) => {
     // Pretend the browser reports Data Saver before any app code runs.
     await page.addInitScript(() => {
