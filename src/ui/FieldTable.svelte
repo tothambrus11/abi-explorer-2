@@ -16,6 +16,10 @@
     pad: 'Bytes between the end of this member and the start of the next one.',
   };
 
+  /** One nesting level in pixels — also the width of the twisty column, so a
+      guide line runs down the middle of it. Mirrored by `--indent` in the CSS. */
+  const INDENT = 16;
+
   const { model, record, session }: { model: RenderModel; record: string; session: Session } =
     $props();
 
@@ -89,7 +93,7 @@
     >
     <tbody onmouseleave={leave}>
       {#each rows as { node, depth } (node.id)}
-        {@const indent = 8 + depth * 16}
+        {@const indent = 8 + depth * INDENT}
         {#if node.kind === 'leaf'}
           {@const leaf = model.leaves[node.ref]!}
           <tr
@@ -104,7 +108,7 @@
                    member is coloured by the unit above it instead. -->
               {#if leaf.direct}<span class="chip {leaf.colorClass}"></span>{/if}
             </td>
-            <td class="name" style:padding-left="{indent}px">
+            <td class="name" style:padding-left="{indent}px" style:--depth={depth}>
               <span class="twist-gap"></span><span class="fname">{leaf.name}</span>
             </td>
             <td class="type">{leaf.kind === 'special' ? '—' : leaf.type}</td>
@@ -145,7 +149,7 @@
             <td class="chip-col">
               {#if unitColour}<span class="chip {unitColour}"></span>{/if}
             </td>
-            <td class="name" style:padding-left="{indent}px">
+            <td class="name" style:padding-left="{indent}px" style:--depth={depth}>
               {#if canCollapse}
                 <button
                   type="button"
@@ -188,7 +192,11 @@
         {#if m.kind === 'zero-bitfield'}
           <tr class="marker">
             <td class="chip-col"></td>
-            <td class="name" style:padding-left="{8 + m.path.length * 16}px">
+            <td
+              class="name"
+              style:padding-left="{8 + m.path.length * INDENT}px"
+              style:--depth={m.path.length}
+            >
               <span class="twist-gap"></span><span class="fname muted"
                 >{m.type ?? ''} :0 (unit break)</span
               >
@@ -208,6 +216,9 @@
     overflow-x: auto;
   }
   .field-table {
+    /* Kept in step with `INDENT` above. */
+    --indent: 16px;
+    --guide-ink: color-mix(in srgb, var(--text-primary) 16%, transparent);
     border-collapse: collapse;
     width: 100%;
     font-size: 13px;
@@ -261,13 +272,33 @@
     height: 12px;
     border-radius: 3px;
   }
+  /* A flex row, not an inline one, for two reasons.
+     Whitespace: a group writes `{#if}…{/if} <button class="fname">` and a leaf
+     writes them adjacent, so the group's name sat one collapsed space further
+     right than its own children's — siblings at one depth did not line up, in
+     a column whose only job is to say what is nested in what. Flex items ignore
+     the whitespace between them.
+     Guides: `--depth` vertical lines, one per ancestor, each running down the
+     middle of that ancestor's twisty — so the line under an arrow is visibly
+     the arrow's. Indentation alone leaves a leaf beside a
+     collapsible sibling looking like its child, which is how `__padding1_917_`
+     came to read as a member of the union above it. */
   .name {
+    display: flex;
+    align-items: center;
     white-space: nowrap;
+    background: repeating-linear-gradient(
+        to right,
+        var(--guide-ink) 0 1px,
+        transparent 1px var(--indent)
+      )
+      var(--indent) 0 / calc(var(--depth) * var(--indent)) 100% no-repeat;
   }
   .twist,
   .twist-gap {
+    flex: none;
     display: inline-block;
-    width: 14px;
+    width: var(--indent);
     text-align: center;
     color: var(--text-muted);
   }

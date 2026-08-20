@@ -605,6 +605,55 @@ test.describe('ABI Explorer', () => {
     await expect(page.locator('.record .title')).toContainText('Probe');
   });
 
+  test('the tree says what is nested in what', async ({ page }) => {
+    // Siblings line up, whatever they are. A group writes its twisty and its
+    // name with a newline between them and a leaf writes them adjacent, so a
+    // collapsible row's name sat one collapsed space right of its own
+    // siblings' — and with no guide lines to fall back on, a leaf beside a
+    // collapsible sibling read as its child.
+    await waitReady(page);
+    await page.selectOption('#example', '9'); // C++ standard library (libc++)
+    await expect
+      .poll(() => page.locator('.record .title').textContent(), { timeout: 120_000 })
+      .toContain('Probe');
+
+    const byDepth = await page.evaluate(() => {
+      const out = new Map<string, { x: number; name: string; guides: number }[]>();
+      for (const cell of document.querySelectorAll<HTMLElement>('.field-table td.name')) {
+        const depth = cell.style.getPropertyValue('--depth').trim();
+        const name = cell.querySelector('.fname');
+        if (!depth || !name) continue;
+        const list = out.get(depth) ?? [];
+        out.set(depth, list);
+        list.push({
+          // Rounded: sub-pixel text metrics are not what this is about.
+          x: Math.round(name.getBoundingClientRect().left),
+          name: name.textContent,
+          // One vertical guide per ancestor, drawn as a background on the cell.
+          guides: Number(
+            /\/\s*(\d+(?:\.\d+)?)px/.exec(getComputedStyle(cell).background)?.[1] ?? 0,
+          ),
+        });
+      }
+      return [...out.entries()];
+    });
+
+    const depths = byDepth.map(([d]) => d);
+    expect(depths.length, 'the libc++ probe nests several levels deep').toBeGreaterThan(3);
+    for (const [depth, rows] of byDepth) {
+      const xs = [...new Set(rows.map((r) => r.x))];
+      expect(
+        xs,
+        `depth ${depth} does not line up: ${rows.map((r) => `${r.name}@${r.x}`).join(', ')}`,
+      ).toHaveLength(1);
+      // …and each row is fenced by one guide per level above it, so the depth
+      // is readable without counting pixels.
+      for (const r of rows) {
+        expect(r.guides, `${r.name} at depth ${depth}`).toBe(Number(depth) * 16);
+      }
+    }
+  });
+
   test('hovering a byte inside a base actually looks different', async ({ page }) => {
     // Not "is the class applied" — it always was. The base-subobject band
     // draws its bracket with a `box-shadow` on `.cell.band`, two classes to
