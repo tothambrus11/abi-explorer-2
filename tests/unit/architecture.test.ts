@@ -81,6 +81,40 @@ describe('architecture', () => {
     expect(offenders).toEqual([]);
   });
 
+  // The module directory is served immutable because every file in it is named
+  // after its content — every file but one. `manifest.json` is what says what
+  // those names currently are, so it is the only route to a new module, and a
+  // header telling the world to keep it for a year closes that route: the fix
+  // for stale modules would itself be cached, and returning visitors would
+  // find out about a release up to a year late. It matched `/vendor/*` and got
+  // exactly that header until this test existed.
+  it('the module manifest is not served immutable, unlike everything beside it', () => {
+    const rules = readFileSync(path.join(process.cwd(), 'public', '_headers'), 'utf8')
+      .split('\n')
+      .filter((line) => !line.trimStart().startsWith('#'));
+
+    /** What `_headers` ends up saying about a path: later rules win. */
+    const cacheControl = (target: string): string | undefined => {
+      let value: string | undefined;
+      let matching = false;
+      for (const line of rules) {
+        if (!line.startsWith(' ') && line.trim() !== '') {
+          const pattern = line.trim();
+          matching = pattern.endsWith('*')
+            ? target.startsWith(pattern.slice(0, -1))
+            : pattern === target;
+          continue;
+        }
+        const [name, ...rest] = line.trim().split(':');
+        if (matching && name?.toLowerCase() === 'cache-control') value = rest.join(':').trim();
+      }
+      return value;
+    };
+
+    expect(cacheControl('/vendor/abi/abi_query-1f3ff79bf58c.wasm.gz')).toContain('immutable');
+    expect(cacheControl('/vendor/abi/manifest.json')).toBe('no-cache');
+  });
+
   it('core stays free of browser globals so it runs anywhere', () => {
     const offenders: string[] = [];
     for (const file of filesIn(path.join(SRC, 'core'))) {
