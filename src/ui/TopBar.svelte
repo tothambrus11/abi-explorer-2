@@ -34,7 +34,7 @@
     <InfoMenu />
     <a
       class="icon-btn"
-      href="https://github.com/tothambrus11/clang-abi-wasm"
+      href="https://github.com/tothambrus11/abi-explorer-2"
       target="_blank"
       rel="noopener"
       aria-label="Source on GitHub"
@@ -93,8 +93,8 @@
   }
   .actions {
     /* The anchor every popover in here hangs off. Its right edge is the bar's
-       content edge, so a menu right-aligned to it can never start off-screen —
-       which is what happened when each menu was anchored to its own button. */
+       content edge, so a menu right-aligned to it can never start off-screen.
+       Anchored to its own button, each menu could and did. */
     position: relative;
     display: flex;
     align-items: center;
@@ -102,9 +102,9 @@
   }
 
   /* One row, always. The brand and the actions are two flex items in a
-     wrapping bar, so on a phone the actions dropped to a line of their own —
+     wrapping bar, so on a phone the actions dropped to a line of their own:
      44px of a 844px-tall screen spent on a second row that had room beside
-     the title. The wordmark goes instead: the mark next to it says the same
+     the title. The wordmark goes instead. The mark next to it says the same
      thing, and the page title says it in the tab. */
   @media (max-width: 760px) {
     .topbar {
