@@ -31,6 +31,45 @@ export interface HoverWord {
   startColumn: number;
 }
 
+/** A word with both ends, as the editor reports it. */
+export interface WordRange extends HoverWord {
+  /** 1-based, just past the last character. */
+  endColumn: number;
+}
+
+/**
+ * Widen a word to the template arguments written after it.
+ *
+ * An editor's idea of a word stops at `<`, so the pointer on `Pair<char>` asks
+ * about `Pair` — a spelling both instantiations answer to, and an index can
+ * only return one of them. They are different records with different sizes,
+ * and the pointer was on exactly one.
+ *
+ * Depth-counted rather than matched: `Pair<Pair<int>>` nests, and its closing
+ * `>>` is one token to a lexer and two brackets here. A `;`, `{` or `}` first
+ * means the `<` was a comparison and not an argument list at all — `a < b` is
+ * a thing people write.
+ */
+export function widenToTemplateArgs(lineText: string, word: WordRange): WordRange {
+  if (lineText[word.endColumn - 1] !== '<') return word;
+  let depth = 0;
+  for (let i = word.endColumn - 1; i < lineText.length; i++) {
+    const ch = lineText[i];
+    if (ch === '<') depth++;
+    else if (ch === '>') {
+      depth--;
+      if (depth === 0) {
+        return {
+          word: lineText.slice(word.startColumn - 1, i + 1),
+          startColumn: word.startColumn,
+          endColumn: i + 2,
+        };
+      }
+    } else if (ch === ';' || ch === '{' || ch === '}') break;
+  }
+  return word;
+}
+
 /**
  * Resolve a word to what it names, or null when it names nothing worth asking
  * about — a member name, a keyword, a number. Returning null matters as much

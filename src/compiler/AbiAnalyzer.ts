@@ -238,7 +238,12 @@ export function toAnalysis(
     };
     byId.set(w.id, entry);
     if (!byKey.has(entry.key)) byKey.set(entry.key, entry);
-    for (const spelling of [w.printedName, w.qualifiedName, w.name]) {
+    // `record.name` carries the template arguments where the other three do
+    // not: clang's `name` and `qualifiedName` for an instantiation are the bare
+    // template's, so `Pair<double>` and `Pair<char>` both answered to `Pair`
+    // and the first one registered won every lookup. They are different
+    // records with different sizes; each needs a spelling of its own.
+    for (const spelling of [w.printedName, w.qualifiedName, w.name, record.name]) {
       if (spelling && !byName.has(spelling)) byName.set(spelling, entry);
     }
     // Only what the user wrote is listed; the rest are here to be referenced.

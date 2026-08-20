@@ -605,6 +605,30 @@ test.describe('ABI Explorer', () => {
     await expect(page.locator('.record .title')).toContainText('Probe');
   });
 
+  test('each template instantiation answers for itself', async ({ page }) => {
+    // `Pair<double>` and `Pair<char>` are two records with two sizes, and an
+    // editor's idea of a word stops at `<` — so both hovers asked about
+    // `Pair`, and the index, which knew that spelling only as the first
+    // instantiation to register it, answered `Pair<double>` twice.
+    await waitReady(page);
+    await page.selectOption('#example', '5'); // C++ EBO & templates
+    await expect.poll(() => page.locator('#record-chips .chip').count()).toBeGreaterThan(3);
+    const hover = page.locator('.monaco-editor .monaco-hover:not(.hidden)');
+
+    await hoverWord(page, 'Pair<double> pd;', 'Pair');
+    await expect(hover).toBeVisible({ timeout: 10_000 });
+    await expect(hover).toContainText('Pair<double>');
+    await expect(hover, 'sizeof(Pair<double>)').toContainText('16');
+    await page.mouse.move(5, 5); // leave the sticky hover widget
+    await expect(hover).toHaveCount(0);
+
+    await hoverWord(page, 'Pair<char>', 'Pair');
+    await expect(hover).toBeVisible({ timeout: 10_000 });
+    await expect(hover).toContainText('Pair<char>');
+    await expect(hover, 'sizeof(Pair<char>)').toContainText('2');
+    await expect(hover, 'answered for the other instantiation').not.toContainText('Pair<double>');
+  });
+
   test('the tree says what is nested in what', async ({ page }) => {
     // Siblings line up, whatever they are. A group writes its twisty and its
     // name with a newline between them and a leaf writes them adjacent, so a

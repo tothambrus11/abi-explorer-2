@@ -7,7 +7,12 @@
 // on the thing it is for.
 
 import { describe, it, expect } from 'vitest';
-import { subjectAt, describeRecord, type HoverContext } from '$state/type-hover';
+import {
+  subjectAt,
+  describeRecord,
+  widenToTemplateArgs,
+  type HoverContext,
+} from '$state/type-hover';
 import { buildLineIndex } from '$state/code-locations';
 import { corpus, type CorpusEntry } from './corpus';
 import type { Analysis } from '$compiler/AbiAnalyzer';
@@ -138,5 +143,48 @@ describe('describeRecord', () => {
       .find((r) => r.model.leaves.length === 1 && r.model.groups.length === 0);
     expect(one, 'a one-member record somewhere in the corpus').toBeDefined();
     expect(describeRecord(one!)).toContain('1 member\n');
+  });
+});
+
+describe('widenToTemplateArgs', () => {
+  const at = (text: string, word: string) => {
+    const startColumn = text.indexOf(word) + 1;
+    return widenToTemplateArgs(text, {
+      word,
+      startColumn,
+      endColumn: startColumn + word.length,
+    });
+  };
+
+  it('takes in the arguments written after the name', () => {
+    expect(at('Pair<char>   pc;', 'Pair').word).toBe('Pair<char>');
+    expect(at('Pair<double> pd;', 'Pair').word).toBe('Pair<double>');
+  });
+
+  it('counts depth, so a nested closing `>>` is two brackets', () => {
+    expect(at('Pair<Pair<int>> p;', 'Pair').word).toBe('Pair<Pair<int>>');
+    expect(at('std::map<int, std::vector<char>> m;', 'map').word).toBe(
+      'map<int, std::vector<char>>',
+    );
+  });
+
+  it('covers exactly what it widened to', () => {
+    const w = at('  Pair<char> pc;', 'Pair');
+    expect('  Pair<char> pc;'.slice(w.startColumn - 1, w.endColumn - 1)).toBe('Pair<char>');
+  });
+
+  it('leaves a word alone when nothing follows it', () => {
+    expect(at('int x;', 'int').word).toBe('int');
+    expect(at('Pair p;', 'Pair').word).toBe('Pair');
+  });
+
+  it('is not fooled by a comparison', () => {
+    // Written without spaces, so the `<` really is the next character and the
+    // guard is what has to reject it: `a<b` is a comparison, unclosed by the
+    // end of the statement, and there are no arguments here to take in.
+    expect(at('bool ok = a<b;', 'a').word).toBe('a');
+    expect(at('if (a<b) { c(); }', 'a').word).toBe('a');
+    // Nor by one that never closes at all.
+    expect(at('x = a<b', 'a').word).toBe('a');
   });
 });

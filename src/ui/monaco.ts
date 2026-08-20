@@ -7,6 +7,7 @@ import type { Diagnostic } from '$core/types';
 import type { Language } from '$core/options';
 import { THEMES, type Theme } from '$core/themes';
 import type { MemberDot } from '$state/editor-view';
+import { widenToTemplateArgs } from '$state/type-hover';
 
 (self as unknown as { MonacoEnvironment: unknown }).MonacoEnvironment = {
   getWorker: () => new EditorWorker(),
@@ -24,6 +25,7 @@ export function setEditorTheme(t: Theme): void {
 
 // ----------------------------------------------------------------- facade --
 
+/** Structurally `WordRange` in `$state/type-hover`, which is what widens it. */
 export interface WordAt {
   word: string;
   startColumn: number;
@@ -158,8 +160,11 @@ export function createEditor(container: HTMLElement, opts: CreateEditorOptions):
   const hoverDisposable = monaco.languages.registerHoverProvider(['c', 'cpp'], {
     async provideHover(m, position, token) {
       if (m !== model) return null;
-      const w = m.getWordAtPosition(position);
-      if (!w) return null;
+      const at = m.getWordAtPosition(position);
+      if (!at) return null;
+      // `Pair<char>`, not `Pair`: the two instantiations are different records
+      // and a word that stops at `<` cannot say which one the pointer is on.
+      const w = widenToTemplateArgs(m.getLineContent(position.lineNumber), at);
       const md = await opts.typeHover(position.lineNumber, w, signalFor(token));
       if (!md || token.isCancellationRequested) return null;
       return {
