@@ -1,5 +1,5 @@
 {
- "source": "#include <string>\n#include <vector>\n\nstruct Probe {\n  std::string s;          /* short-string optimization: a union inside */\n  std::vector<int> v;     /* three pointers */\n  std::vector<bool> vb;   /* the bitset specialization */\n};\n\n/* These are libc++'s layouts. libstdc++ and MSVC's STL lay the same\n   types out differently, so read them as \"libc++ on this target\". */\n",
+ "source": "#include <string>\n#include <vector>\n\nstruct Probe {\n  std::string s;          /* short-string optimization: a union inside */\n  std::vector<int> v;     /* three pointers */\n  std::vector<bool> vb;   /* the bitset specialization */\n};\n\n/* These are libc++'s layouts, on whatever target you pick — including\n   Windows, where the real toolchain would use MSVC's STL and get\n   different numbers. libstdc++ differs again. Read them as \"libc++\n   on this target\", never as \"the standard library on this target\". */\n",
  "options": {
   "lang": "c++",
   "std": "gnu++20",

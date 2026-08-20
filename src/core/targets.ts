@@ -306,8 +306,10 @@ struct Probe {
   std::vector<bool> vb;   /* the bitset specialization */
 };
 
-/* These are libc++'s layouts. libstdc++ and MSVC's STL lay the same
-   types out differently, so read them as "libc++ on this target". */
+/* These are libc++'s layouts, on whatever target you pick — including
+   Windows, where the real toolchain would use MSVC's STL and get
+   different numbers. libstdc++ differs again. Read them as "libc++
+   on this target", never as "the standard library on this target". */
 `,
   },
   {
