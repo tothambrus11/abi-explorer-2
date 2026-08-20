@@ -484,6 +484,20 @@ test.describe('ABI Explorer', () => {
     await expect(page.locator('#record-chips .chip')).toHaveCount(2);
   });
 
+  test('an unknown triple says so instead of showing an empty panel', async ({ page }) => {
+    // A triple is free text, so this is a thing users do. The failure has no
+    // source location — it happens before a line of the file is read — so it
+    // reaches the editor as no squiggle at all, and the diagnostics panel is
+    // the only place it can appear.
+    await waitReady(page);
+    await page.selectOption('#target', '__custom__');
+    await page.fill('#custom-triple', 'riscv128-unknown-elf');
+    await expect(page.locator('.diagnostics')).toContainText('unknown target triple');
+    // …and it recovers.
+    await page.fill('#custom-triple', 'riscv64-unknown-elf');
+    await expect(page.locator('.record .title')).toContainText('Example');
+  });
+
   test('share URL round-trips source and options', async ({ page, context }) => {
     await waitReady(page);
     await page.selectOption('#target', 'msp430-none-elf');
