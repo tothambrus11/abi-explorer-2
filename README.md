@@ -63,8 +63,12 @@ What this replaced ran six or more compiles of the user's file per keystroke —
 a baseline pass for scalar sizes, a layout dump, up to four rounds of probe
 translation units to measure each member, an AST dump per record for source
 locations — and then about 2500 lines of JavaScript to put back the structure
-those dumps had flattened. One query is roughly sixteen times faster, and the
-JavaScript is gone.
+those dumps had flattened.
+
+A plain struct went from 33 ms to under 2 ms, and one that includes `<string>`
+from 948 ms to 440 ms — the second is smaller because what remains is clang
+parsing libc++, which no amount of pipeline shape makes cheaper. The
+JavaScript is gone either way.
 
 What is left here is what is genuinely a viewer's business: which colour a
 member gets, what counts as one unit on screen, and what to do when you point
