@@ -15,7 +15,7 @@ import { AbiAnalyzer } from '$compiler/AbiAnalyzer';
 import { buildLineIndex } from '$state/code-locations';
 import { directMembers } from '$core/render';
 import { DEFAULT_OPTIONS, defaultStdFor, type CompileOptions } from '$core/options';
-import { EXAMPLES } from '$core/targets';
+import { EXAMPLES, TARGET_GROUPS } from '$core/targets';
 import { abiModule, moduleAvailable } from './abi-module';
 
 const opts = (over: Partial<CompileOptions> = {}): CompileOptions => ({
@@ -168,6 +168,26 @@ describe.skipIf(!moduleAvailable)('the real module', () => {
     );
     expect(short_.records.find((r) => r.key === 'struct S')!.record.sizeBytes).toBe(1);
   });
+
+  it('lays out every triple the app offers', async () => {
+    // The dropdown is a curated list and the module is not — a triple in the
+    // list that this build cannot construct a target for is a menu entry that
+    // fails when picked, and nothing else would notice.
+    // Not checked against `targets()`: that lists canonical architecture names
+    // (`x86`, `arm`), while a triple may spell one as `i686` or `armv7a`. What
+    // matters is whether the query works, so the check is to run it.
+    const triples = TARGET_GROUPS.flatMap((g) => g.targets.map((t) => t.triple));
+    expect(triples.length).toBeGreaterThan(30);
+    const broken: string[] = [];
+    for (const triple of triples) {
+      const a = await abi.analyze('struct S { char c; int i; void *p; };\n', opts({ triple }));
+      if (a.code !== 0 || a.records[0]?.record.sizeBytes === undefined) {
+        const why = a.diagnosticsText.split('\n')[0];
+        broken.push(`${triple}: ${why ? why : 'no record'}`);
+      }
+    }
+    expect(broken).toEqual([]);
+  }, 120_000);
 
   // The whole app, over everything the site ships: analyse, model, index. Not
   // an assertion about any one layout — an assertion that nothing in the chain
