@@ -605,6 +605,43 @@ test.describe('ABI Explorer', () => {
     await expect(page.locator('.record .title')).toContainText('Probe');
   });
 
+  test('hovering a byte inside a base actually looks different', async ({ page }) => {
+    // Not "is the class applied" — it always was. The base-subobject band
+    // draws its bracket with a `box-shadow` on `.cell.band`, two classes to
+    // `.hovered`'s one, so on every byte inside a base the band won the
+    // property outright and hovering an inherited member changed nothing on
+    // screen. Both signals are real and want the same edge; the only way to
+    // catch one silently eating the other is to compare what is rendered.
+    await waitReady(page);
+    await page.selectOption('#example', '6'); // C++ virtual inheritance (diamond)
+    await expect.poll(() => page.locator('#record-chips .chip').count()).toBeGreaterThan(3);
+    await page.locator('#record-chips .chip', { hasText: 'struct D' }).click();
+    await expect(page.locator('.field-table tbody tr')).toHaveCount(10);
+
+    // Byte 8 is `b`, inside base B's band.
+    const cell = page.locator('.grid .cell').nth(8);
+    const paint = () =>
+      cell.evaluate((el) => {
+        const s = getComputedStyle(el);
+        return `${s.boxShadow} | ${s.outlineWidth} ${s.outlineStyle} ${s.outlineColor}`;
+      });
+    const rows = page.locator('.field-table tbody tr');
+    await expect(cell).toHaveClass(/band/);
+
+    // Two hovers rather than a hover against a resting state: selecting the
+    // record puts the caret on `struct D : B, C`, and a caret on a line
+    // highlights what that line declares — so byte 8 starts out lit.
+    await rows.nth(9).hover(); // `a`, at byte 40 — nothing to do with byte 8
+    await expect(rows.nth(9)).toContainText('a');
+    await expect(cell).not.toHaveClass(/hovered/);
+    const idle = await paint();
+
+    await rows.nth(2).hover(); // `b`, at byte 8
+    await expect(rows.nth(2)).toContainText('b');
+    await expect(cell).toHaveClass(/hovered/);
+    expect(await paint(), 'the hover is invisible under the band').not.toBe(idle);
+  });
+
   test('inherited members get colours of their own, and the base still gathers them', async ({
     page,
   }) => {
