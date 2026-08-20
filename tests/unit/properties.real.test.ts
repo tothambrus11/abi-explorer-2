@@ -36,7 +36,14 @@ const SCALARS = [
   'long long',
   'float',
   'double',
+  'long double',
+  // `bool` is a keyword in C++ and a <stdbool.h> macro in C before C23; the
+  // prelude gives both languages the same spelling.
+  'boolean',
   'void *',
+  // Spelled through a typedef: `void (*)() name;` is not how a declarator
+  // works, and the generator writes `<type> <name>;`.
+  'fnptr',
 ];
 
 interface Member {
@@ -97,6 +104,20 @@ function memberArb(available: Available[], cxx: boolean): fc.Arbitrary<Member> {
         .constantFrom(...available)
         .map((t) => ({ render: (n: string) => `  ${t.spelling} ${n};` })),
     );
+    // An array of one, which puts a record's tail padding in the middle of
+    // another record rather than at its end.
+    options.push(
+      fc
+        .tuple(fc.constantFrom(...available), fc.integer({ min: 1, max: 3 }))
+        .map(([t, k]) => ({ render: (n: string) => `  ${t.spelling} ${n}[${k}];` })),
+    );
+    // An over-aligned record member: the alignment comes from the declaration
+    // and the size from the type, and they disagree on purpose.
+    options.push(
+      fc.tuple(fc.constantFrom(...available), fc.constantFrom(16, 32)).map(([t, a]) => ({
+        render: (n: string) => `  ${t.spelling} ${n} __attribute__((aligned(${a})));`,
+      })),
+    );
   }
   if (cxx) {
     options.push(fc.constant({ render: (n: string) => `  [[no_unique_address]] Empty ${n};` }));
@@ -122,7 +143,7 @@ function declArb(index: number, available: Available[], cxx: boolean): fc.Arbitr
           ),
           fc.boolean(),
         ),
-        { maxLength: 2 },
+        { maxLength: 3 },
       )
     : fc.constant<[string, boolean][]>([]);
   return fc
@@ -161,12 +182,17 @@ function declArb(index: number, available: Available[], cxx: boolean): fc.Arbitr
 // member with a non-trivial destructor does not compile — which the generator
 // would then hit at random.
 const PRELUDE_CXX = 'struct Empty {};\nstruct Poly { virtual void f(); int p; };\n';
+/** Names the generator uses in both languages. */
+const PRELUDE_C = 'typedef void (*fnptr)();\ntypedef _Bool boolean;\n';
+const PRELUDE_CPP = 'typedef void (*fnptr)();\ntypedef bool boolean;\n';
 
 /** A whole translation unit: a few records, each able to contain the last. */
 function sourceArb(cxx: boolean): fc.Arbitrary<string> {
-  return fc.integer({ min: 1, max: 4 }).chain((count) => {
+  return fc.integer({ min: 1, max: 5 }).chain((count) => {
     const build = (i: number, available: Available[], acc: string[]): fc.Arbitrary<string> => {
-      if (i === count) return fc.constant((cxx ? PRELUDE_CXX : '') + acc.join('\n'));
+      if (i === count) {
+        return fc.constant((cxx ? PRELUDE_CPP + PRELUDE_CXX : PRELUDE_C) + acc.join('\n'));
+      }
       return declArb(i, available, cxx).chain((d) =>
         build(
           i + 1,
@@ -181,7 +207,15 @@ function sourceArb(cxx: boolean): fc.Arbitrary<string> {
 
 // ------------------------------------------------------------------ runs --
 
-const TRIPLES = ['x86_64-unknown-linux-gnu', 'x86_64-pc-windows-msvc', 'armv7-none-eabi'];
+// Enough ABI variety that a law can fail on one and hold on the others:
+// Itanium and Microsoft, 64-bit and 32-bit, hosted and freestanding.
+const TRIPLES = [
+  'x86_64-unknown-linux-gnu',
+  'i386-unknown-linux-gnu',
+  'x86_64-pc-windows-msvc',
+  'aarch64-apple-macosx',
+  'armv7-none-eabi',
+];
 
 /**
  * Sources drawn once, up front, so the laws below all run on the same batch —
