@@ -153,9 +153,10 @@ export class Session {
     });
 
     const stopRoot = $effect.root(() => {
-      // Drive the query from source/options. Dedup-by-input means the module
-      // flipping back to 'ready' after a restart does not re-run the same
-      // input (a timed-out query would otherwise retry to exhaustion).
+      // Drive the query from source/options. This effect also tracks the
+      // module's status, which changes on every progress tick during the
+      // download — dedup-by-input is what keeps that from turning into a
+      // hundred identical queries the moment it becomes ready.
       $effect(() => {
         const input: CompileInput = { source: store.source, options: { ...store.options } };
         if (store.compiler.state === 'ready') this.compile.trigger(input);
