@@ -20,8 +20,9 @@
         return 'Starting…';
       case 'loading':
         if (c.phase === 'compile') return 'Preparing clang…';
-        // No total means the size is not known — a linked local build has no
-        // manifest. Say what is happening rather than invent a percentage.
+        // No total means the worker could not read the manifest and let
+        // Emscripten fetch the files itself. Say what is happening rather than
+        // invent a percentage.
         return c.total
           ? `Downloading clang (wasm)… ${mb(c.done)} of ${mb(c.total)} MB`
           : 'Downloading clang (wasm)…';
