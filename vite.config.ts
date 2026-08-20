@@ -19,7 +19,7 @@ export default defineConfig({
         name: 'ABI Explorer',
         short_name: 'ABI Explorer',
         description:
-          'Visualize C/C++ struct layouts for any LLVM target — clang compiled to WebAssembly, running entirely in your browser.',
+          'Visualize C/C++ struct layouts for any LLVM target, using clang compiled to WebAssembly and running entirely in your browser.',
         start_url: './',
         scope: './',
         display: 'standalone',

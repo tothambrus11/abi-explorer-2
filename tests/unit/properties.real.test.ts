@@ -1,9 +1,9 @@
 // The same laws as `properties.test.ts`, over programs nobody wrote.
 //
 // The corpus covers the shapes real ABIs produce; this covers the ones nobody
-// thought to write down. A generator emits record declarations — bit-fields
+// thought to write down. A generator emits record declarations: bit-fields
 // straddling storage units, empty bases, virtual inheritance, anonymous
-// aggregates, over-aligned members, packed structs — the module compiles them
+// aggregates, over-aligned members, packed structs; the module compiles them
 // for real, and every law in `model-laws.ts` runs on the answer.
 //
 // It generates *source*, not layouts. A generator that invented layouts could
@@ -90,7 +90,7 @@ function memberArb(available: Available[], cxx: boolean): fc.Arbitrary<Member> {
       render: (n: string) => `  ${t} ${n} __attribute__((aligned(${a})));`,
     })),
     // An anonymous aggregate, whose fields become members of the enclosing
-    // record — the case where a path cannot name what it passes through.
+    // record, the case where a path cannot name what it passes through.
     fc
       .tuple(fc.constantFrom('struct', 'union'), fc.array(scalar, { minLength: 1, maxLength: 3 }))
       .map(([kind, ts]) => ({
@@ -155,7 +155,7 @@ function declArb(index: number, available: Available[], cxx: boolean): fc.Arbitr
     )
     .map(([kind, bases, members, pack]) => {
       // A union has no bases, no bit-field unit breaks worth generating, and
-      // every member at offset zero — still worth generating, just simpler.
+      // every member at offset zero, still worth generating, just simpler.
       const isUnion = kind === 'union';
       const seen = new Set<string>();
       const uniqueBases = isUnion
@@ -179,7 +179,7 @@ function declArb(index: number, available: Available[], cxx: boolean): fc.Arbitr
 
 // `Poly` is polymorphic but trivially destructible on purpose: a virtual
 // destructor would make every record reaching it non-trivial, and a union
-// member with a non-trivial destructor does not compile — which the generator
+// member with a non-trivial destructor does not compile, which the generator
 // would then hit at random.
 const PRELUDE_CXX = 'struct Empty {};\nstruct Poly { virtual void f(); int p; };\n';
 /** Names the generator uses in both languages. */
@@ -218,7 +218,7 @@ const TRIPLES = [
 ];
 
 /**
- * Sources drawn once, up front, so the laws below all run on the same batch —
+ * Sources drawn once, up front, so the laws below all run on the same batch,
  * a failure names a source every law can be re-run against, rather than a
  * different sample per law.
  */
@@ -246,7 +246,7 @@ describe.skipIf(!moduleAvailable)('generated sources', () => {
       };
       const analysis = await analyzer.analyze(source, options);
       // A generated source that does not compile is a generator bug, not a
-      // finding — assert it here so it is reported as one.
+      // finding: assert it here so it is reported as one.
       if (analysis.code !== 0) {
         throw new Error(
           `generated source did not compile (${triple}):\n${source}\n${analysis.diagnosticsText}`,

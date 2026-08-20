@@ -9,7 +9,7 @@ import { setupPwa } from './pwa';
 
 const session = new Session(new AbiClient({ createWorker: () => new AbiWorker() }));
 // Kick the (slow, DOM-independent) wasm load off before restoring state and
-// mounting — but through the session, which first checks whether the download
+// mounting, but through the session, which first checks whether the download
 // needs the user's consent. Starting the module directly here would fetch the
 // bundle behind the consent prompt (issue #1).
 void session.boot();

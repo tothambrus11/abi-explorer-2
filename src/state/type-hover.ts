@@ -4,7 +4,7 @@
 // refers to is a chain of four rules over the analysis, and it was buried in an
 // async method on a rune-driven class where nothing could reach it. Formatting
 // the answer, and measuring a spelling the analysis has no record for, stay
-// with the session — one needs the analyzer, the other is a template.
+// with the session. One needs the analyzer, the other is a template.
 
 import type { AnalysedRecord, Analysis } from '$compiler/AbiAnalyzer';
 import { directMembers } from '$core/render';
@@ -41,13 +41,13 @@ export interface WordRange extends HoverWord {
  * Widen a word to the template arguments written after it.
  *
  * An editor's idea of a word stops at `<`, so the pointer on `Pair<char>` asks
- * about `Pair` — a spelling both instantiations answer to, and an index can
+ * about `Pair`, a spelling both instantiations answer to, and an index can
  * only return one of them. They are different records with different sizes,
  * and the pointer was on exactly one.
  *
  * Depth-counted rather than matched: `Pair<Pair<int>>` nests, and its closing
  * `>>` is one token to a lexer and two brackets here. A `;`, `{` or `}` first
- * means the `<` was a comparison and not an argument list at all — `a < b` is
+ * means the `<` was a comparison and not an argument list at all. `a < b` is
  * a thing people write.
  */
 export function widenToTemplateArgs(lineText: string, word: WordRange): WordRange {
@@ -72,7 +72,7 @@ export function widenToTemplateArgs(lineText: string, word: WordRange): WordRang
 
 /**
  * Resolve a word to what it names, or null when it names nothing worth asking
- * about — a member name, a keyword, a number. Returning null matters as much
+ * about: a member name, a keyword, a number. Returning null matters as much
  * as the rest: the fallback is a probe, which is a full re-parse of the user's
  * translation unit, and running one because the pointer crossed `struct` would
  * make hovering the editor cost a compile per word.
@@ -127,7 +127,7 @@ function spellingSubject(spelling: string, analysis: Analysis): Subject {
 /** Markdown for a record: what it is, and the numbers worth the hover. */
 export function describeRecord(entry: AnalysedRecord): string {
   const r = entry.record;
-  // Members of the record itself — a compound member counts once, not once per
+  // Members of the record itself. A compound member counts once, not once per
   // field inside it.
   const n = directMembers(entry.model).filter((u) => !('kind' in u && u.kind === 'special')).length;
   const padding = entry.model.paddingBytes;
@@ -139,7 +139,7 @@ export function describeRecord(entry: AnalysedRecord): string {
   if (r.dsize !== undefined) rows.push(`| dsize | ${r.dsize} B |`);
   if (r.nvsize !== undefined) rows.push(`| nvsize | ${r.nvsize} B |`);
   if (r.nvalign !== undefined) rows.push(`| nvalign | ${r.nvalign} B |`);
-  return `**\`${entry.key}\`** — ${n} member${n === 1 ? '' : 's'}\n\n| | |\n|---|---|\n${rows.join('\n')}`;
+  return `**\`${entry.key}\`** · ${n} member${n === 1 ? '' : 's'}\n\n| | |\n|---|---|\n${rows.join('\n')}`;
 }
 
 /** Markdown for a measured spelling that is not a record of its own. */

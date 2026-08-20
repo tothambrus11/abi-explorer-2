@@ -1,7 +1,7 @@
 // What the pointer is over, decided against real analyses.
 //
-// Four rules in order — a record's own name, a type name declared here, the
-// type part of a member declaration, a bare name clang reported somewhere —
+// Four rules in order: a record's own name, a type name declared here, the
+// type part of a member declaration, a bare name clang reported somewhere,
 // and the last resort is a probe, which costs a full re-parse of the user's
 // file. So "this is nothing" has to be a real answer, and each rule has to fire
 // on the thing it is for.
@@ -86,7 +86,7 @@ describe('subjectAt', () => {
   });
 
   it('resolves the type part of a member declaration', () => {
-    // `Pair p;` — the pointer is on `Pair`, left of the member's name.
+    // `Pair p;`: the pointer is on `Pair`, left of the member's name.
     const s = subjectAt(4, at(a, 4, 'Pair p'), ctx);
     expect(s?.kind === 'records' && s.records[0]!.record.name).toBe('Pair');
   });
@@ -115,7 +115,7 @@ describe('subjectAt', () => {
   });
 
   it('names a library type through the member that uses it', () => {
-    // `std::string s;` — a record no rule could find by name, reached because
+    // `std::string s;`: a record no rule could find by name, reached because
     // the member carries its spelling and the analysis indexes it.
     const lib = entry('cpp-standard-library-libcpp--x86_64-unknown-linux-gnu').analysis;
     const c = contextFor(lib);

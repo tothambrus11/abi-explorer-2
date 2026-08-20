@@ -1,4 +1,4 @@
-// `use:tooltip={text}` — a themed hover/focus popover for controls, replacing
+// `use:tooltip={text}`: a themed hover/focus popover for controls, replacing
 // native `title` bubbles so every hint looks the same in every theme.
 
 const DELAY_MS = 350;

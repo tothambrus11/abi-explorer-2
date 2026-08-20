@@ -8,7 +8,7 @@
 export interface ConnectionHint {
   /** User asked for reduced data use ("Data Saver"). */
   saveData?: boolean | undefined;
-  /** 'slow-2g' | '2g' | '3g' | '4g' — a round-trip/bandwidth estimate, not the medium. */
+  /** 'slow-2g' | '2g' | '3g' | '4g': a round-trip/bandwidth estimate, not the medium. */
   effectiveType?: string | undefined;
   /** 'cellular' | 'wifi' | 'ethernet' | … (rarely implemented). */
   type?: string | undefined;
@@ -30,7 +30,7 @@ export interface ConsentInputs {
   connection: ConnectionHint | null | undefined;
   /** The user previously opted in (persisted). */
   consented: boolean;
-  /** The bundle is vendored or already in the Cache API — nothing large to fetch. */
+  /** The bundle is vendored or already in the Cache API, so nothing large to fetch. */
   availableLocally: boolean;
 }
 

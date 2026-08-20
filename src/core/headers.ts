@@ -22,12 +22,12 @@ export function headerSummary(h: WireHeaders | null): string {
 export function headerExplanation(h: WireHeaders | null): string | null {
   if (!h?.cLibrary) return null;
   if (h.cLibraryArch !== 'generic') {
-    // Without a C++ library — a C query — "none over musl's own tree" is not
+    // Without a C++ library (a C query), "none over musl's own tree" is not
     // a sentence. Name what is there instead of what is not.
     const tree = `musl's own ${h.cLibraryArch ?? 'target'} tree`;
     return (
       `Standard headers for this target: ${h.cxxLibrary ? `${h.cxxLibrary} over ${tree}` : tree}` +
-      ` — complete, including operating-system structures like struct stat.`
+      `, complete with the operating-system structures like struct stat.`
     );
   }
   const missing = [
@@ -39,7 +39,7 @@ export function headerExplanation(h: WireHeaders | null): string | null {
   ];
   return (
     `musl has no header tree for this target, so the C declarations are its portable ones over ` +
-    `this target's own scalar types — every size and alignment is right for it. Not available here: ` +
+    `this target's own scalar types. Every size and alignment is right for it. Not available here: ` +
     missing.join('; ') +
     '.'
   );

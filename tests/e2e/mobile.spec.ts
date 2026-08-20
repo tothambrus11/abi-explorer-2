@@ -7,7 +7,7 @@ async function ready(page: Page): Promise<void> {
   await expect(page.locator('#results')).toBeVisible({ timeout: 240_000 });
 }
 
-/** The tab strip a panel's tab sits in — what "the same group" means to dockview. */
+/** The tab strip a panel's tab sits in: what "the same group" means to dockview. */
 const tab = (page: Page, name: string): Locator =>
   page.locator('.dv-tab').filter({ hasText: name }).first();
 
@@ -80,7 +80,7 @@ test.describe('on a phone', () => {
     await page.locator('.monaco-editor .view-lines').click();
     await page.keyboard.press('Control+End');
     await page.keyboard.type('\nstruct Broken { int x }');
-    // Two, from this clang, for this snippet — an error and the note-free
+    // Two, from this clang, for this snippet: an error and the note-free
     // warning beside it. Pinned rather than loosened: the number moving is
     // how a regression that starts counting notes again would show up.
     await expect(tab(page, 'Diagnostics')).toContainText('[2]');
@@ -112,7 +112,7 @@ test.describe('on a desktop', () => {
     await ready(page);
     const layout = (await tab(page, 'Layout').boundingBox())!;
     const diagnostics = (await tab(page, 'Diagnostics').boundingBox())!;
-    // Its own group, below the editor — not a tab beside the layout.
+    // Its own group, below the editor, not a tab beside the layout.
     expect(diagnostics.y, 'a strip of its own, lower down').toBeGreaterThan(layout.y + 100);
     await expect(page.locator('#clang-version')).toBeVisible();
   });

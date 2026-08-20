@@ -6,7 +6,7 @@
 //   on the next load (autoUpdate).
 // - The wasm module under /vendor/abi/ is far too big to precache and is cached
 //   on first successful fetch instead. That is what makes the *second* visit
-//   work offline — a promise the shell cache alone does not keep.
+//   work offline, a promise the shell cache alone does not keep.
 
 import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
@@ -32,7 +32,7 @@ const inModule = (url: URL) =>
 
 // The module's manifest: the one file in that directory that changes, and the
 // only route to a new version. Cached, so the app still boots offline, but
-// never *preferred* over the network — served from cache it would pin every
+// never *preferred* over the network. Served from cache it would pin every
 // visitor to whichever module they first downloaded, forever.
 registerRoute(
   ({ url }) => inModule(url) && url.pathname.endsWith('/manifest.json'),
@@ -40,6 +40,6 @@ registerRoute(
 );
 
 // The module itself: ~9 MB of gzipped wasm plus a ~2 MB header pack, named by
-// content. Cache-first is safe precisely because of that — an update arrives
+// content. Cache-first is safe precisely because of that: an update arrives
 // under a name nothing has cached, and the worker drops what it replaced.
 registerRoute(({ url }) => inModule(url), new CacheFirst({ cacheName: 'abix-abi-module-v1' }));

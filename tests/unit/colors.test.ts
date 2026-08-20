@@ -10,7 +10,7 @@ describe('assignColors (one level deep)', () => {
   });
 
   it('a compound member is one colour shared by everything inside it', () => {
-    // struct Message { Header hdr; int n; } — hdr covers leaves 0,1
+    // struct Message { Header hdr; int n; }: hdr covers leaves 0,1
     const m = model(
       [leaf('kind', { path: ['hdr'] }), leaf('len', { path: ['hdr'] }), leaf('n')],
       [group('hdr', [0, 1])],
@@ -35,7 +35,7 @@ describe('assignColors (one level deep)', () => {
   it('a compound member reached through an anonymous aggregate is still one unit', () => {
     // struct S { union { Header hdr; int raw; }; int tail; }
     // The anonymous union is transparent, so `hdr` is a direct member of S and
-    // must claim a single colour — the same test `directMembers` and the table
+    // must claim a single colour; the same test `directMembers` and the table
     // chips apply.
     const m = model(
       [
@@ -64,7 +64,7 @@ describe('assignColors (one level deep)', () => {
   });
 
   it('an anonymous aggregate is transparent: its fields are members of their own', () => {
-    // struct S { int tag; struct { char lo, hi; }; }; — `s.lo` is nameable, so
+    // struct S { int tag; struct { char lo, hi; }; };: `s.lo` is nameable, so
     // lo and hi are members in their own right, not one shared unit.
     const m = model(
       [leaf('tag'), leaf('lo', { path: ['(anonymous)'] }), leaf('hi', { path: ['(anonymous)'] })],
@@ -84,7 +84,7 @@ describe('assignColors (one level deep)', () => {
 
 describe('directMembers', () => {
   it('is the record’s own fields plus its compound members, one level deep', () => {
-    // struct K { Pair<double> s; } — one member, not two.
+    // struct K { Pair<double> s; }: one member, not two.
     const m = model(
       [leaf('first', { path: ['s'] }), leaf('second', { path: ['s'] })],
       [group('s', [0, 1])],

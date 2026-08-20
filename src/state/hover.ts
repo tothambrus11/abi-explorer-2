@@ -32,7 +32,7 @@ export interface EditorPos {
 }
 
 export interface HoverInputs {
-  /** Grid/table intent — wins over the editor when present. */
+  /** Grid/table intent, which wins over the editor when present. */
   intent: HoverIntent | null;
   /** Pointer position in the editor. */
   mouse: EditorPos | null;
@@ -86,8 +86,8 @@ export function hoveredPrimary(i: HoverInputs): string | null {
   // A line that declares a member points at that member's record…
   const declaring = i.lines.get(pos.line)?.primary;
   if (declaring !== undefined) return declaring;
-  // …and anywhere else inside a declaration — its first line, a blank line, the
-  // closing brace — the innermost record containing the cursor.
+  // …and anywhere else inside a declaration (its first line, a blank line, the
+  // closing brace), the innermost record containing the cursor.
   const here = recordsAtLine(pos.line, i.records);
   if (here.length === 0) return null;
   // Instantiations of one template share a span; stay on the one already shown.

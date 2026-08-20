@@ -10,7 +10,7 @@
 // clang-abi-wasm emits the model instead: extents, containment, overlap,
 // padding and source locations, worked out where the facts are. What is left
 // here is the mapping onto the shapes the views want, and the presentation
-// decisions that are genuinely the viewer's — which colour a member gets, and
+// decisions that are genuinely the viewer's: which colour a member gets, and
 // what counts as one unit on screen.
 
 import type { Group, Leaf, Marker, PaddingRun, RecordLayout, RenderModel, TreeNode } from './types';
@@ -48,7 +48,7 @@ export interface WireLeaf {
   ownerId: number | null;
   ownerName: string;
   /**
-   * Clang says it occupies no storage — an empty type allowed to share an
+   * Clang says it occupies no storage. An empty type allowed to share an
    * address. It still has an offset, and nothing is drawn there.
    */
   sharesAddress: boolean;
@@ -95,7 +95,7 @@ export interface WireRender {
   tree: WireNode[];
   paddingRuns: { startBits: number; endBits: number }[];
   /**
-   * Bytes those runs cover — not the record's bit-exact `paddingBits`. Null
+   * Bytes those runs cover, not the record's bit-exact `paddingBits`. Null
    * when the record was too large to scan.
    */
   paddingBytes: number | null;
@@ -245,7 +245,7 @@ export function fromWire(record: RecordLayout, wire: WireRender): RenderModel {
 }
 
 /**
- * Give the emitted tree the fields the table reads off a node — an id for keys
+ * Give the emitted tree the fields the table reads off a node: an id for keys
  * and collapse state, a depth for indentation, and the extent of whatever it
  * refers to, so a row never has to look its own subject up.
  */
@@ -280,7 +280,7 @@ const ANON = '(anonymous)';
  * An anonymous aggregate does: `msg.crc_lo`, not `msg.<anonymous>.crc_lo`. So
  * does a base: `d.b` names a field of `B` on a `D`, with nothing written in
  * between. Both are containers in the layout and not in the language, so their
- * fields are members of the enclosing record in their own right — they are
+ * fields are members of the enclosing record in their own right. They are
  * coloured individually, and the container has no colour of its own because
  * its bytes have several.
  *
@@ -296,7 +296,7 @@ export function isTransparent(group: Group): boolean {
  *
  * The tree is the only place that knows this. `path` holds the *names* of the
  * enclosing members, and a name cannot say whether it belonged to a base or to
- * a member — which is why the rule used to be "every path element is
+ * a member. That is why the rule used to be "every path element is
  * anonymous", the one case a name does give away.
  */
 function markDirect(nodes: TreeNode[], model: RenderModel, throughMember: boolean): void {
@@ -310,13 +310,13 @@ function markDirect(nodes: TreeNode[], model: RenderModel, throughMember: boolea
 
 /**
  * The colour every vtable/vbtable pointer gets, whatever member it belongs to.
- * A category, not a member colour — see `sharedColorClass`.
+ * A category, not a member colour; see `sharedColorClass`.
  */
 export const SPECIAL_COLOR = 'c-special';
 
 /**
  * How many categorical colours there are. A record with more direct members
- * than this reuses them — eight distinguishable hues that survive both themes
+ * than this reuses them. Eight distinguishable hues that survive both themes
  * is the constraint, and running out is better than inventing a ninth nobody
  * can tell from the third.
  */
@@ -340,13 +340,14 @@ export function directMembers(model: RenderModel): (Leaf | Group)[] {
 
 /**
  * The single colour a set of leaves stands for, or null when they genuinely
- * differ — an anonymous aggregate, whose fields are members in their own right.
+ * differ, as in an anonymous aggregate whose fields are members in their own
+ * right.
  *
  * Vtable and vbtable pointers are set aside rather than counted. `c-special`
  * marks a category, not a member: it is what `assignColors` gives every such
  * pointer regardless of the unit it sits in, so counting it made every
  * *polymorphic* base look like a unit spanning two colours. The consequence
- * was visible everywhere but here — the field table drew no chip beside
+ * was visible everywhere but here: the field table drew no chip beside
  * `B base` and the editor drew the neutral ring instead of the base's colour,
  * while the byte grid painted its bytes in that colour perfectly happily.
  */
@@ -369,7 +370,7 @@ export function sharedColorClass(model: RenderModel, leaves: Iterable<number>): 
  * The single colour a compound member stands for, or null when nothing stands
  * for it.
  *
- * An anonymous aggregate is transparent — `assignColors` skips it and colours
+ * An anonymous aggregate is transparent. `assignColors` skips it and colours
  * its fields individually, because they are members of the enclosing record in
  * their own right. So it has no colour of its own, and the "spans several
  * colours" test was only ever a proxy for that: a `union { unsigned short x; };`
@@ -384,8 +385,8 @@ export function groupColorClass(model: RenderModel, group: Group): string | null
 /**
  * Assign categorical colour slots one level deep: a colour identifies a *direct
  * member* of this record. A compound member is one unit, so every leaf inside it
- * shares its colour — the grid then shows `hdr` as one block rather than a
- * stripe per nested field, and no colour means two different things at once.
+ * shares its colour, so the grid shows `hdr` as one block rather than a stripe
+ * per nested field and no colour means two different things at once.
  *
  * This stays in the viewer on purpose. Which member is which is a fact about
  * the record; which colour says so is a fact about the screen.

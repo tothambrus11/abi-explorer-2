@@ -4,12 +4,12 @@
 since been replaced: clang-abi-wasm answers a layout query in one call, so the
 second async resource (the AST-locate dump), the `memberAligns` feedback loop it
 fed, and `collectLocateOwners`/`collectMemberAligns` are all gone. What survived
-is the shape this document was arguing for — one resource, a pure derived model,
-thin effects — and it survived a rewrite of everything underneath it, which is
+is the shape this document was arguing for (one resource, a pure derived model,
+thin effects) and it survived a rewrite of everything underneath it, which is
 the argument. Read it as a record of why the code looks the way it does, not as
 a description of the code.
 
-Goal: separate three layers that are currently tangled in `session.svelte.ts` —
+Goal: separate three layers that are currently tangled in `session.svelte.ts`:
 **raw inputs** (`$state`), **derived model** (`$derived`, side-effect free), and
 **effects** (`$effect`, thin syncs to imperative sinks). Remove the manual
 `applyHover()` recompute, the hand-rolled async debounce/cancel, and the
@@ -18,9 +18,9 @@ derivation-inside-effects in `EditorPane`.
 Each phase is independently green (svelte-check, eslint, unit, e2e). Phase 0
 preserves behavior; the existing suite is the guardrail.
 
-## Phase 0 — reactive foundation (behavior-preserving)
+## Phase 0: reactive foundation (behavior-preserving)
 
-- [x] **0.1 `asyncResource`** — an `AsyncRunner` (debounce + dedup-by-key +
+- [x] **0.1 `asyncResource`**: an `AsyncRunner` (debounce + dedup-by-key +
       AbortController cancel + `force`, reactive `value`/`status`/`error`) plus a
       `bindResource(inputs, runner)` reactive binding. New files, unit-tested in
       isolation with fake timers (9 tests). _No wiring yet._
@@ -34,26 +34,26 @@ preserves behavior; the existing suite is the guardrail.
       `collectMemberAligns`, 6 tests); `lines`/leaf+group locations are now a
       `$derived` index over `(models, dump)`. Dedup-by-key breaks the
       memberAligns→models→owners feedback loop.
-- [x] **0.4 Derived hover** — setters record _intent_ only
+- [x] **0.4 Derived hover**: setters record _intent_ only
       (`{kind:'leaf'|'group'|'tooltip', …}`); `hover` is `$derived` over current
       models/locations via the pure `resolveHover` (`hover.ts`, 12 tests), so a
       stale intent resolves to nothing instead of the wrong member. All six
       manual `applyHover()` calls are gone; record-follows-hover is its own
       command `$effect`.
-- [x] **0.5 Declarative `editorView`** — EditorPane holds one `$derived`
+- [x] **0.5 Declarative `editorView`**: EditorPane holds one `$derived`
       `{value, language, diagnostics, dots, highlight, inlay}`; each effect only
       hands a slice of it to Monaco. The dot-colour logic left the effect for the
-      pure `memberDots` (`editor-view.ts`, 5 tests) — including the stacked-view
+      pure `memberDots` (`editor-view.ts`, 5 tests), including the stacked-view
       case where one field recurs across records.
 
-## Phase 1 — inspected-record model (feature)
+## Phase 1: inspected-record model (feature)
 
 - [x] **1.1** Record source spans come from clang's `range` (implicit
       injected-class-names skipped), and `inspected-record.ts` resolves them:
       `recordsAtLine` (innermost first, inclusive ends) and `inspectedRecord`
       (explicit pick > cursor > previous), 11 tests + a real-clang span test.
       Picking a record from the tabs now moves the caret to its declaration, so
-      the explicit choice _is_ the cursor's choice — closes issue #3.
+      the explicit choice _is_ the cursor's choice, closing issue #3.
 - [x] **1.2** One-level colour model: a colour identifies a _directly nameable
       member_ of the record. A named compound member (or base) is one unit whose
       leaves share its colour; an anonymous aggregate is transparent, since its
@@ -61,14 +61,14 @@ preserves behavior; the existing suite is the guardrail.
       that a record on screen declares directly.
 - [x] **1.3** Per-declarator marks: `LineInfo.marks` carries one entry per
       member written on a line (column, members, colour), and `markAtColumn`
-      resolves a column to one of them — a lone declarator keeps the whole line
+      resolves a column to one of them; a lone declarator keeps the whole line
       as a forgiving hit area.
 
-## Phase 2 — editor decorations
+## Phase 2: editor decorations
 
 - [x] **2.1** Inline circles: a decoration on the first character of each
       member's name, padded left so the circle sits before the name and pushes
-      the rest of the line — one per declarator, so `struct { uint8_t crc_lo,
+      the rest of the line, one per declarator, so `struct { uint8_t crc_lo,
 crc_hi; };` shows a ring for the anonymous member and a colour for each
       field. (Monaco's injected-text option is internal to inlay hints.)
 - [x] **2.2** Hover and cursor carry a column, so `markAtColumn` picks the exact
@@ -76,19 +76,19 @@ crc_hi; };` shows a ring for the anonymous member and a colour for each
       highlight on that member's own name. Positions compare by value, since the
       editor's own refresh would otherwise feed the derived hover in a loop.
 
-## Phase 3 — grid + tree
+## Phase 3: grid + tree
 
 - [x] **3.1** Base bands: the byte grid brackets the bytes a base subobject
-      contributes — its vtable pointer, its fields and its internal padding —
+      contributes (its vtable pointer, its fields and its internal padding)
       while the derived class's own fields sit outside. Drawn per cell, so a
       band survives row wrapping; empty bases occupy nothing and get none.
 - [x] **3.2** Drilling: clicking a compound member's name in the tree inspects
       the record it is an instance of (hover still only previews). An explicitly
-      selected record is always shown, so a nested anonymous member — which is
-      not listed as a record of its own — can be opened too.
+      selected record is always shown, so a nested anonymous member, which is
+      not listed as a record of its own, can be opened too.
 
 ## Non-goals
 
 `monaco.ts` and `dock.ts` stay imperative library wrappers (the sink layer).
-No generic reactive framework — just the resource abstraction plus derived
+No generic reactive framework, just the resource abstraction plus derived
 hover/inspection.

@@ -273,7 +273,7 @@ struct D : B, C { int d; };        /* …so D holds one A, placed last */
     source: `struct Base { int i; char c; };   /* sizeof 8, but only 5 bytes of data */
 
 struct Derived : Base { char d; };
-/* Base occupies 8 B here — d cannot land in Base's tail padding,
+/* Base occupies 8 B here, so d cannot land in Base's tail padding,
    because Base is standard-layout. Give Base a virtual function
    and watch d move into the padding instead. */
 `,
@@ -306,7 +306,7 @@ struct Probe {
   std::vector<bool> vb;   /* the bitset specialization */
 };
 
-/* These are libc++'s layouts, on whatever target you pick — including
+/* These are libc++'s layouts, on whatever target you pick, including
    Windows, where the real toolchain would use MSVC's STL and get
    different numbers. libstdc++ differs again. Read them as "libc++
    on this target", never as "the standard library on this target". */

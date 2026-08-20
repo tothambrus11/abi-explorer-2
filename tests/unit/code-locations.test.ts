@@ -40,7 +40,7 @@ describe('buildLineIndex', () => {
   });
 
   it('a line declaring several fields marks each of them', () => {
-    // `uint8_t lo, hi;` — two declarators, at their own columns.
+    // `uint8_t lo, hi;`: two declarators, at their own columns.
     const idx = index(
       new Map([
         [
@@ -60,7 +60,7 @@ describe('buildLineIndex', () => {
   });
 
   it('a compound member is one mark covering all of its leaves', () => {
-    // struct Message { Header hdr; } — hdr on line 15, its fields on 4 and 5.
+    // struct Message { Header hdr; }: hdr on line 15, its fields on 4 and 5.
     const idx = index(
       new Map([
         [

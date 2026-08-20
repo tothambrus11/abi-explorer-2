@@ -2,7 +2,7 @@
 //
 // Every other suite either runs on recorded answers or on hand-built models.
 // This one asks the real module real questions and checks the numbers against
-// what the ABIs say — the evidence that the recording and the reality still
+// what the ABIs say: the evidence that the recording and the reality still
 // agree, and the only test that would notice a module rebuilt from a different
 // clang answering differently.
 //
@@ -102,7 +102,7 @@ describe.skipIf(!moduleAvailable)('the real module', () => {
     expect(vbase!.leafIndexes.length).toBeGreaterThan(0);
   });
 
-  it('carries the source range of a base specifier — which no clang dump emits', async () => {
+  it('carries the source range of a base specifier, which no clang dump emits', async () => {
     const a = await abi.analyze('struct B { int b; };\nstruct D : public B { int d; };\n', cxx());
     const base = a.records.find((r) => r.key === 'struct D')!.model.groups.find((g) => g.isBase)!;
     expect(base.location, 'a base has a written position').not.toBeNull();
@@ -161,7 +161,7 @@ describe.skipIf(!moduleAvailable)('the real module', () => {
     expect(plain.records[0]!.record.sizeBytes).toBe(8);
     expect(packed.records[0]!.record.sizeBytes).toBe(5);
     // An enum's size follows -fshort-enums, which is an option, not a flag the
-    // user typed — so it has to survive the request.
+    // user typed, so it has to survive the request.
     const short_ = await abi.analyze(
       'enum E { A = 1 };\nstruct S { enum E e; };\n',
       opts({ shortEnums: true }),
@@ -170,7 +170,7 @@ describe.skipIf(!moduleAvailable)('the real module', () => {
   });
 
   it('lays out every triple the app offers', async () => {
-    // The dropdown is a curated list and the module is not — a triple in the
+    // The dropdown is a curated list and the module is not: a triple in the
     // list that this build cannot construct a target for is a menu entry that
     // fails when picked, and nothing else would notice.
     // Not checked against `targets()`: that lists canonical architecture names
@@ -190,7 +190,7 @@ describe.skipIf(!moduleAvailable)('the real module', () => {
   }, 120_000);
 
   // The whole app, over everything the site ships: analyse, model, index. Not
-  // an assertion about any one layout — an assertion that nothing in the chain
+  // an assertion about any one layout: an assertion that nothing in the chain
   // from wasm to the editor's gutter throws or comes back empty.
   for (const ex of EXAMPLES) {
     it(`drives the app end to end: ${ex.name}`, async () => {

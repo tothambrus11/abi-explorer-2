@@ -635,7 +635,7 @@ export const PRESET_SPECS: ThemeSpec[] = [
 ];
 
 /**
- * Shape check for a spec from outside the app — localStorage, an imported file,
+ * Shape check for a spec from outside the app: localStorage, an imported file,
  * an older version of either.
  */
 export function isThemeSpec(x: unknown): x is ThemeSpec {
@@ -659,7 +659,7 @@ export function migrateSpec(s: ThemeSpec): ThemeSpec {
 
 /**
  * The definitive check: a spec is usable only if it compiles into a *complete*
- * theme. Compiling without throwing is not enough — reading colours off
+ * theme. Compiling without throwing is not enough, because reading colours off
  * something that is shape-valid but wrong (`page: 'red'`) yields undefined
  * everywhere rather than an error, and the app would paint itself with invalid
  * CSS variables. A theme that throws would be worse still: it takes the UI down

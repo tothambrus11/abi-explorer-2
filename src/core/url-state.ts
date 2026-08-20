@@ -1,7 +1,7 @@
 // Shareable state <-> URL fragment.
 //
 // v1 (legacy): base64url(JSON) with short keys.
-// v2: "2." + base64url(deflate-raw(JSON)) — same keys, compressed, so long
+// v2: "2." + base64url(deflate-raw(JSON)), same keys but compressed, so long
 // sources still fit comfortably in a URL.
 
 import { DEFAULT_OPTIONS, type CompileOptions, standardsFor, defaultStdFor } from './options';
@@ -113,7 +113,7 @@ async function inflate(bytes: Uint8Array): Promise<Uint8Array> {
 /**
  * Encode state to a fragment value (without the leading '#'). Falls back to
  * the uncompressed v1 wire format where CompressionStream is unavailable
- * (older WebViews) — every decoder understands both.
+ * (older WebViews). Every decoder understands both.
  */
 export async function encodeShareState(state: ShareState): Promise<string> {
   const wire = toWire(state);

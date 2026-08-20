@@ -27,10 +27,10 @@ export function computeAnalysisStatus(
   }
   if (!analysis) return { kind: 'idle' };
   if (analysis.code !== 0 && visibleCount === 0) {
-    return { kind: 'error', message: 'compilation failed — see diagnostics' };
+    return { kind: 'error', message: 'compilation failed, see diagnostics' };
   }
   if (analysis.code !== 0) {
-    return { kind: 'error', message: 'compiled with errors — layouts may be incomplete' };
+    return { kind: 'error', message: 'compiled with errors, layouts may be incomplete' };
   }
   return { kind: 'ok', warnings: analysis.diagnostics.length > 0 };
 }

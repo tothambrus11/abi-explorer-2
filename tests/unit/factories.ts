@@ -1,7 +1,7 @@
 // Hand-built models, for the pure functions whose inputs are easier to state
 // than to compile.
 //
-// Anything about *layout* is tested against the corpus instead — real answers
+// Anything about *layout* is tested against the corpus instead: real answers
 // from the real compiler. These factories exist for the presentation code
 // (colours, marks, dots), where the interesting input is a shape a source file
 // would take several records to produce.

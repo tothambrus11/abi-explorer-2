@@ -47,7 +47,7 @@ export function memberTooltipHtml(leaf: Leaf, extra?: string): string {
     `<strong>${escapeHtml([...leaf.path, leaf.name].join(' :: '))}</strong>`,
     leaf.type ? escapeHtml(leaf.type) : '',
     `offset ${fmtOffset(leaf.offsetBits)} · ${fmtSize(leaf)}`,
-    leaf.sharesAddress ? 'empty type sharing an address — occupies no bytes' : '',
+    leaf.sharesAddress ? 'empty type sharing an address, occupies no bytes' : '',
     extra ?? '',
   ];
   return lines.filter(Boolean).join('<br>');

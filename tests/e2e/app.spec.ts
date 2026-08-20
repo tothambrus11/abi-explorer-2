@@ -59,7 +59,7 @@ test.describe('ABI Explorer', () => {
     // The loading screen used to read "0% of 0 MB" for as long as the module
     // took, because nothing reported anything and the client had only its own
     // initial guess to show. The worker streams the two big files itself now,
-    // so there are real numbers — and they land in the Cache API on the way
+    // so there are real numbers, and they land in the Cache API on the way
     // past, which is what makes an interrupted first visit leave something
     // behind rather than nothing.
     //
@@ -140,7 +140,7 @@ test.describe('ABI Explorer', () => {
     // The build gzips the two big files and gives them `.gz` names. Whether
     // they arrive compressed is up to the host: Vite's preview server sets
     // `Content-Encoding: gzip` and the browser has undone it before the worker
-    // sees a byte, while Cloudflare Pages — where this deploys — hands over
+    // sees a byte, while Cloudflare Pages (where this deploys) hands over
     // the gzip stream for the worker to undo. Every other test in this file
     // runs the first path. This one runs the one production takes.
     const dist = path.join(process.cwd(), 'dist');
@@ -198,7 +198,7 @@ test.describe('ABI Explorer', () => {
   test('a new release reaches a visitor who already has the old one', async ({ page, context }) => {
     // The reason every file is named after its content. This directory is
     // served `immutable` and cached `CacheFirst`, so under stable names a new
-    // module is one no returning visitor would ever fetch — they would keep
+    // module is one no returning visitor would ever fetch: they would keep
     // whatever they downloaded the first time, forever, and there would be no
     // way to find out short of asking them.
     await waitReady(page);
@@ -238,7 +238,7 @@ test.describe('ABI Explorer', () => {
         .sort(),
     );
 
-    // And let go of what it replaced — otherwise every upgrade would leave
+    // And let go of what it replaced, otherwise every upgrade would leave
     // another 11 MB behind in the user's storage quota.
     const after = await moduleCache(page);
     expect(after.filter((f) => !f.startsWith('next-') && f !== 'manifest.json')).toEqual([]);
@@ -323,7 +323,7 @@ test.describe('ABI Explorer', () => {
     await waitReady(page);
     await page.selectOption('#example', '2');
     await expect(page.locator('#record-chips .chip')).toHaveCount(3);
-    // A named compound member is one unit, so its circle carries one colour —
+    // A named compound member is one unit, so its circle carries one colour,
     // the same colour its nested fields share in the table.
     const hdrDot = page.locator('.monaco-editor .view-line', { hasText: 'struct Header hdr' });
     const hdrColour = await hdrDot
@@ -349,7 +349,7 @@ test.describe('ABI Explorer', () => {
     // The union parent carries a tag; its children are flagged as overlapping.
     await expect(page.locator('.field-table tr.group.hovered .tag.union')).toBeVisible();
     // Column-precise: on a line declaring several members, the pointer picks
-    // exactly one — `crc_lo` alone, not the whole anonymous member…
+    // exactly one: `crc_lo` alone, not the whole anonymous member…
     await hoverWord(page, 'crc_lo, crc_hi', 'crc_lo');
     await expect(page.locator('.field-table tr.hovered .fname')).toHaveText(['crc_lo']);
     await expect(page.locator('.monaco-editor .member-name-hovered')).toHaveCount(1);
@@ -361,7 +361,7 @@ test.describe('ABI Explorer', () => {
       'crc_hi',
     ]);
     // `struct { uint8_t crc_lo, crc_hi; };` declares three things on one line:
-    // the anonymous member itself (a compound — neutral ring) and its two
+    // the anonymous member itself (a compound, neutral ring) and its two
     // fields, each with its own colour. One circle per declarator.
     const multi = page.locator('.monaco-editor .view-line', { hasText: 'crc_lo' });
     await expect(multi.locator('.member-dot')).toHaveCount(3);
@@ -393,7 +393,7 @@ test.describe('ABI Explorer', () => {
       page.locator('.field-table tr', { hasText: 'crc_lo' }).first().locator('.chip'),
     ).toHaveCount(1);
 
-    // The type popup counts members, not leaves: hdr, payload, crc_lo, crc_hi —
+    // The type popup counts members, not leaves: hdr, payload, crc_lo, crc_hi:
     // four, though eight fields end up in the layout.
     await hoverWord(page, 'struct Message {', 'Message');
     const hover = page.locator('.monaco-editor .monaco-hover:not(.hidden)');
@@ -446,7 +446,7 @@ test.describe('ABI Explorer', () => {
     await page.selectOption('#example', '2');
     await expect(page.locator('#record-chips .chip')).toHaveCount(3);
 
-    // Pick Header — not the default selection (the last record is).
+    // Pick Header, not the default selection (the last record is).
     const header = page.locator('#record-chips .chip', { hasText: 'Header' }).first();
     await header.click();
     await expect(header).toHaveAttribute('aria-selected', 'true');
@@ -456,7 +456,7 @@ test.describe('ABI Explorer', () => {
     // current line's gutter number as active.
     const declLine = await page.evaluate(() => {
       // Monaco positions view-lines absolutely, so DOM order is not source
-      // order — sort by offset to recover the line numbering.
+      // order: sort by offset to recover the line numbering.
       const lines = [...document.querySelectorAll('.monaco-editor .view-line')]
         .map((e) => ({
           top: parseFloat((e as HTMLElement).style.top || '0'),
@@ -481,7 +481,7 @@ test.describe('ABI Explorer', () => {
     await expect(page.locator('.record .title')).toContainText('Message');
 
     // The opening line of `union Payload {` declares no member, so the per-line
-    // member index knows nothing about it — the declaration's span does.
+    // member index knows nothing about it; the declaration's span does.
     await hoverWord(page, 'union Payload {', 'union');
     await expect(page.locator('.record .title')).toContainText('Payload');
 
@@ -501,8 +501,8 @@ test.describe('ABI Explorer', () => {
     await page.locator('#record-chips .chip', { hasText: 'struct D ' }).click();
     await expect(page.locator('.record .title')).toContainText('struct D');
 
-    // Every base of D occupies less than sizeof(its type) — B and C lose the
-    // shared A, and the virtual A itself is placed at its non-virtual size — so
+    // Every base of D occupies less than sizeof(its type): B and C lose the
+    // shared A, and the virtual A itself is placed at its non-virtual size, so
     // all three size cells are marked and explain themselves.
     const noted = page.locator('.field-table .num.noted');
     await expect(noted).toHaveCount(3);
@@ -517,7 +517,7 @@ test.describe('ABI Explorer', () => {
   test('hovering a base lights exactly the bytes it occupies', async ({ page }) => {
     // The thing the whole model is for. A virtual base is placed by the most
     // derived object, after the fields declared before it, and it occupies its
-    // non-virtual size rather than its sizeof — none of which is recoverable
+    // non-virtual size rather than its sizeof, none of which is recoverable
     // from a list of offsets, and all of which decides which bytes light up.
     await waitReady(page);
     await page.selectOption('#example', '6'); // C++ virtual inheritance (diamond)
@@ -547,7 +547,7 @@ test.describe('ABI Explorer', () => {
       .poll(() => page.locator('.record .title').textContent())
       .toContain('struct Diamond');
     // Diamond is 32 B; the virtual Base occupies bytes 16..27 (its vtable
-    // pointer and `x`), so exactly those bytes are banded — the derived
+    // pointer and `x`), so exactly those bytes are banded: the derived
     // class's own fields sit outside.
     const banded = page.locator('.grid .cell.band');
     await expect(banded).toHaveCount(12);
@@ -571,7 +571,7 @@ test.describe('ABI Explorer', () => {
   });
 
   test('drilling into a library type shows the layout it actually has', async ({ page }) => {
-    // The record is libc++'s, not the user's, so it is not listed as a tab —
+    // The record is libc++'s, not the user's, so it is not listed as a tab:
     // it is reached by its id from the member that uses it. Nothing in the app
     // matches a printed type name to find it, which is the point.
     await waitReady(page);
@@ -607,7 +607,7 @@ test.describe('ABI Explorer', () => {
 
   test('each template instantiation answers for itself', async ({ page }) => {
     // `Pair<double>` and `Pair<char>` are two records with two sizes, and an
-    // editor's idea of a word stops at `<` — so both hovers asked about
+    // editor's idea of a word stops at `<`, so both hovers asked about
     // `Pair`, and the index, which knew that spelling only as the first
     // instantiation to register it, answered `Pair<double>` twice.
     await waitReady(page);
@@ -633,7 +633,7 @@ test.describe('ABI Explorer', () => {
     // Siblings line up, whatever they are. A group writes its twisty and its
     // name with a newline between them and a leaf writes them adjacent, so a
     // collapsible row's name sat one collapsed space right of its own
-    // siblings' — and with no guide lines to fall back on, a leaf beside a
+    // siblings', and with no guide lines to fall back on, a leaf beside a
     // collapsible sibling read as its child.
     await waitReady(page);
     await page.selectOption('#example', '9'); // C++ standard library (libc++)
@@ -679,7 +679,7 @@ test.describe('ABI Explorer', () => {
   });
 
   test('hovering a byte inside a base actually looks different', async ({ page }) => {
-    // Not "is the class applied" — it always was. The base-subobject band
+    // Not "is the class applied"; it always was. The base-subobject band
     // draws its bracket with a `box-shadow` on `.cell.band`, two classes to
     // `.hovered`'s one, so on every byte inside a base the band won the
     // property outright and hovering an inherited member changed nothing on
@@ -703,8 +703,8 @@ test.describe('ABI Explorer', () => {
 
     // Two hovers rather than a hover against a resting state: selecting the
     // record puts the caret on `struct D : B, C`, and a caret on a line
-    // highlights what that line declares — so byte 8 starts out lit.
-    await rows.nth(9).hover(); // `a`, at byte 40 — nothing to do with byte 8
+    // highlights what that line declares, so byte 8 starts out lit.
+    await rows.nth(9).hover(); // `a`, at byte 40, nothing to do with byte 8
     await expect(rows.nth(9)).toContainText('a');
     await expect(cell).not.toHaveClass(/hovered/);
     const idle = await paint();
@@ -719,8 +719,8 @@ test.describe('ABI Explorer', () => {
     page,
   }) => {
     // A record with three bases and three vtable pointers. An inherited member
-    // is nameable on the derived object — `d.b`, with nothing written in
-    // between — so it is a member of D in its own right and gets its own
+    // is nameable on the derived object: `d.b`, with nothing written in
+    // between, so it is a member of D in its own right and gets its own
     // colour, exactly like the field D declares itself. The base is a
     // container in the layout and not in the language: it gathers them, and
     // has no colour of its own because its bytes have several.
@@ -746,7 +746,7 @@ test.describe('ABI Explorer', () => {
       const at = bytes(await row.locator('td').nth(3).textContent());
       const size = bytes(await row.locator('td').nth(4).textContent());
       await row.hover();
-      // Exactly its own bytes — a base row included, which is what gathering
+      // Exactly its own bytes, a base row included, which is what gathering
       // its members means.
       expect(await litNow(), `${name} (@${at}, ${size} B)`).toEqual(
         Array.from({ length: size }, (_, k) => at + k),
@@ -757,7 +757,7 @@ test.describe('ABI Explorer', () => {
       chipOf.set(name, /\bc-[\w-]+/.exec(cls)?.[0] ?? '');
     }
 
-    // Four members, four colours — `d`, and the three it inherits.
+    // Four members, four colours: `d`, and the three it inherits.
     const members = ['b', 'c', 'd', 'a'].map((n) => chipOf.get(n));
     expect(new Set(members).size, `inherited members share a colour: ${members.join()}`).toBe(4);
     expect(members.every((c) => c && c !== 'c-special')).toBe(true);
@@ -768,7 +768,7 @@ test.describe('ABI Explorer', () => {
     expect(chipOf.get('▾ virtual A base')).toBe('');
 
     // The gutter agrees with the grid *for the record on screen*. `b` is
-    // declared inside `struct B`, and B numbers its own members from scratch —
+    // declared inside `struct B`, and B numbers its own members from scratch:
     // the dot has to be D's colour for it, not B's.
     const dots = await page.evaluate(() => {
       const lines = [...document.querySelectorAll('.view-line')];
@@ -829,7 +829,7 @@ test.describe('ABI Explorer', () => {
 
   test('an unknown triple says so instead of showing an empty panel', async ({ page }) => {
     // A triple is free text, so this is a thing users do. The failure has no
-    // source location — it happens before a line of the file is read — so it
+    // source location (it happens before a line of the file is read), so it
     // reaches the editor as no squiggle at all, and the diagnostics panel is
     // the only place it can appear.
     await waitReady(page);
@@ -865,7 +865,7 @@ test.describe('ABI Explorer', () => {
     await expect(page.locator('#results')).toBeVisible({ timeout: 120_000 });
     await page.selectOption('#target', 'avr-unknown-unknown');
     await expect.poll(() => statValues(page)).toEqual(['21', '1', '0']);
-    // The headers are local too, not just the wasm — this is what shipping
+    // The headers are local too, not just the wasm; this is what shipping
     // them in the payload rather than fetching them on demand is for.
     await page.selectOption('#target', 'x86_64-unknown-linux-gnu');
     await page.selectOption('#example', '9'); // C++ standard library (libc++)

@@ -7,7 +7,7 @@
 //   ui        components; may use everything.
 //
 // Anything pointing the other way means logic has drifted into a layer that
-// cannot be tested — which is exactly how `themes.ts` ended up in `ui` while
+// cannot be tested, which is exactly how `themes.ts` ended up in `ui` while
 // `state` depended on it.
 import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -62,7 +62,7 @@ describe('architecture', () => {
 
   // The module download must not start before the metered-connection gate has
   // had its say (issue #1). The gate lives in `Session.boot()`, so a second
-  // caller starting the client makes it decorative — which is exactly what an
+  // caller starting the client makes it decorative, which is exactly what an
   // eager `start()` in `main.ts` used to do, with the consent prompt rendering
   // over a download already in flight.
   it('starts the module only through the session, which owns the download gate', () => {
@@ -82,7 +82,7 @@ describe('architecture', () => {
   });
 
   // The module directory is served immutable because every file in it is named
-  // after its content — every file but one. `manifest.json` is what says what
+  // after its content, every file but one. `manifest.json` is what says what
   // those names currently are, so it is the only route to a new module, and a
   // header telling the world to keep it for a year closes that route: the fix
   // for stale modules would itself be cached, and returning visitors would
@@ -95,8 +95,8 @@ describe('architecture', () => {
 
     // Every rule that matches contributes: Cloudflare Pages *merges* the
     // values rather than letting the last one win, which is how an exception
-    // carved out of a broader rule became `immutable, no-cache` in production
-    // — asking for both and settling nothing.
+    // carved out of a broader rule became `immutable, no-cache` in production,
+    // asking for both and settling nothing.
     const cacheControl = (target: string): string => {
       const values: string[] = [];
       let matching = false;

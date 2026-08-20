@@ -3,7 +3,7 @@
 //
 // Compression, for two reasons, and the second is the one users feel:
 //
-//  - A ceiling. The wasm is 27.9 MiB and static hosts cap a single asset —
+//  - A ceiling. The wasm is 27.9 MiB and static hosts cap a single asset.
 //    Cloudflare Pages, where this deploys, refuses anything over 25 MiB.
 //  - The download. The header pack is 19.2 MiB of text that gzips 8.4x, and it
 //    was shipping raw: two thirds of a first visit's cost, for nothing.
@@ -24,7 +24,7 @@
 //
 // Only in `dist/`. `public/vendor/abi/` keeps the plain names, because the
 // package's own `load()` resolves siblings by name from a filesystem directory
-// where there is no manifest to fetch — that is what the unit tests use.
+// where there is no manifest to fetch. That is what the unit tests use.
 
 /* eslint-disable no-console -- a build step: its output is the interface */
 import { gzipSync } from 'node:zlib';
@@ -40,7 +40,7 @@ const MANIFEST = path.join(DIST, 'manifest.json');
 const COMPRESS = new Set(['wasm', 'headers']);
 
 if (!existsSync(MANIFEST)) {
-  console.error(`no module in ${DIST} — run \`npm run abi:fetch\` before building`);
+  console.error(`no module in ${DIST}: run \`npm run abi:fetch\` before building`);
   process.exit(1);
 }
 
@@ -68,7 +68,7 @@ for (const [key, entry] of Object.entries(manifest.files ?? {})) {
   await writeFile(path.join(DIST, name), body);
   await rm(source);
 
-  // `bytes` stays the uncompressed length — that is what the file is once it
+  // `bytes` stays the uncompressed length, which is what the file is once it
   // is here, and what has to be read back out of the cache. `transferBytes` is
   // what the connection spends, which is the number the progress bar counts
   // and the consent gate quotes.

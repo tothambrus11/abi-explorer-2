@@ -8,7 +8,7 @@
 //
 // So: read the interface declarations out of the source, and check every field
 // against a response the module actually produced. No hand-written list of
-// names to keep in step — the declarations *are* the list.
+// names to keep in step: the declarations *are* the list.
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';

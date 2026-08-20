@@ -136,7 +136,7 @@ describe('resolveHover', () => {
 });
 
 describe('resolveHover with several declarators on a line', () => {
-  // `uint8_t lo, hi;` — the column decides which one is meant.
+  // `uint8_t lo, hi;`: the column decides which one is meant.
   const twoMarks = () => {
     const m = model([leaf('lo', 0, 8), leaf('hi', 8, 8)]);
     const lines = new Map<number, LineInfo>([

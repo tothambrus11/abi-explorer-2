@@ -7,7 +7,7 @@ import { needsDownloadConsent, type ConnectionHint } from '$core/metered';
 
 const CONSENT_KEY = 'abix-download-consent';
 
-/** Where the module is served from — the same construction the worker uses. */
+/** Where the module is served from, by the same construction the worker uses. */
 const BASE = new URL(
   (import.meta.env['VITE_ABI_BASE'] as string | undefined) ?? 'vendor/abi/',
   new URL(import.meta.env.BASE_URL, location.origin),
@@ -30,7 +30,7 @@ export function grantConsent(): void {
   try {
     localStorage.setItem(CONSENT_KEY, '1');
   } catch {
-    /* private mode — consent lasts for this session only */
+    /* private mode: consent lasts for this session only */
   }
 }
 
@@ -38,7 +38,7 @@ export function grantConsent(): void {
 export interface Bundle {
   /**
    * What crosses the connection on a first visit. The build gzips the two big
-   * files, so this is well under what lands on disk — and it is the same
+   * files, so this is well under what lands on disk, and it is the same
    * number the progress bar counts up to, because both read it from here.
    */
   bytes: number;
@@ -53,7 +53,7 @@ const CACHE_NAME = 'abix-abi-module-v1';
  *
  * Not a constant: the sizes change with every release, and a figure quoted in
  * the consent prompt that disagrees with the progress bar behind it is worse
- * than no figure at all — that is exactly how "~11 MB" came to sit in front of
+ * than no figure at all. That is exactly how "~11 MB" came to sit in front of
  * a bar counting to 47.
  *
  * Null when the manifest cannot be read, which on a first visit means the
@@ -62,7 +62,7 @@ const CACHE_NAME = 'abix-abi-module-v1';
 async function readBundle(): Promise<Bundle | null> {
   try {
     const url = new URL('manifest.json', BASE).href;
-    // Network first, then the copy the worker cached on an earlier visit —
+    // Network first, then the copy the worker cached on an earlier visit,
     // the same order the worker uses, so the two agree about which module
     // they are talking about. Offline with everything cached is exactly when
     // this has to keep working: it is the case where the gate should *not*
@@ -96,12 +96,12 @@ export function bundle(): Promise<Bundle | null> {
 }
 
 /**
- * Is the bundle available without a large download — that is, did an earlier
+ * Is the bundle available without a large download? That is, did an earlier
  * visit already put it in the Cache API?
  *
  * There is no same-origin probe. The module is served from this origin, so a
  * probe would always succeed and the gate would never ask, while the bytes
- * still cross the user's connection. Only a previous visit counts — the worker
+ * still cross the user's connection. Only a previous visit counts. The worker
  * puts each file in the cache as it finishes it, so even a visit abandoned
  * halfway leaves the first file there.
  */

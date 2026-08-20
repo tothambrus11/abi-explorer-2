@@ -1,7 +1,7 @@
 // The worker protocol, without a worker.
 //
 // `AbiClient` is the only thing between the app and a 28 MB module living in
-// another thread. What it has to get right is not layout — it is the boring
+// another thread. What it has to get right is not layout; it is the boring
 // part: request/response correlation, the load status the UI reports, and
 // failing every outstanding call when the worker dies rather than leaving a
 // promise that never settles.

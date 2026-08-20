@@ -31,7 +31,7 @@
         return store.status.message;
     }
   });
-  // Notes are not findings — they are the second half of the finding above
+  // Notes are not findings. They are the second half of the finding above
   // them, and counting them makes one warning read as [3].
   const count = $derived(
     store.analysis?.diagnostics.filter((d) => d.severity !== 'note' && d.severity !== 'remark')

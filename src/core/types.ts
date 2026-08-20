@@ -4,8 +4,8 @@ export type RecordKind = 'struct' | 'union' | 'class' | '__interface' | 'interfa
 
 /**
  * What a compound member is. `member` is a record-typed field or an anonymous
- * aggregate; the rest are base subobjects, with the ABI's own distinctions —
- * the primary base shares the derived object's address, and a virtual one is
+ * aggregate; the rest are base subobjects, with the ABI's own distinctions.
+ * The primary base shares the derived object's address, and a virtual one is
  * placed by the most derived object rather than by the class that names it.
  */
 export type GroupKind = 'member' | 'base' | 'primary-base' | 'vbase' | 'primary-vbase';
@@ -28,7 +28,7 @@ export interface RecordLayout {
   location: SourceLocation | null;
   /**
    * The whole declaration's extent. A caret anywhere inside it belongs to this
-   * record — including on a blank line or the closing brace, where no member
+   * record, including on a blank line or the closing brace, where no member
    * location would match.
    */
   range: SourceSpan | null;
@@ -42,7 +42,7 @@ export interface SourceLocation {
   isMainFile: boolean;
 }
 
-/** A span that may cross lines — a base specifier, a diagnostic highlight. */
+/** A span that may cross lines: a base specifier, a diagnostic highlight. */
 export interface SourceSpan {
   line: number;
   col: number;
@@ -91,7 +91,7 @@ export interface Leaf {
   /**
    * It occupies nothing: an empty type allowed to share an address, which is
    * what `[[no_unique_address]]` permits. It still has an offset, and the byte
-   * map draws nothing there — the bytes belong to whatever else is present, or
+   * map draws nothing there. The bytes belong to whatever else is present, or
    * to padding when nothing is.
    */
   sharesAddress: boolean;
@@ -100,7 +100,7 @@ export interface Leaf {
   /**
    * Nameable on the record being shown, without naming another member first.
    * Its own fields are, and so are the ones an anonymous aggregate injects
-   * (`msg.crc_lo`) and the ones it inherits (`d.b`) — but a field of a named
+   * (`msg.crc_lo`) and the ones it inherits (`d.b`), but a field of a named
    * compound member is reached through it (`msg.hdr.kind`) and is a member of
    * that member's record, not of this one.
    *
@@ -133,7 +133,7 @@ export interface Group {
   recordId: number | null;
   /** A base carries the span of its specifier; a member, its name's position. */
   location: SourceLocation | SourceSpan | null;
-  /** Nameable on the record being shown — see `Leaf.direct`. */
+  /** Nameable on the record being shown; see `Leaf.direct`. */
   direct: boolean;
 }
 

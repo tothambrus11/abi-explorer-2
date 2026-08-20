@@ -25,7 +25,7 @@ import ColorPicker from './ColorPicker.svelte';
 import PanelTab from './PanelTab.svelte';
 
 // v2: the tab renderers below are recorded in the serialized layout, so a
-// layout saved by v1 would keep plain tabs — and on a phone, keep Diagnostics
+// layout saved by v1 would keep plain tabs, and on a phone would keep Diagnostics
 // as a panel of its own under a two-line editor. Both are the defaults this
 // version exists to change, so the stored ones are retired rather than
 // migrated. The cost is one reset of hand-arranged panels.
@@ -175,7 +175,7 @@ export function mountDock(container: HTMLElement, session: Session): Dock {
   const narrow = () => container.clientWidth <= 760;
   /**
    * Wide enough to put two panels side by side, but not tall enough to stack
-   * anything — a phone held sideways. Diagnostics used to take a whole panel
+   * anything: a phone held sideways. Diagnostics used to take a whole panel
    * under the code there, leaving the editor about one line tall to say
    * "Clang is proud of you" in a box of its own.
    */

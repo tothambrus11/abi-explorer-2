@@ -14,7 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test",
-    "fixtures": "ABIX_CAPTURE=1 vitest run tests/unit/fixtures.capture.test.ts tests/unit/corpus.capture.test.ts",
+    "fixtures": "ABIX_CAPTURE=1 vitest run tests/unit/corpus.capture.test.ts",
     "abi:fetch": "node tools/fetch-abi-module.mjs"
   },
   "devDependencies": {

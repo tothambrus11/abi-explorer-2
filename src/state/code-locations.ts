@@ -37,13 +37,13 @@ export interface MemberMark {
    * One line, several answers: `int b;` inside `struct B` is a member of `B`
    * and of everything that inherits it, and each of them colours its own
    * members independently. A gutter dot has to say what the *picture on
-   * screen* says, so it picks the colour of the record being shown — otherwise
+   * screen* says, so it picks the colour of the record being shown. Otherwise
    * a field the grid paints gold gets a blue dot, which is what happened as
    * soon as inherited members stopped sharing their base's colour.
    */
   colorByRecord: Record<string, string>;
   /**
-   * Records for which this declarator is a *directly nameable* member — a field
+   * Records for which this declarator is a *directly nameable* member: a field
    * of the record itself, or one injected by an anonymous aggregate. Only these
    * earn a circle: what lives inside a compound member is seen by inspecting
    * that member's own record.
@@ -58,17 +58,17 @@ export interface LineInfo {
   members: MemberRef[];
   /** Items (leaves/groups) declared on this line, from the primary record. */
   items: (Leaf | Group)[];
-  /** Record that declares the line as a direct member — for dot colour and auto-select. */
+  /** Record that declares the line as a direct member, for dot colour and auto-select. */
   primary: string;
   /**
    * Gutter-dot colour: a single leaf's colour when the line carries exactly one
-   * byte-occupying field, else `c-compound` (a neutral ring) — a line holding a
+   * byte-occupying field, else `c-compound` (a neutral ring), since a line holding a
    * container (nested record / base) has no colour of its own.
    */
   colorClass: string;
   /** Where the primary declarator's name is written, for the type hover. */
   anchor: Anchor;
-  /** Per-declarator marks, left to right — several when a line declares several members. */
+  /** Per-declarator marks, left to right; several when a line declares several members. */
   marks: MemberMark[];
 }
 
@@ -89,8 +89,8 @@ export type LineIndex = Map<number, LineInfo>;
 
 /**
  * The colour standing for a declarator: a field's own colour, or the colour a
- * compound member's leaves share. A unit spanning several colours — an
- * anonymous aggregate, whose fields are members in their own right — has none,
+ * compound member's leaves share. A unit spanning several colours, such as an
+ * anonymous aggregate whose fields are members in their own right, has none
  * and shows the neutral ring instead.
  */
 function markColour(model: RenderModel, items: (Leaf | Group)[], leaves: Set<number>): string {
@@ -98,7 +98,7 @@ function markColour(model: RenderModel, items: (Leaf | Group)[], leaves: Set<num
   if (!first) return COMPOUND;
   if (!('leafIndexes' in first)) return first.colorClass ?? COMPOUND;
   // One definition of "the colour this member stands for", shared with the
-  // field table — including the parts where a vtable pointer does not count as
+  // field table, including the parts where a vtable pointer does not count as
   // a second colour, and where a base has no colour of its own because its
   // members have their own. Two copies of this rule is how the grid, the table
   // and the gutter came to disagree about every polymorphic base.
@@ -111,7 +111,7 @@ export function buildLineIndex(models: Map<string, RenderModel>): LineIndex {
   /** One declarator of one record, keyed by (line, column). */
   interface Cell {
     record: string;
-    /** The declarator names a member of `record` — its own, or one it inherits. */
+    /** The declarator names a member of `record`: its own, or one it inherits. */
     direct: boolean;
     /**
      * `record` is where the declarator is *written*. A base's field is a direct

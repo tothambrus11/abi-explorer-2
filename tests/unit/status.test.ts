@@ -48,14 +48,14 @@ describe('computeAnalysisStatus', () => {
   it('non-zero exit with no visible records → hard failure', () => {
     expect(computeAnalysisStatus({ status: 'ok', error: null }, analysis({ code: 1 }), 0)).toEqual({
       kind: 'error',
-      message: 'compilation failed — see diagnostics',
+      message: 'compilation failed, see diagnostics',
     });
   });
 
   it('non-zero exit but records still shown → soft "compiled with errors"', () => {
     expect(computeAnalysisStatus({ status: 'ok', error: null }, analysis({ code: 1 }), 3)).toEqual({
       kind: 'error',
-      message: 'compiled with errors — layouts may be incomplete',
+      message: 'compiled with errors, layouts may be incomplete',
     });
   });
 

@@ -320,8 +320,8 @@ input.input {
 }
 
 /* A menu hanging off a control in the top bar.
-   Anchored to the right of the nearest positioned ancestor — the whole action
-   cluster, not the single button — and clamped to the viewport. Hung off the
+   Anchored to the right of the nearest positioned ancestor (the whole action
+   cluster, not the single button) and clamped to the viewport. Hung off the
    button instead, a 200px menu two thirds of the way across a 390px bar ran
    off the *left* edge of the screen, and "Solarized Light" read "zed Light". */
 .popover {
@@ -345,7 +345,7 @@ input.input {
 }
 
 /* The dock tabs' own state (see PanelTab.svelte). Global because the spinner
-   is rendered by the icon component, so a scoped selector never reaches it —
+   is rendered by the icon component, so a scoped selector never reaches it,
    which is why the previous `class="spin"` on it did nothing at all. */
 @keyframes abix-spin {
   to {

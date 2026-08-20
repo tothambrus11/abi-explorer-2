@@ -74,7 +74,7 @@
     editor?.setInlay(highlight, inlay);
   });
   // A one-shot navigation command (picking a record from the tab bar), not a
-  // value to keep in sync — the seq makes re-picking the same record fire again.
+  // value to keep in sync; the seq makes re-picking the same record fire again.
   $effect(() => {
     const req = session.revealRequest;
     if (req) editor?.setCursor(req.line);
@@ -110,7 +110,7 @@
     aria-label="C or C++ source code editor"
   ></div>
   <p class="hint">
-    The C library (musl) and libc++ resolve for every target — see the footer for which headers
+    The C library (musl) and libc++ resolve for every target. See the footer for which headers
     answered. Templates must be instantiated to appear.
   </p>
 </section>

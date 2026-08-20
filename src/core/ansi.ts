@@ -1,4 +1,4 @@
-// Minimal ANSI SGR (Select Graphic Rendition) reader — enough for clang's
+// Minimal ANSI SGR (Select Graphic Rendition) reader, enough for clang's
 // colored diagnostics: bold, reset, and the 16 foreground colors.
 
 export interface AnsiSpan {

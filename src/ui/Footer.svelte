@@ -8,7 +8,7 @@
 
   // Which standard headers answered the current query, and why that matters:
   // see $core/headers. The top bar's details popover says the same thing,
-  // which is where a phone reads it — everything here but the offline badge
+  // which is where a phone reads it. Everything here but the offline badge
   // is hidden at that width.
   const headers = $derived(store.analysis?.headers ?? null);
   const headerNote = $derived(headerSummary(headers));
@@ -35,7 +35,7 @@
       class="btn small"
       onclick={() => {
         location.reload();
-      }}>Update available — reload</button
+      }}>Update available: reload</button
     >
   {/if}
 </footer>
@@ -62,7 +62,7 @@
 
      Short: a phone held sideways is 844 wide and 390 tall, so the width rule
      never fired and the full three-line footer took a quarter of the screen.
-     It only needs to be flatter — there is width to spare.
+     It only needs to be flatter, and there is width to spare.
 
      Narrow: a portrait phone has no width, so the prose goes. Which headers
      answered stays as long as it fits, because on a phone there is no tooltip

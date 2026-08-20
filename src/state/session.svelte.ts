@@ -98,7 +98,7 @@ export class Session {
   private mouse: EditorPos | null = $state.raw(null);
   private cursor: EditorPos | null = $state.raw(null);
   /**
-   * What the pointer is over in the grid/table — an *intent* (record + index),
+   * What the pointer is over in the grid/table: an *intent* (record + index),
    * resolved against the current models by `resolveHover`, so it can never
    * point at a member of a superseded analysis.
    */
@@ -108,14 +108,14 @@ export class Session {
 
   /**
    * A one-shot request for the editor to move its caret (issue #3): picking a
-   * record from the tab bar navigates to its declaration, so the cursor — which
-   * decides the record when nothing is hovered — agrees with the tab.
+   * record from the tab bar navigates to its declaration, so the cursor, which
+   * decides the record when nothing is hovered, agrees with the tab.
    */
   revealRequest: { line: number; seq: number } | null = $state.raw(null);
   private revealSeq = 0;
   /**
    * Cursor position when a record was picked explicitly. While the cursor is
-   * still there, the pick outranks the cursor rule — otherwise a pick made
+   * still there, the pick outranks the cursor rule. Otherwise a pick made
    * before the analysis lands is undone the moment it arrives.
    */
   private pickedAt: EditorPos | null = $state.raw(null);
@@ -132,7 +132,7 @@ export class Session {
   /**
    * Decide whether the module may start downloading, and start it if so. Call
    * this first and *only* through here: on a metered connection (issue #1) the
-   * download waits for an explicit opt-in, so nothing else may kick it off —
+   * download waits for an explicit opt-in, so nothing else may kick it off:
    * starting it eagerly elsewhere would fetch the bundle behind the consent
    * prompt and make the gate decorative.
    *
@@ -140,7 +140,7 @@ export class Session {
    * DOM-independent, so the app mounts while it runs).
    */
   async boot(): Promise<void> {
-    // No usable hint (or the check threw) — behave as on an unmetered link.
+    // No usable hint (or the check threw): behave as on an unmetered link.
     const ask = await shouldAskBeforeDownload().catch(() => false);
     if (ask) store.awaitingDownloadConsent = true;
     else this.startModule();
@@ -155,7 +155,7 @@ export class Session {
     const stopRoot = $effect.root(() => {
       // Drive the query from source/options. This effect also tracks the
       // module's status, which changes on every progress tick during the
-      // download — dedup-by-input is what keeps that from turning into a
+      // download. Dedup-by-input is what keeps that from turning into a
       // hundred identical queries the moment it becomes ready.
       $effect(() => {
         const input: CompileInput = { source: store.source, options: { ...store.options } };
@@ -188,7 +188,7 @@ export class Session {
       // The trigger is the cursor position changing, not the record we derive
       // from it. Those differ twice over: the position is unchanged while an
       // explicit tab pick is in force (so the pick must not be reverted), and
-      // it is also unchanged when an analysis merely finishes — at which point
+      // it is also unchanged when an analysis merely finishes, at which point
       // resolving the caret's record for the first time would otherwise pull
       // the panel off the record it opened on.
       let lastPos: EditorPos | null = null;
@@ -284,7 +284,7 @@ export class Session {
 
   /**
    * Drill into a compound member: inspect the record it is an instance of.
-   * Returns false when the member has no record to open — a plain field, or a
+   * Returns false when the member has no record to open: a plain field, or a
    * type this analysis did not lay out.
    *
    * This used to strip the record keyword off the member's printed type and
@@ -367,7 +367,7 @@ export class Session {
 
   /**
    * Documentation hover at (line, word). What the word *is* is decided by the
-   * pure `subjectAt`; what is left here is the one thing it cannot do — measure
+   * pure `subjectAt`; what is left here is the one thing it cannot do, measure
    * a spelling the analysis has no record for, which costs a query.
    */
   async describeType(

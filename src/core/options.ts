@@ -1,7 +1,7 @@
 // Compile options as chosen in the UI, and the clang flags they mean.
 //
-// This used to build a full argv per pass — a layout dump, a probe TU, an AST
-// dump — each needing the same target, standard and header paths spelled
+// This used to build a full argv per pass (a layout dump, a probe TU, an AST
+// dump), each needing the same target, standard and header paths spelled
 // consistently or the answers would not line up. A query takes the target and
 // the language as fields, and header search is the module's own business, so
 // what is left here is the handful of flags that change layout.
@@ -58,7 +58,7 @@ export function defaultStdFor(lang: Language): string {
 // The target is not among them, deliberately. It is a field of the request and
 // the UI shows which one is selected; a `-target` in the flag box would change
 // what is actually being laid out while the selector went on claiming
-// otherwise — and a shared link can put anything in that box.
+// otherwise, and a shared link can put anything in that box.
 const ALLOWED_FLAG_RE =
   /^(?:-f(?!syntax-only$)[A-Za-z0-9=+_.-]+|-m[A-Za-z0-9=+_.-]+|-W[A-Za-z0-9=+_.-]*|-std=[A-Za-z0-9+.:]+|-D[A-Za-z_][A-Za-z0-9_]*(?:=.*)?|-U[A-Za-z_][A-Za-z0-9_]*|-isystem\/[A-Za-z0-9_.+/-]+|-I\/[A-Za-z0-9_.+/-]+|-O[0-3sz]?|-w|-pedantic(?:-errors)?|-ansi|-nostdinc(?:\+\+)?)$/;
 /**
@@ -70,13 +70,13 @@ const ALLOWED_FLAG_RE =
 const TAKES_ARG = new Set(['-Xclang', '-include', '-D', '-U', '-I', '-isystem']);
 /**
  * `-Xclang` hands the next token straight to the frontend, where the flags that
- * select an *action* live — `-ast-dump`, `-emit-obj`, `-E`, `-analyze`… The
+ * select an *action* live: `-ast-dump`, `-emit-obj`, `-E`, `-analyze`… The
  * module runs its own action and ignores those, but "harmless today" is not a
  * reason to pass a shared link's arbitrary token to a compiler.
  *
  * Frontend *feature* flags all begin with `-f`, so that is the rule: an
  * allowlist, like every other entry here, rather than a list of the actions we
- * happened to think of. It still admits the ones worth reaching for —
+ * happened to think of. It still admits the ones worth reaching for:
  * `-fms-layout-compatibility=…`, `-fnew-alignment=…`.
  */
 const XCLANG_ARG_RE = /^-f[A-Za-z0-9=+_.-]*$/;

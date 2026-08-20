@@ -15,15 +15,15 @@ export interface MemberDot {
  * One circle per member declarator, for the records currently on screen (the
  * active one in tabs mode, all of them when stacked).
  *
- * A filled circle carries the field's own colour; a compound member — a nested
- * record or base, whose bytes belong to several differently-coloured leaves —
+ * A filled circle carries the field's own colour. A compound member (a nested
+ * record or base, whose bytes belong to several differently-coloured leaves)
  * gets the neutral ring instead, since no single colour represents it.
  */
 export function memberDots(lines: Iterable<LineInfo>, shown: ReadonlySet<string>): MemberDot[] {
   const dots: MemberDot[] = [];
   for (const l of lines) {
     for (const mark of l.marks) {
-      // A circle marks a member of a record on screen — not a field that merely
+      // A circle marks a member of a record on screen, not a field that merely
       // lives inside one of its compound members.
       const record = mark.directRecords.find((r) => shown.has(r));
       if (record === undefined) continue;

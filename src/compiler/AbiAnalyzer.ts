@@ -2,7 +2,7 @@
 //
 // What this replaced ran a baseline compile to learn the target's scalar sizes,
 // a layout pass, up to four rounds of probe translation units to measure each
-// member, and one filtered AST dump per record for source locations — six or
+// member, and one filtered AST dump per record for source locations: six or
 // more full re-parses, because every answer had to be recovered from something
 // clang had printed. Then about 2500 lines of JavaScript reconstructed the
 // containment those prints had flattened.
@@ -85,7 +85,7 @@ export interface Analysis {
   /**
    * Which standard headers answered this query. Worth showing: on a target
    * musl has no tree for, the C declarations are portable ones over this
-   * target's own scalar types, and libc++'s locale layer is not available —
+   * target's own scalar types, and libc++'s locale layer is not available,
    * which is why `<iostream>` resolves on Linux and not on Darwin.
    */
   headers: WireHeaders | null;
@@ -107,7 +107,7 @@ export class AbiAnalyzer {
     return this.module.version();
   }
 
-  /** Every triple this build can lay out — not a curated list. */
+  /** Every triple this build can lay out, not a curated list. */
   targets(): Promise<string[]> {
     return this.module.targets();
   }
@@ -131,7 +131,7 @@ export class AbiAnalyzer {
   }
 
   /**
-   * Size and alignment of an arbitrary type spelling in the user's context —
+   * Size and alignment of an arbitrary type spelling in the user's context:
    * the one question the response cannot answer in advance, because the
    * spelling is whatever the pointer happens to be over.
    */

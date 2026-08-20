@@ -26,7 +26,7 @@
   /**
    * Bytes belonging to a base subobject, so the grid can bracket them: the
    * derived class's own fields sit outside the band, and what the base
-   * contributes — its vtable pointer, its fields, its internal padding — sits
+   * contributes (its vtable pointer, its fields, its internal padding) sits
    * inside. Empty bases occupy nothing and get no band.
    */
   const bands = $derived.by((): Map<number, { first: boolean; last: boolean }> => {
@@ -86,8 +86,8 @@
     new Set(store.hover.members.filter((m) => m.record === record).map((m) => m.leaf)),
   );
   /**
-   * The extent of what is hovered. Bytes inside it that no member covers — a
-   * compound member's own padding — light up too: `hdr` claims eight bytes and
+   * The extent of what is hovered. Bytes inside it that no member covers, a
+   * compound member's own padding, light up too: `hdr` claims eight bytes and
    * five hold fields, so without this the other three read as belonging to
    * nothing, and the row's size has no visible answer.
    */
@@ -132,7 +132,7 @@
   <div class="note">Zero-size record.</div>
 {:else if size > GRID_LIMIT}
   <div class="note">
-    Struct is {size.toLocaleString()} bytes — showing a proportional map instead of a byte grid.
+    Struct is {size.toLocaleString()} bytes, so this is a proportional map instead of a byte grid.
   </div>
   <div class="bar" role="img" aria-label="proportional layout" onmouseleave={leave}>
     {#each [...model.leaves.map( (l, li) => ({ off: l.offsetBits, len: l.sizeBits, li }) ), ...model.paddings.map( (p) => ({ off: p.start * 8, len: (p.end - p.start) * 8, li: null }) )]
@@ -331,7 +331,7 @@
   }
   /* An outline, not another `box-shadow`.
      The base-subobject band already owns this cell's box-shadow, and it owns
-     it with two classes to the hover's one — so on every byte inside a base,
+     it with two classes to the hover's one, so on every byte inside a base
      `.cell.band` beat `.hovered` on specificity and hovering an inherited
      member changed nothing at all. Both signals are real and want the same
      edge; giving them separate properties lets them compose instead of one

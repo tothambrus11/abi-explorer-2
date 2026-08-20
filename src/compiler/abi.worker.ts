@@ -2,8 +2,8 @@
 //
 // The module is ~11 MB over the wire and a query over libc++ takes a few hundred
 // milliseconds; neither belongs on the thread that also has to keep the editor
-// responsive. The protocol is deliberately thin — one request kind, one
-// response kind — because the interesting structure is in the response body,
+// responsive. The protocol is deliberately thin (one request kind, one
+// response kind) because the interesting structure is in the response body,
 // which this file never looks at.
 
 import type { WireResponse } from '$core/render';
@@ -51,7 +51,7 @@ type EmscriptenFactory = (options: {
 
 /**
  * Emscripten's name for each file the manifest lists. A release names them by
- * content — `wasm-9ec58989c571.wasm` — so these names exist only inside the
+ * content, as in `wasm-9ec58989c571.wasm`, so these names exist only inside the
  * module's own loader, and the manifest is what maps one to the other.
  */
 const ASSET_NAMES: Record<string, string> = {
@@ -71,7 +71,7 @@ interface Asset {
   name: string;
   /** Where it actually is. Content-addressed, so it changes on every release. */
   url: string;
-  /** Uncompressed length — what the file is once it is here. */
+  /** Uncompressed length: what the file is once it is here. */
   bytes: number;
   /** What crosses the network, which is less where the build gzipped it. */
   transferBytes: number;
@@ -91,7 +91,7 @@ interface ManifestFile {
  * The manifest is the one mutable file in the directory and the only thing
  * that knows the current layout.
  *
- * Network first, our own cache second — deliberately, and in that order. It is
+ * Network first, our own cache second, deliberately and in that order. It is
  * the only file here that ever changes, so a cached copy preferred over a
  * fresh one would pin a visitor to whichever module they first downloaded,
  * forever; and it is the only file a second visit cannot do without, so a
@@ -132,7 +132,7 @@ async function resolveAssets(cache: Cache | null): Promise<Asset[]> {
   return assets;
 }
 
-/** The Cache API, where there is one — an insecure origin has none. */
+/** The Cache API, where there is one. An insecure origin has none. */
 async function openCache(): Promise<Cache | null> {
   if (typeof caches === 'undefined') return null;
   return caches.open(CACHE).catch(() => null);
@@ -183,7 +183,7 @@ const isGzip = (head: Uint8Array | undefined): boolean =>
  * Fetch the module's files ourselves: decompress what the build compressed,
  * report progress, and leave a copy in the Cache API.
  *
- * Emscripten would fetch them itself, and did — but from inside its own loader,
+ * Emscripten would fetch them itself, and did, but from inside its own loader,
  * where nothing can see how far along it is, and only *after* a successful boot
  * was there anything to cache. A first visit interrupted halfway left nothing
  * behind, and the loading screen claimed "0% of 0 MB" for the ten seconds it
@@ -191,8 +191,8 @@ const isGzip = (head: Uint8Array | undefined): boolean =>
  * at all any more: the two big files ship gzipped under `.gz` names, and
  * undoing that is this function's job.
  *
- * The cache is best-effort — an insecure origin has no Cache API and a full
- * disk fails the write — but the download is not, so caching failures cost the
+ * The cache is best-effort (an insecure origin has no Cache API, a full disk
+ * fails the write) but the download is not, so caching failures cost the
  * next visit, not this one.
  */
 async function fetchAssets(assets: Asset[], cache: Cache | null): Promise<Map<string, string>> {
@@ -227,7 +227,7 @@ async function fetchAssets(assets: Asset[], cache: Cache | null): Promise<Map<st
       // browser has already undone it by the time we see a byte, while one
       // that does not hands over the gzip stream; Vite's preview server does
       // the former and Cloudflare does the latter. So neither a header nor a
-      // manifest flag is the authority — the first two bytes are.
+      // manifest flag is the authority. The first two bytes are.
       const first = await reader.read();
       const head = first.done ? undefined : first.value;
       const gzipped = isGzip(head);
@@ -273,7 +273,7 @@ async function fetchAssets(assets: Asset[], cache: Cache | null): Promise<Map<st
   }
 
   // Nothing here is named after a version, so an upgrade would otherwise leave
-  // the whole previous module — some 47 MB of it — cached forever.
+  // the whole previous module, some 47 MB of it, cached forever.
   if (cache) {
     const keep = new Set([new URL('manifest.json', BASE).href, ...assets.map((a) => a.url)]);
     for (const request of await cache.keys()) {
@@ -288,7 +288,7 @@ async function fetchAssets(assets: Asset[], cache: Cache | null): Promise<Map<st
  *
  * `module` is only assigned once instantiation finishes, so a second message
  * arriving before then used to start a second download and a second wasm
- * instance — 11 MB and a few hundred megabytes of address space, for a copy
+ * instance: 11 MB and a few hundred megabytes of address space, for a copy
  * that would immediately be thrown away. The promise is the thing to share,
  * not its result. Nothing sends a request before `ready` today, which is why
  * it never showed.
@@ -307,7 +307,7 @@ async function instantiate(): Promise<AbiWasmModule> {
   // The glue is evaluated from a blob rather than imported by URL. A dedicated
   // worker's `import()` does not go through the service worker in Chromium, so
   // an imported module is simply unavailable offline however well it was
-  // cached — while `fetch` is served normally. Going through what we already
+  // cached, while `fetch` is served normally. Going through what we already
   // hold is what makes the second visit work with no network.
   const glue = local.get('abi_query.mjs');
   if (glue === undefined) throw new Error('the manifest names no glue for this module');
@@ -322,7 +322,7 @@ async function instantiate(): Promise<AbiWasmModule> {
   try {
     const instance = await factory({
       // The blob has no directory of its own, so every sibling is named
-      // outright — from what we already hold, where we have it.
+      // outright, from what we already hold, where we have it.
       locateFile: (p) => local.get(p) ?? new URL(p, BASE).href,
       print: () => {},
       printErr: () => {},

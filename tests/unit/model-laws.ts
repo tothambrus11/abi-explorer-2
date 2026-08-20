@@ -33,7 +33,7 @@ const allNodes = (nodes: TreeNode[]): TreeNode[] =>
 const KEY = 'r';
 
 /**
- * Which bytes the grid lights when a table row is hovered — by *asking the
+ * Which bytes the grid lights when a table row is hovered, by *asking the
  * resolver*, not by restating it.
  *
  * This used to walk `node.leafIndexes` directly, on the reasoning that a row
@@ -201,7 +201,7 @@ export function modelLaws(what: string, subjects: () => Subject[]): void {
     it("never lights a byte outside the row's own extent", () => {
       forEvery(({ label, model }) => {
         for (const node of rows(model)) {
-          // Every byte the row's own bit range touches — a 32-bit field
+          // Every byte the row's own bit range touches: a 32-bit field
           // starting at bit 1 straddles five bytes, not four. Stated as the
           // set rather than the count: a row lighting the right *number* of
           // the wrong bytes is exactly the failure worth catching, and a
@@ -225,7 +225,7 @@ export function modelLaws(what: string, subjects: () => Subject[]): void {
     it('paints every leaf of a unit in the unit’s own colour', () => {
       // What `assignColors` is for: a colour identifies a *direct member*, so
       // `hdr` is one block in the grid rather than a stripe per nested field.
-      // Vtable pointers are the deliberate exception — they are a category.
+      // Vtable pointers are the deliberate exception: they are a category.
       forEvery(({ label, model }) => {
         for (const g of units(model)) {
           const colours = new Set(
@@ -245,7 +245,7 @@ export function modelLaws(what: string, subjects: () => Subject[]): void {
       // dot from the same rule; null means "no single colour stands for this",
       // which is true of an anonymous aggregate and of nothing else. It was
       // also true of every polymorphic base, because the vtable pointer inside
-      // it counted as a second colour — so `B base` had no chip and no dot
+      // it counted as a second colour, so `B base` had no chip and no dot
       // while the grid painted its bytes blue.
       forEvery(({ label, model }) => {
         for (const g of units(model)) {
@@ -295,7 +295,7 @@ export function modelLaws(what: string, subjects: () => Subject[]): void {
       // written first: the palette has eight hues and a record with more
       // direct members than that reuses them, because a ninth nobody can tell
       // from the third is worse. The first attempt to salvage it guarded on
-      // `directMembers().length <= PALETTE_SIZE` and still failed — on a union
+      // `directMembers().length <= PALETTE_SIZE` and still failed, on a union
       // whose slot count that helper does not agree with.
       //
       // So state what is actually true and leave the wrapping to arithmetic:
@@ -381,7 +381,7 @@ export function modelLaws(what: string, subjects: () => Subject[]): void {
     it('indents each group under exactly the members its path names', () => {
       // The tree is what the table renders, and `Group.path` is what the model
       // recorded as enclosing that member. If they disagree, the table shows a
-      // subobject nested in something that does not contain it — which is what
+      // subobject nested in something that does not contain it, which is what
       // happened when leafless groups were placed by nesting depth alone, and
       // two sibling members each adopted the other's base.
       forEvery(({ label, model }) => {
@@ -393,7 +393,7 @@ export function modelLaws(what: string, subjects: () => Subject[]): void {
             }
             const g = model.groups[n.ref]!;
             // Sibling anonymous aggregates share one label, so a path through
-            // one genuinely cannot say which — that ambiguity is in the source,
+            // one genuinely cannot say which; that ambiguity is in the source,
             // not in the tree. Named members carry no such excuse.
             const ambiguous = [...g.path, ...ancestors].includes(ANON_LABEL);
             if (!ambiguous) {

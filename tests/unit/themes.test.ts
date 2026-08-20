@@ -1,7 +1,7 @@
 // The theme model compiles user-authored specs into the CSS variables the whole
 // app is painted with, and into Monaco's theme. It runs on data from
-// localStorage and from imported files, so a spec that compiles to nonsense —
-// or throws — takes the UI with it: `state/theme.svelte.ts` validates a stored
+// localStorage and from imported files, so a spec that compiles to nonsense (
+// or throws) takes the UI with it: `state/theme.svelte.ts` validates a stored
 // spec precisely by compiling it.
 import { describe, it, expect } from 'vitest';
 import {
@@ -96,7 +96,7 @@ describe('compileTheme', () => {
 });
 
 describe('presets', () => {
-  it('every preset compiles — they are what a broken custom theme falls back to', () => {
+  it('every preset compiles: they are what a broken custom theme falls back to', () => {
     expect(PRESET_SPECS.length).toBeGreaterThan(0);
     for (const s of PRESET_SPECS) expect(() => compileTheme(s, true), s.id).not.toThrow();
     expect(THEMES).toHaveLength(PRESET_SPECS.length);

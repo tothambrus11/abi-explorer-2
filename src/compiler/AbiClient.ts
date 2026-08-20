@@ -2,7 +2,7 @@
 //
 // It also owns the loading status the UI reports and the download gate hangs
 // off, because the module *is* the compiler now: there is no driver to run, no
-// argv to build and no output to parse — one request, one response.
+// argv to build and no output to parse. One request, one response.
 
 import type { AbiModule } from './AbiAnalyzer';
 import type { WireResponse } from '$core/render';
@@ -10,7 +10,7 @@ import type { WireResponse } from '$core/render';
 /** How far along the module's load is. The UI reports it; nothing else reads it. */
 export type ModuleStatus =
   | { state: 'idle' }
-  /** `total` is 0 when the size is not known — show an indeterminate bar. */
+  /** `total` is 0 when the size is not known, so show an indeterminate bar. */
   | { state: 'loading'; phase: 'download' | 'compile'; done: number; total: number }
   | { state: 'ready'; version: string }
   | { state: 'failed'; message: string };

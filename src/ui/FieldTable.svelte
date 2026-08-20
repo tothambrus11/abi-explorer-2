@@ -16,7 +16,7 @@
     pad: 'Bytes between the end of this member and the start of the next one.',
   };
 
-  /** One nesting level in pixels — also the width of the twisty column, so a
+  /** One nesting level in pixels, and also the width of the twisty column, so a
       guide line runs down the middle of it. Mirrored by `--indent` in the CSS. */
   const INDENT = 16;
 
@@ -103,7 +103,7 @@
             }}
           >
             <td class="chip-col">
-              <!-- A chip marks a member of *this* record — its own fields, and
+              <!-- A chip marks a member of *this* record: its own fields, and
                    the ones it inherits. What lives inside a named compound
                    member is coloured by the unit above it instead. -->
               {#if leaf.direct}<span class="chip {leaf.colorClass}"></span>{/if}
@@ -111,13 +111,13 @@
             <td class="name" style:padding-left="{indent}px" style:--depth={depth}>
               <span class="twist-gap"></span><span class="fname">{leaf.name}</span>
             </td>
-            <td class="type">{leaf.kind === 'special' ? '—' : leaf.type}</td>
+            <td class="type">{leaf.kind === 'special' ? '-' : leaf.type}</td>
             <td class="num">{fmtOffset(leaf.offsetBits)}</td>
             <td
               class="num"
               class:noted={leaf.sharesAddress}
               use:tooltip={leaf.sharesAddress
-                ? 'Its type is empty and it shares an address with another member, so it occupies no bytes — sizeof(its type) is still 1.'
+                ? 'Its type is empty and it shares an address with another member, so it occupies no bytes, though sizeof(its type) is still 1.'
                 : null}>{fmtSize(leaf)}</td
             >
             <td class="num">{leaf.align ? `${leaf.align} B` : ''}</td>
@@ -133,8 +133,8 @@
                optimization); anything else lost its tail padding to what follows. -->
           {@const shortWhy = short
             ? node.sizeBits === 0
-              ? `Occupies no bytes here: it is empty, so it shares its address with the rest of the object — sizeof(${group.type || group.name}) is ${full / 8} B only because a complete object cannot be zero-sized.`
-              : `Occupies ${node.sizeBits / 8} B here, though sizeof(${group.type || group.name}) is ${full / 8} B — the bytes after it are reused.`
+              ? `Occupies no bytes here: it is empty, so it shares its address with the rest of the object, and sizeof(${group.type || group.name}) is ${full / 8} B only because a complete object cannot be zero-sized.`
+              : `Occupies ${node.sizeBits / 8} B here, though sizeof(${group.type || group.name}) is ${full / 8} B, because the bytes after it are reused.`
             : null}
           <tr
             class="group"
@@ -275,11 +275,11 @@
   /* A flex row, not an inline one, for two reasons.
      Whitespace: a group writes `{#if}…{/if} <button class="fname">` and a leaf
      writes them adjacent, so the group's name sat one collapsed space further
-     right than its own children's — siblings at one depth did not line up, in
+     right than its own children's, so siblings at one depth did not line up, in
      a column whose only job is to say what is nested in what. Flex items ignore
      the whitespace between them.
      Guides: `--depth` vertical lines, one per ancestor, each running down the
-     middle of that ancestor's twisty — so the line under an arrow is visibly
+     middle of that ancestor's twisty, so the line under an arrow is visibly
      the arrow's. Indentation alone leaves a leaf beside a
      collapsible sibling looking like its child, which is how `__padding1_917_`
      came to read as a member of the union above it. */

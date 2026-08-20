@@ -11,7 +11,7 @@
   const LANGS: { id: Language; label: string; tip: string; soon?: boolean }[] = [
     { id: 'c', label: 'C', tip: 'Compile as C' },
     { id: 'c++', label: 'C++', tip: 'Compile as C++' },
-    { id: 'hylo', label: 'Hylo', tip: 'Hylo — not supported yet', soon: true },
+    { id: 'hylo', label: 'Hylo', tip: 'Hylo: not supported yet', soon: true },
   ];
   let selectValue = $state(isKnownTriple(store.options.triple) ? store.options.triple : CUSTOM);
   let customTriple = $state(isKnownTriple(store.options.triple) ? '' : store.options.triple);
@@ -169,7 +169,7 @@
       {/if}
       <label
         class="opt check"
-        use:tooltip={'Also list the anonymous records declared inside another one — normally drawn in their parent rather than listed beside it. A library type is not listed either way; open it by clicking the member that uses it.'}
+        use:tooltip={'Also list the anonymous records declared inside another one. They are normally drawn in their parent rather than listed beside it. A library type is not listed either way; open it by clicking the member that uses it.'}
         ><input type="checkbox" id="show-internal" bind:checked={store.showInternal} /><span
           >List nested anonymous records</span
         ></label
@@ -284,7 +284,7 @@
   }
 
   /* One row, not three. Each group used to take `flex: 1 1 100%`, so a phone
-     spent 152px — a fifth of the screen — on three select widgets. Everything
+     spent 152px, a fifth of the screen, on three select widgets. Everything
      stays on one line and the target, the only part with room to give, shrinks
      and ellipsises. */
   @media (max-width: 760px), (max-height: 560px) {
@@ -306,7 +306,7 @@
       display: none;
     }
     /* Only one group has anything to give. Letting them all shrink squeezed
-       the standard down to "gn" — the select kept its min-width and its parent
+       the standard down to "gn": the select kept its min-width and its parent
        did not, so it simply overflowed under the next control. */
     .group {
       flex: 0 0 auto;
@@ -339,8 +339,8 @@
       padding: 4px 8px;
     }
     /* The words cost more room than the row has. The control itself must not
-       disappear with them — zeroing the font size took the disclosure marker
-       too and left nothing to press — so it becomes a glyph, with the label
+       disappear with them. Zeroing the font size took the disclosure marker
+       too and left nothing to press, so it becomes a glyph, with the label
        still in the accessibility tree for anyone listening rather than looking. */
     .more > summary {
       font-size: 0;
@@ -363,7 +363,7 @@
     /* A panel, not a row. `.more[open] { flex-basis: 100% }` works in a bar
        that wraps; in one that does not, opening it pushed a column of
        checkboxes out to the right of the row, over the controls and off the
-       screen — half of "List nested anonymous records" and every flag name
+       screen, cutting off half of "List nested anonymous records" and every flag name
        cut off. Anchored to `.controls` rather than to the summary so it spans
        the width and cannot start off-screen, and outside `.lanes` so the
        horizontal scroll does not clip it. */
@@ -379,7 +379,7 @@
       z-index: 30;
       box-sizing: border-box;
       display: grid;
-      /* One column on a portrait phone, three on a phone held sideways —
+      /* One column on a portrait phone, three on a phone held sideways,
          where the panel has width to spare and no height at all. */
       grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
       gap: 12px 20px;

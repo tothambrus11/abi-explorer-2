@@ -1,13 +1,13 @@
 // A corpus of *real* clang answers, for tests that want the shapes the compiler
 // actually produces rather than the ones a generator thinks to build.
 //
-// Generated records cover breadth — every combination of bit-field, base and
+// Generated records cover breadth: every combination of bit-field, base and
 // nesting the arbitraries can reach. They do not cover the shapes that only
 // arise from real ABI rules: libc++'s short-string union, MSVC vbtable
 // pointers, a primary base absorbed at offset zero. This corpus supplies those,
 // and the two feed the same property tests side by side.
 //
-// What is stored is one query response per (source, triple) — the compiler's
+// What is stored is one query response per (source, triple): the compiler's
 // own answer, verbatim. The corpus this replaces stored the text of a layout
 // dump, which only had meaning once a parser had interpreted it; these files
 // are the interface itself, so a test reading one is exercising the same data
@@ -45,7 +45,7 @@ const DEFAULT_TRIPLES = ['x86_64-unknown-linux-gnu', 'x86_64-pc-windows-msvc'];
 export const REGRESSION_SOURCES: CorpusSource[] = [
   {
     // Two members that contain no byte-occupying member at all, so their groups
-    // hold no leaf indices — the one case where leaf ranges cannot say what is
+    // hold no leaf indices, the one case where leaf ranges cannot say what is
     // nested in what, and both members used to adopt both bases.
     name: 'regression-leafless-members',
     lang: 'c++',
@@ -82,7 +82,7 @@ export const REGRESSION_SOURCES: CorpusSource[] = [
   },
   {
     // Names for types, which the editor's hover resolves without compiling a
-    // probe — and a use of one, so the record and the name both appear.
+    // probe, and a use of one, so the record and the name both appear.
     name: 'regression-type-names',
     lang: 'c++',
     source:

@@ -15,14 +15,14 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      # 47 MB from a GitHub release, pinned in the fetch tool — so key the
+      # 47 MB from a GitHub release, pinned in the fetch tool, so key the
       # cache on that tool: change the version, get a new key, download once.
       - uses: actions/cache@v4
         with:
           path: public/vendor/abi
           key: abi-module-${{ hashFiles('tools/fetch-abi-module.mjs') }}
-      # The layout module the site serves. Everything past this point — the
-      # unit suites that drive it, the build, the e2e run — uses the same copy,
+      # The layout module the site serves. Everything past this point (the
+      # unit suites that drive it, the build, the e2e run) uses the same copy,
       # so a release that changed an answer fails here rather than in
       # production. `npm run build` would fetch it anyway; doing it up front
       # means the test suites see it too.
@@ -43,7 +43,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      # 47 MB from a GitHub release, pinned in the fetch tool — so key the
+      # 47 MB from a GitHub release, pinned in the fetch tool, so key the
       # cache on that tool: change the version, get a new key, download once.
       - uses: actions/cache@v4
         with:

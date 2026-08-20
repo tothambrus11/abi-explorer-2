@@ -1,7 +1,7 @@
 // The real module, loaded once for the whole run.
 //
 // Tests that need clang go through here. Everything else runs off the captured
-// responses in tests/fixtures/responses — the same data, recorded.
+// responses in tests/fixtures/responses: the same data, recorded.
 
 import { existsSync } from 'node:fs';
 import path from 'node:path';

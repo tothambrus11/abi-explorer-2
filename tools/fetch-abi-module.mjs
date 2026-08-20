@@ -34,7 +34,7 @@ const sha256 = (buf) => createHash('sha256').update(buf).digest('hex');
 // a local build. Overwriting that with a release would replace their working
 // copy with the last published one, silently, in the middle of a change.
 if (existsSync(DEST) && (await lstat(DEST)).isSymbolicLink()) {
-  console.log(`public/vendor/abi is a symlink to a local build — leaving it alone.`);
+  console.log(`public/vendor/abi is a symlink to a local build, so leaving it alone.`);
   console.log('Remove the link to fetch a release instead.');
   process.exit(0);
 }
@@ -61,14 +61,14 @@ async function upToDate(file, expected) {
 }
 
 // A build must not fail because the network is down when the module is already
-// here — but it must fail when it is not, rather than deploy a site that cannot
+// here, but it must fail when it is not, rather than deploy a site that cannot
 // answer anything.
 let manifestBody;
 try {
   manifestBody = await get('manifest.json');
 } catch (e) {
   if (existsSync(path.join(DEST, 'abi_query.wasm'))) {
-    console.warn(`could not reach ${base} — keeping the module already in ${DEST}`);
+    console.warn(`could not reach ${base}, keeping the module already in ${DEST}`);
     console.warn(`  ${e.message.split('\n')[0]}`);
     process.exit(0);
   }

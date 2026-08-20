@@ -1,13 +1,13 @@
 // Property-based tests for the places where a wrong answer is both easy to
 // produce and expensive: the URL decoder that eats untrusted input, the flag
 // allowlist that decides what clang is asked to do, and the geometry the views
-// draw — padding, containment, the byte map — whose invariants are hard to
+// draw (padding, containment, the byte map) whose invariants are hard to
 // state in examples but easy to state as laws.
 //
 // Breadth comes from two directions. Random search covers the untrusted-input
 // surface, where the interesting cases are the ones nobody thought of. The
 // geometry laws run over the corpus instead: it is finite, so it is exhausted
-// rather than sampled — with hundreds of real records a sampled property
+// rather than sampled: with hundreds of real records a sampled property
 // touches a fraction of them, and the record worth checking is precisely the
 // rare one. Generated *sources*, compiled for real, are in
 // `properties.real.test.ts`; nothing here needs clang.
@@ -111,7 +111,7 @@ function expectValidState(s: ShareState): void {
  * Flags that would change what clang *does* rather than how it lays records
  * out: pick a different frontend action, or write a file. `buildFlags` never
  * emits any of these, so seeing one means the user's free-form flag box got it
- * through — and a URL can put anything in that box.
+ * through, and a URL can put anything in that box.
  */
 function isDangerous(token: string): boolean {
   return (
@@ -158,7 +158,7 @@ describe('extra-flag allowlist (property)', () => {
       fc.property(flagText, (text) => {
         const [accepted, rejected] = splitExtraFlags(text);
         const tokens = text.trim().split(/\s+/).filter(Boolean);
-        // Nothing invented, nothing silently dropped — the UI shows `rejected`
+        // Nothing invented, nothing silently dropped: the UI shows `rejected`
         // to explain why a flag had no effect.
         expect([...accepted, ...rejected].sort()).toEqual([...tokens].sort());
       }),
@@ -211,7 +211,7 @@ describe('corpus', () => {
     const records = corpusRecords();
     expect(records.length).toBeGreaterThan(40);
 
-    // The shapes only real ABIs produce are actually present — otherwise the
+    // The shapes only real ABIs produce are actually present, otherwise the
     // laws below are being checked against a corpus of plain C structs.
     const models = records.map((r) => r.entry.model);
     const groups = models.flatMap((m) => m.groups);

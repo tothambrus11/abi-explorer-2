@@ -125,7 +125,7 @@ export function createEditor(container: HTMLElement, opts: CreateEditorOptions):
 
   const dots = editor.createDecorationsCollection([]);
   const lineDeco = editor.createDecorationsCollection([]);
-  // Inlay: a content widget (overlay) — injected text would re-render the
+  // Inlay: a content widget (overlay), since injected text would re-render the
   // hovered line's DOM under the pointer and swallow clicks.
   const inlayNode = document.createElement('span');
   inlayNode.className = 'member-inlay';
@@ -243,7 +243,7 @@ export function createEditor(container: HTMLElement, opts: CreateEditorOptions):
     setMemberDots(list) {
       // The circle is drawn by the decoration on the first character of the
       // member's name: CSS gives that span left padding, so the circle sits
-      // before the name and pushes the rest of the line along — and a line
+      // before the name and pushes the rest of the line along, and a line
       // declaring several members shows one circle per member. (Monaco's
       // injected-text option is internal to inlay hints and not usable here.)
       dots.set(

@@ -2,7 +2,7 @@
 // of the suite runs against shapes clang actually produces without needing
 // clang itself. Run with `npm run fixtures` (ABIX_CAPTURE=1); skipped otherwise.
 //
-// The whole response is stored, not a summary — these files stand in for the
+// The whole response is stored, not a summary: these files stand in for the
 // compiler, and a test that reads one is reading exactly what the app would.
 
 import { it, expect } from 'vitest';
@@ -13,7 +13,7 @@ import { abiModule, moduleAvailable } from './abi-module';
 it.skipIf(process.env['ABIX_CAPTURE'] !== '1')(
   'captures a query response for every corpus source',
   async () => {
-    expect(moduleAvailable, `no module at ABI_WASM_DIST — build it first`).toBe(true);
+    expect(moduleAvailable, `no module at ABI_WASM_DIST: build it first`).toBe(true);
     const abi = await abiModule();
     await mkdir(RESPONSES_DIR, { recursive: true });
 

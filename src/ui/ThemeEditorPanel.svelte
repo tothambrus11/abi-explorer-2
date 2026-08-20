@@ -205,7 +205,7 @@
     </div>
     {#if readOnly}
       <p class="hint">
-        Presets are read-only — <button class="link" onclick={duplicate}>duplicate</button> to customize.
+        Presets are read-only. <button class="link" onclick={duplicate}>Duplicate</button> one to customize.
       </p>
     {/if}
     <div class="fields">

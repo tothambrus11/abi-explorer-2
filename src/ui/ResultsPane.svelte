@@ -86,8 +86,8 @@
   {:else if empty}
     <p class="empty" id="empty-note">
       {store.analysis?.code === 0
-        ? 'No struct/class/union definitions found. Define one in the editor — and make sure templates are instantiated.'
-        : 'Compilation failed — fix the errors below.'}
+        ? 'No struct/class/union definitions found. Define one in the editor, and make sure templates are instantiated.'
+        : 'Compilation failed. Fix the errors below.'}
     </p>
   {:else if store.analysis}
     <div id="results">

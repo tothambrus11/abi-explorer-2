@@ -1,5 +1,5 @@
 // Application state (Svelte 5 runes). One source of truth for options,
-// source, view, selection, the current analysis, and hover — every view
+// source, view, selection, the current analysis, and hover. Every view
 // derives from it; nothing is stored in the DOM.
 
 import type { AnalysedRecord, Analysis } from '$compiler/AbiAnalyzer';
@@ -46,7 +46,7 @@ export interface Hover {
   members: MemberRef[];
   /**
    * The extent of what is hovered, so the byte map can light the bytes *inside*
-   * a member that no member of its own occupies — its internal padding. A
+   * a member that no member of its own occupies, its internal padding. A
    * member's row says it takes eight bytes; pointing at it has to show which
    * eight, and the five that happen to hold a field are not an answer.
    */
@@ -94,8 +94,8 @@ class Store {
 
   /**
    * Records worth showing. The response only carries what the user's file
-   * declares — a library record reaches the app solely as the type of a
-   * member — so what is left to decide is the nested anonymous ones, which are
+   * declares (a library record reaches the app solely as the type of a
+   * member), so what is left to decide is the nested anonymous ones, which are
    * drawn inside their parent rather than listed beside it.
    */
   visibleRecords: AnalysedRecord[] = $derived(
@@ -111,7 +111,7 @@ class Store {
 
   /**
    * Records to build models for: the visible ones, plus whichever record was
-   * explicitly selected — drilling into a nested anonymous member should show
+   * explicitly selected. Drilling into a nested anonymous member should show
    * it even though it is not listed on its own.
    */
   modelRecords: AnalysedRecord[] = $derived.by(() => {

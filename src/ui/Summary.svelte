@@ -4,7 +4,8 @@
   const { model }: { model: RenderModel } = $props();
   const fmt = new Intl.NumberFormat('en-US');
   const rec = $derived(model.record);
-  // Null means the record was too big to scan for padding — a different claim
+  // Null means the record was too big to scan for padding, which is a
+  // different claim
   // from "no padding", and the tile says so rather than showing a confident 0.
   const padding = $derived(model.paddingBytes);
   const padPct = $derived(
@@ -29,7 +30,7 @@
 <div class="summary">
   <div
     class="tile"
-    use:tooltip={'sizeof — the bytes one object of this type takes, including any trailing padding. An array element is spaced by exactly this much.'}
+    use:tooltip={'sizeof: the bytes one object of this type takes, including any trailing padding. An array element is spaced by exactly this much.'}
   >
     <div class="label">sizeof</div>
     <div class="value">{fmt.format(rec.sizeBytes)}</div>
@@ -37,7 +38,7 @@
   </div>
   <div
     class="tile"
-    use:tooltip={'alignof — the address boundary an object of this type must start on.'}
+    use:tooltip={'alignof: the address boundary an object of this type must start on.'}
   >
     <div class="label">alignof</div>
     <div class="value">{fmt.format(rec.align)}</div>
@@ -48,10 +49,10 @@
     class:warn={padding !== null && padding > 0}
     use:tooltip={padding === null
       ? 'Not measured: the record is too large to scan byte by byte.'
-      : 'Bytes inside sizeof that no member occupies — inserted to keep members aligned.'}
+      : 'Bytes inside sizeof that no member occupies, inserted to keep members aligned.'}
   >
     <div class="label">padding</div>
-    <div class="value">{padding === null ? '—' : fmt.format(padding)}</div>
+    <div class="value">{padding === null ? '-' : fmt.format(padding)}</div>
     <div class="unit">
       {#if padding !== null}bytes{#if rec.sizeBytes}
           · {padPct}%{/if}
@@ -61,7 +62,7 @@
   {#if extras.length}
     <div
       class="extras"
-      use:tooltip={'dsize — size without trailing padding, i.e. how much a derived class may reuse. nvsize / nvalign — size and alignment excluding virtual bases. preferred align — the alignment the ABI would like, where it exceeds the required one.'}
+      use:tooltip={'dsize: size without trailing padding, i.e. how much a derived class may reuse. nvsize / nvalign: size and alignment excluding virtual bases. preferred align: the alignment the ABI would like, where it exceeds the required one.'}
     >
       {extras.join(' · ')}
     </div>
@@ -107,7 +108,7 @@
     font-size: 12.5px;
   }
   /* Three stacked cards cost 79px on a phone. The same three numbers laid on
-     one line cost 30, and the label is what shrinks — a reader looking at a
+     one line cost 30, and the label is what shrinks. A reader looking at a
      byte map already knows which number is the size. */
   @media (max-width: 760px), (max-height: 560px) {
     .summary {
