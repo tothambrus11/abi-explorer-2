@@ -131,7 +131,8 @@ src/state/         store (Svelte 5 runes), session (orchestration, hover, type
 src/ui/            Svelte components, Monaco setup, dockview integration, themes
 tests/unit/        vitest; tests/fixtures/responses holds the recorded corpus
 tests/e2e/         Playwright against the production build
-tools/             fetch-abi-module.mjs (pull a pinned module release)
+tools/             fetch-abi-module.mjs (pull a pinned module release),
+                   stage-module.mjs (gzip + content-address it for the host)
 public/vendor/abi  the layout module the site serves
 ```
 
@@ -140,7 +141,20 @@ public/vendor/abi  the layout module the site serves
 Cloudflare Pages via Git integration: build command `npm run build`, output
 directory `dist`. The build fetches the pinned module first — a site built
 without it loads and then cannot answer anything — and keeps going on a network
-failure only when the module is already there. CI (`.github/workflows/ci.yml`) fetches the pinned
+failure only when the module is already there.
+
+`tools/stage-module.mjs` then prepares `dist/vendor/abi/` for a static host. It
+gzips the wasm and the header pack, which takes a first visit from 47 MB to
+about 11 MB and gets the wasm under Cloudflare's 25 MiB per-asset limit, and it
+names every file after its content. The names are the update path: that
+directory is served `immutable` and cached `CacheFirst` by the service worker,
+so a new module published under an old name is one no returning visitor would
+ever fetch. `manifest.json` is the single mutable file — read network-first,
+with the cached copy as the offline fallback — and every loader resolves
+through it. The worker deletes cache entries the current manifest does not
+name, so an upgrade also reclaims the previous module's ~11 MB.
+
+CI (`.github/workflows/ci.yml`) fetches the pinned
 clang-abi-wasm release and then runs lint, type-check, the unit suites
 (including the ones that drive the real module), the build, and Playwright — all
 against the same copy of the module the site serves.

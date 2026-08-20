@@ -1,4 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 
 async function waitReady(page: Page): Promise<void> {
   await page.goto('/');
@@ -22,6 +24,22 @@ async function hoverWord(page: Page, needle: string, word: string): Promise<void
 }
 
 const statValues = (page: Page) => page.locator('.summary .value').allTextContents();
+
+const ABI_DIST = path.join(process.cwd(), 'dist', 'vendor', 'abi');
+
+/** What the module cache holds, by file name. */
+const moduleCache = (page: Page): Promise<string[]> =>
+  page.evaluate(async () => {
+    const cache = await caches.open('abix-abi-module-v1');
+    return (await cache.keys()).map((r) => new URL(r.url).pathname.split('/').pop()!);
+  });
+
+interface Manifest {
+  files: Record<string, { path: string; bytes: number; transferBytes?: number }>;
+}
+
+const abiManifest = async (): Promise<Manifest> =>
+  JSON.parse(await readFile(path.join(ABI_DIST, 'manifest.json'), 'utf8')) as Manifest;
 
 test.describe('ABI Explorer', () => {
   test('compiles the default example and reacts to target changes', async ({ page }) => {
@@ -93,11 +111,137 @@ test.describe('ABI Explorer', () => {
 
     // The bytes are in the cache before the module is even instantiated, so a
     // visit abandoned during the download still leaves the next one offline.
+    // Under the names the manifest gives them, which the build derives from
+    // their content: that is what lets a later release land at all.
     const cached = await page.evaluate(async () => {
+      const manifest = (await (await fetch('vendor/abi/manifest.json')).json()) as {
+        files: Record<string, { path: string }>;
+      };
       const cache = await caches.open('abix-abi-module-v1');
-      return (await cache.keys()).map((r) => new URL(r.url).pathname.split('/').pop());
+      const keys = new Set((await cache.keys()).map((r) => new URL(r.url).pathname));
+      return ['wasm', 'headers', 'glue'].map((key) => ({
+        key,
+        path: manifest.files[key]!.path,
+        cached: keys.has(
+          new URL(`vendor/abi/${manifest.files[key]!.path}`, location.href).pathname,
+        ),
+      }));
     });
-    expect(cached).toEqual(expect.arrayContaining(['abi_query.wasm', 'abi_query.data']));
+    expect(
+      cached.every((f) => f.cached),
+      `not all cached: ${JSON.stringify(cached)}`,
+    ).toBe(true);
+    expect(cached.map((f) => f.path).every((p) => /-[0-9a-f]{12}\./.test(p))).toBe(true);
+  });
+
+  test('the gzip the site is deployed with is undone here, and counted honestly', async ({
+    page,
+  }) => {
+    // The build gzips the two big files and gives them `.gz` names. Whether
+    // they arrive compressed is up to the host: Vite's preview server sets
+    // `Content-Encoding: gzip` and the browser has undone it before the worker
+    // sees a byte, while Cloudflare Pages — where this deploys — hands over
+    // the gzip stream for the worker to undo. Every other test in this file
+    // runs the first path. This one runs the one production takes.
+    const dist = path.join(process.cwd(), 'dist');
+    await page.route('**/vendor/abi/*.gz', async (route) => {
+      const body = await readFile(path.join(dist, new URL(route.request().url()).pathname));
+      await route.fulfill({
+        status: 200,
+        headers: { 'content-type': 'application/octet-stream' },
+        body,
+      });
+    });
+
+    interface Sample {
+      state: string;
+      phase?: string;
+      done?: number;
+      total?: number;
+    }
+    await page.addInitScript(() => {
+      const w = window as unknown as {
+        __seen: Sample[];
+        __abix?: { store?: { compiler: Sample } };
+      };
+      w.__seen = [];
+      const tick = () => {
+        const c = w.__abix?.store?.compiler;
+        if (c) w.__seen.push({ ...c });
+        if (c?.state !== 'ready') requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+
+    await page.goto('/');
+    // It answers at all: the bytes that came out of the decompressor really
+    // were a wasm module and a header pack.
+    await expect(page.locator('#results')).toBeVisible({ timeout: 240_000 });
+    expect(await statValues(page)).toEqual(['40', '8', '13']);
+
+    // And the bar counted what the connection spent, not what it expanded to.
+    // Those differ by a factor of four here, and quoting one under the other
+    // is how a "~11 MB" prompt came to sit in front of a bar counting to 47.
+    const manifest = JSON.parse(
+      await readFile(path.join(dist, 'vendor', 'abi', 'manifest.json'), 'utf8'),
+    ) as { files: Record<string, { bytes: number; transferBytes?: number }> };
+    const wire = ['wasm', 'headers'].reduce(
+      (n, key) => n + (manifest.files[key]!.transferBytes ?? manifest.files[key]!.bytes),
+      0,
+    );
+    const seen = await page.evaluate(() => (window as unknown as { __seen: Sample[] }).__seen);
+    const downloads = seen.filter((x) => x.state === 'loading' && x.phase === 'download');
+    expect(downloads.at(-1)!.total).toBe(wire);
+    expect(downloads.at(-1)!.done).toBe(wire);
+  });
+
+  test('a new release reaches a visitor who already has the old one', async ({ page, context }) => {
+    // The reason every file is named after its content. This directory is
+    // served `immutable` and cached `CacheFirst`, so under stable names a new
+    // module is one no returning visitor would ever fetch — they would keep
+    // whatever they downloaded the first time, forever, and there would be no
+    // way to find out short of asking them.
+    await waitReady(page);
+    const first = await moduleCache(page);
+    expect(first.length).toBeGreaterThan(1);
+
+    // Publish one: the same bytes under different names, which is what a
+    // rebuilt module looks like from the browser's side.
+    const manifest = await abiManifest();
+    const next = { ...manifest, files: { ...manifest.files } };
+    for (const [key, file] of Object.entries(manifest.files)) {
+      next.files[key] = { ...file, path: `next-${file.path}` };
+    }
+    // `context`, not `page`: on the second visit the service worker is
+    // controlling, and its fetches are what actually go to the network.
+    await context.route('**/vendor/abi/manifest.json', (route) =>
+      route.fulfill({ contentType: 'application/json', body: JSON.stringify(next) }),
+    );
+    const asked = new Set<string>();
+    await context.route('**/vendor/abi/next-*', async (route) => {
+      const name = path.basename(new URL(route.request().url()).pathname).replace(/^next-/, '');
+      asked.add(name);
+      await route.fulfill({
+        status: 200,
+        headers: { 'content-type': 'application/octet-stream' },
+        body: await readFile(path.join(ABI_DIST, name)),
+      });
+    });
+
+    await page.reload();
+    await expect(page.locator('#results')).toBeVisible({ timeout: 240_000 });
+    expect(await statValues(page)).toEqual(['40', '8', '13']);
+    // It went and got the new one rather than answering from what it had.
+    expect([...asked].sort()).toEqual(
+      Object.values(manifest.files)
+        .map((f) => f.path)
+        .sort(),
+    );
+
+    // And let go of what it replaced — otherwise every upgrade would leave
+    // another 11 MB behind in the user's storage quota.
+    const after = await moduleCache(page);
+    expect(after.filter((f) => !f.startsWith('next-') && f !== 'manifest.json')).toEqual([]);
   });
 
   test('metered connection: the download waits for an explicit opt-in', async ({ page }) => {
@@ -112,7 +256,10 @@ test.describe('ABI Explorer', () => {
     // if no byte of it is requested before the click.
     let moduleRequests = 0;
     await page.route('**/vendor/abi/**', (route) => {
-      moduleRequests++;
+      // Not the manifest: 400 bytes, and it is where the figure in the prompt
+      // comes from. The gate exists to protect a data allowance, so what it
+      // has to hold back is the module.
+      if (!route.request().url().endsWith('/manifest.json')) moduleRequests++;
       return route.continue();
     });
     await page.goto('/');

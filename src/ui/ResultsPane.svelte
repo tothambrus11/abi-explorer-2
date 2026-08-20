@@ -1,14 +1,19 @@
 <script lang="ts">
   import { store } from '$state/store.svelte';
   import type { Session } from '$state/session.svelte';
-  import { activeBundle } from '$state/download-gate';
+  import { bundle } from '$state/download-gate';
   import RecordSection from './RecordSection.svelte';
   import Rows3 from '@lucide/svelte/icons/rows-3';
   import PanelTop from '@lucide/svelte/icons/panel-top';
   import { tooltip } from './tooltip';
 
   const { session }: { session: Session } = $props();
-  const DOWNLOAD_MB = Math.round(activeBundle().bytes / 1048576);
+  // From the module's manifest, so this and the progress bar below it are the
+  // same number rather than two guesses at it. 0 until it is known.
+  let downloadMb = $state(0);
+  void bundle().then((b) => {
+    if (b) downloadMb = Math.round(b.bytes / 1048576);
+  });
   const loading = $derived(store.compiler.state !== 'ready');
   const stacked = $derived(store.view === 'stack');
   const empty = $derived(store.analysis !== null && store.visibleRecords.length === 0);
@@ -46,15 +51,15 @@
     <div class="loading consent">
       <p id="consent-text">
         You appear to be on a metered or slow connection. Analysing layouts needs a one-time
-        <strong>~{DOWNLOAD_MB} MB</strong> download of clang (cached afterwards, and the app then works
-        offline).
+        {#if downloadMb}<strong>~{downloadMb} MB</strong>{/if} download of clang (cached afterwards, and
+        the app then works offline).
       </p>
       <button
         id="allow-download"
         class="allow"
         onclick={() => {
           session.allowDownload();
-        }}>Download clang ({DOWNLOAD_MB} MB)</button
+        }}>Download clang{downloadMb ? ` (${String(downloadMb)} MB)` : ''}</button
       >
     </div>
   {:else if loading}
@@ -67,7 +72,9 @@
         {/if}
       </div>
       <p id="load-text">{loadText}</p>
-      <p class="note">~{DOWNLOAD_MB} MB on first visit, then served from browser cache.</p>
+      {#if downloadMb}
+        <p class="note">~{downloadMb} MB on first visit, then served from browser cache.</p>
+      {/if}
     </div>
   {:else if !store.analysis}
     <!-- No analysis yet: idle/running (first compile pending) or the first compile failed outright. -->

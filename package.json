@@ -6,7 +6,7 @@
   "description": "Visualize C/C++ struct layouts for any LLVM target \u2014 clang compiled to WebAssembly, running in your browser.",
   "scripts": {
     "dev": "vite",
-    "build": "npm run abi:fetch && vite build && node tools/compress-module.mjs",
+    "build": "npm run abi:fetch && vite build && node tools/stage-module.mjs",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json && tsc -p tsconfig.node.json --noEmit",
     "lint": "eslint .",
