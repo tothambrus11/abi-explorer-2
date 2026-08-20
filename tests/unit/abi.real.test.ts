@@ -182,8 +182,8 @@ describe.skipIf(!moduleAvailable)('the real module', () => {
     for (const triple of triples) {
       const a = await abi.analyze('struct S { char c; int i; void *p; };\n', opts({ triple }));
       if (a.code !== 0 || a.records[0]?.record.sizeBytes === undefined) {
-        const why = a.diagnosticsText.split('\n')[0];
-        broken.push(`${triple}: ${why ? why : 'no record'}`);
+        const said = a.diagnosticsText.split('\n').filter((l) => l.trim() !== '');
+        broken.push(`${triple}: ${said[0] ?? 'no record'}`);
       }
     }
     expect(broken).toEqual([]);
