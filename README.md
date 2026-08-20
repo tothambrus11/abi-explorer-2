@@ -20,9 +20,13 @@ browser. Static site, works offline (PWA), no server. Live at
   triple. Every ABI quirk is authentic because clang's own frontend computes it.
 - Options: C/C++ (each with a standard version), `-fpack-struct`,
   `-mms-bitfields`, `-fshort-enums`, `-fshort-wchar`, `-Wpadded`, extra flags.
-- The C++ standard library is on board: `#include <string>` resolves against
-  bundled libc++ and musl headers, so `sizeof(std::string)` is answered for the
-  target you picked rather than for the machine you are on.
+- The C++ standard library is on board, for every target: `#include <string>`
+  resolves against bundled libc++ and musl headers, so `sizeof(std::string)` is
+  answered for the target you picked rather than for the machine you are on —
+  Windows, Darwin, WASI and bare-metal included. The footer says which headers
+  answered; off Linux the C declarations are portable ones over that target's
+  own scalar types, and `<locale>`, `<iostream>` and `<sys/*.h>` are not there
+  rather than being answered with something else's numbers.
 - Editor (Monaco, JetBrains Mono): colored gutter dots per member, hovering a
   line highlights its members in the grid/table (and vice versa), an inline
   `offset · size · align` hint, a documentation popup for any type name,
