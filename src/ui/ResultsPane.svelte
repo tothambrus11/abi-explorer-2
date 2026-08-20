@@ -169,6 +169,15 @@
       margin-left: 100%;
     }
   }
+  /* The bar is saying "something is happening", and so does the text beside
+     it. A moving stripe is not worth overriding someone's stated preference. */
+  @media (prefers-reduced-motion: reduce) {
+    .fill.indeterminate {
+      animation: none;
+      width: 100%;
+      opacity: 0.35;
+    }
+  }
   .note {
     color: var(--text-muted);
     font-size: 12px;
