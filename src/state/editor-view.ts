@@ -17,8 +17,7 @@ export interface MemberDot {
  *
  * A filled circle carries the field's own colour; a compound member — a nested
  * record or base, whose bytes belong to several differently-coloured leaves —
- * gets the neutral ring instead, since no single colour represents it. Each
- * mark already knows which, computed from the *declaring* record's items.
+ * gets the neutral ring instead, since no single colour represents it.
  */
 export function memberDots(lines: Iterable<LineInfo>, shown: ReadonlySet<string>): MemberDot[] {
   const dots: MemberDot[] = [];
@@ -26,8 +25,16 @@ export function memberDots(lines: Iterable<LineInfo>, shown: ReadonlySet<string>
     for (const mark of l.marks) {
       // A circle marks a member of a record on screen — not a field that merely
       // lives inside one of its compound members.
-      if (!mark.directRecords.some((r) => shown.has(r))) continue;
-      dots.push({ line: l.line, col: mark.col, colorClass: mark.colorClass });
+      const record = mark.directRecords.find((r) => shown.has(r));
+      if (record === undefined) continue;
+      // In the colour *that record* gives it. A base's field belongs to every
+      // record that inherits it, and each of them numbers its members from
+      // scratch; the dot has to agree with the grid the reader is looking at.
+      dots.push({
+        line: l.line,
+        col: mark.col,
+        colorClass: mark.colorByRecord[record] ?? mark.colorClass,
+      });
     }
   }
   return dots;

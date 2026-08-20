@@ -10,7 +10,7 @@ import {
   assignColors,
   flattenVisible,
   groupColorClass,
-  isNameable,
+  isTransparent,
   SPECIAL_COLOR,
 } from '$core/render';
 import { resolveHover, type HoverIntent } from '$state/hover';
@@ -219,9 +219,8 @@ export function modelLaws(what: string, subjects: () => Subject[]): void {
   });
 
   describe(`${what}: the legend`, () => {
-    /** A unit as `assignColors` means it: a direct compound member of this record. */
-    const units = (model: RenderModel) =>
-      model.groups.filter((g) => isNameable(g.path) && g.name !== ANON_LABEL);
+    /** A unit as `assignColors` means it: a *named* compound member of this record. */
+    const units = (model: RenderModel) => model.groups.filter((g) => g.direct && !isTransparent(g));
 
     it('paints every leaf of a unit in the unit’s own colour', () => {
       // What `assignColors` is for: a colour identifies a *direct member*, so
@@ -264,12 +263,12 @@ export function modelLaws(what: string, subjects: () => Subject[]): void {
       for (const node of rows(model)) {
         if (node.kind === 'leaf') {
           const leaf = model.leaves[node.ref]!;
-          if (isNameable(leaf.path) && leaf.colorClass !== SPECIAL_COLOR) {
+          if (leaf.direct && leaf.colorClass !== SPECIAL_COLOR) {
             chips.push(leaf.colorClass!);
           }
         } else {
           const g = model.groups[node.ref]!;
-          const c = isNameable(g.path) ? groupColorClass(model, g) : null;
+          const c = g.direct ? groupColorClass(model, g) : null;
           if (c !== null && c !== SPECIAL_COLOR) chips.push(c);
         }
       }
@@ -326,7 +325,7 @@ export function modelLaws(what: string, subjects: () => Subject[]): void {
             // with leaves of its own.
             const single =
               !('leafIndexes' in it) ||
-              (isNameable(it.path) && it.name !== ANON_LABEL && it.leafIndexes.length > 0);
+              (it.direct && !isTransparent(it) && it.leafIndexes.length > 0);
             if (!single) continue;
             expect(
               mark.colorClass,

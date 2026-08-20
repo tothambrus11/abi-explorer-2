@@ -159,6 +159,7 @@ describe('resolveHover with several declarators on a line', () => {
               members: [{ record: 'S', leaf: 0 }],
               items: [m.leaves[0]!],
               colorClass: 'c-1',
+              colorByRecord: { S: 'c-1' },
               directRecords: ['S'],
             },
             {
@@ -167,6 +168,7 @@ describe('resolveHover with several declarators on a line', () => {
               members: [{ record: 'S', leaf: 1 }],
               items: [m.leaves[1]!],
               colorClass: 'c-2',
+              colorByRecord: { S: 'c-2' },
               directRecords: ['S'],
             },
           ],

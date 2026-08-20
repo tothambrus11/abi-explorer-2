@@ -25,6 +25,9 @@ export function leaf(name: string, extra: Partial<Leaf> = {}): Leaf {
     owner: 'S',
     sharesAddress: false,
     location: null,
+    // A hand-built leaf is a member of the record it is built for; a test that
+    // needs one nested inside a compound member says so.
+    direct: true,
     ...extra,
   };
 }
@@ -45,6 +48,7 @@ export function group(name: string, leafIndexes: number[], extra: Partial<Group>
     isUnion: false,
     recordId: null,
     location: null,
+    direct: true,
     ...extra,
   };
 }
@@ -64,6 +68,16 @@ export function record(name: string, extra: Partial<RecordLayout> = {}): RecordL
 }
 
 export function model(leaves: Leaf[], groups: Group[] = [], rec = record('S')): RenderModel {
+  // `direct` is derived from the tree in the real thing (only the tree knows
+  // whether a path element was a base or a member). These models have no tree,
+  // so it is derived from the path instead, by looking each element up by
+  // name: anonymous aggregates and bases are transparent, everything else is
+  // a member you have to name first. Same rule, cruder lookup.
+  const byName = new Map(groups.map((g) => [g.name, g]));
+  const transparent = (label: string) => label === '(anonymous)' || byName.get(label)?.isBase;
+  const isDirect = (path: readonly string[]) => path.every((p) => transparent(p) === true);
+  for (const l of leaves) l.direct = isDirect(l.path);
+  for (const g of groups) g.direct = isDirect(g.path);
   return {
     record: rec,
     leaves,

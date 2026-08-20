@@ -65,9 +65,10 @@
       </dl>
 
       <p class="note">
-        Layouts are computed by <a href="https://llvm.org/" rel="noopener">clang</a> itself, compiled
-        to WebAssembly (<a href="https://github.com/tothambrus11/clang-abi-wasm" rel="noopener"
-          >clang-abi-wasm</a
+        Layouts are computed by <a href="https://llvm.org/" rel="noopener">clang</a> itself,
+        compiled to WebAssembly (<a
+          href="https://github.com/tothambrus11/clang-abi-wasm"
+          rel="noopener">clang-abi-wasm</a
         >, Apache-2.0 with LLVM exception). It runs in this tab: nothing you type leaves the page,
         and the whole thing works offline once the module has downloaded.
       </p>

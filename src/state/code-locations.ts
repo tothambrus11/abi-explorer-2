@@ -10,7 +10,7 @@
 // column falls in.
 
 import { anchorOf, type Anchor, type Group, type Leaf, type RenderModel } from '$core/types';
-import { isNameable, sharedColorClass } from '$core/render';
+import { groupColorClass, sharedColorClass } from '$core/render';
 import type { MemberRef } from './store.svelte';
 
 /** No single colour stands for this mark. */
@@ -29,8 +29,19 @@ export interface MemberMark {
   members: MemberRef[];
   /** Items from the declaring record (a group, or one leaf). */
   items: (Leaf | Group)[];
-  /** The colour of the direct member this declarator introduces. */
+  /** The colour of the direct member this declarator introduces, per record. */
   colorClass: string;
+  /**
+   * The colour each record in `directRecords` gives this declarator.
+   *
+   * One line, several answers: `int b;` inside `struct B` is a member of `B`
+   * and of everything that inherits it, and each of them colours its own
+   * members independently. A gutter dot has to say what the *picture on
+   * screen* says, so it picks the colour of the record being shown — otherwise
+   * a field the grid paints gold gets a blue dot, which is what happened as
+   * soon as inherited members stopped sharing their base's colour.
+   */
+  colorByRecord: Record<string, string>;
   /**
    * Records for which this declarator is a *directly nameable* member — a field
    * of the record itself, or one injected by an anonymous aggregate. Only these
@@ -84,11 +95,14 @@ export type LineIndex = Map<number, LineInfo>;
  */
 function markColour(model: RenderModel, items: (Leaf | Group)[], leaves: Set<number>): string {
   const first = items[0];
-  if (first && 'colorClass' in first) return first.colorClass ?? COMPOUND;
-  // One definition of "the colour these leaves stand for", shared with the
-  // field table — including the part where a vtable pointer does not count as
-  // a second colour. Two copies of this rule is how the grid, the table and
-  // the gutter came to disagree about every polymorphic base.
+  if (!first) return COMPOUND;
+  if (!('leafIndexes' in first)) return first.colorClass ?? COMPOUND;
+  // One definition of "the colour this member stands for", shared with the
+  // field table — including the parts where a vtable pointer does not count as
+  // a second colour, and where a base has no colour of its own because its
+  // members have their own. Two copies of this rule is how the grid, the table
+  // and the gutter came to disagree about every polymorphic base.
+  if (items.length === 1) return groupColorClass(model, first) ?? COMPOUND;
   return sharedColorClass(model, leaves) ?? COMPOUND;
 }
 
@@ -97,8 +111,15 @@ export function buildLineIndex(models: Map<string, RenderModel>): LineIndex {
   /** One declarator of one record, keyed by (line, column). */
   interface Cell {
     record: string;
-    /** The declarator names a member of `record` itself. */
+    /** The declarator names a member of `record` — its own, or one it inherits. */
     direct: boolean;
+    /**
+     * `record` is where the declarator is *written*. A base's field is a direct
+     * member of every record that inherits it, so several records claim the
+     * line; the one that declares it owns it, and keeps the line pointing at
+     * the record a reader is looking at when the caret lands there.
+     */
+    own: boolean;
     items: (Leaf | Group)[];
     leaves: Set<number>;
     anchor: Anchor;
@@ -113,7 +134,10 @@ export function buildLineIndex(models: Map<string, RenderModel>): LineIndex {
       const ck = `${anchor.col}\0${key}`;
       let cell = line.get(ck);
       if (!cell) {
-        line.set(ck, (cell = { record: key, direct: false, items: [], leaves: new Set(), anchor }));
+        line.set(
+          ck,
+          (cell = { record: key, direct: false, own: false, items: [], leaves: new Set(), anchor }),
+        );
       }
       return cell;
     };
@@ -124,7 +148,8 @@ export function buildLineIndex(models: Map<string, RenderModel>): LineIndex {
       const cell = cellAt(anchor);
       for (const li of g.leafIndexes) cell.leaves.add(li);
       cell.items.push(g);
-      if (isNameable(g.path)) cell.direct = true;
+      if (g.direct) cell.direct = true;
+      if (g.path.length === 0) cell.own = true;
     }
 
     model.leaves.forEach((leaf, li) => {
@@ -139,14 +164,15 @@ export function buildLineIndex(models: Map<string, RenderModel>): LineIndex {
       const cell = cellAt(anchor);
       cell.leaves.add(li);
       cell.items.push(leaf);
-      if (isNameable(leaf.path)) cell.direct = true;
+      if (leaf.direct) cell.direct = true;
+      if (leaf.path.length === 0) cell.own = true;
     });
   }
 
   const lines: LineIndex = new Map();
   for (const [line, cells] of byLine) {
     const all = [...cells.values()];
-    const primary = all.find((c) => c.direct) ?? all[0]!;
+    const primary = all.find((c) => c.direct && c.own) ?? all.find((c) => c.direct) ?? all[0]!;
 
     // Marks: one per column, merging the records that share that declarator.
     const byCol = new Map<number, Cell[]>();
@@ -160,14 +186,22 @@ export function buildLineIndex(models: Map<string, RenderModel>): LineIndex {
       .map(([col, group]) => {
         // Colour comes from a record that declares this member directly; every
         // leaf of a unit shares one colour, so a compound member has one too.
-        const owner = group.find((c) => c.direct) ?? group[0]!;
+        const owner =
+          group.find((c) => c.direct && c.own) ?? group.find((c) => c.direct) ?? group[0]!;
         const model = models.get(owner.record);
+        const colorByRecord: Record<string, string> = {};
+        for (const c of group) {
+          if (!c.direct) continue;
+          const m = models.get(c.record);
+          if (m) colorByRecord[c.record] = markColour(m, c.items, c.leaves);
+        }
         return {
           col,
           endCol: Math.max(owner.anchor.endCol, col + 1),
           members: group.flatMap((c) => [...c.leaves].map((leaf) => ({ record: c.record, leaf }))),
           items: owner.items,
           colorClass: model ? markColour(model, owner.items, owner.leaves) : COMPOUND,
+          colorByRecord,
           directRecords: group.filter((c) => c.direct).map((c) => c.record),
         };
       });

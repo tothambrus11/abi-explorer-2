@@ -329,8 +329,17 @@
     background:
       repeating-linear-gradient(45deg, transparent 0 3px, var(--baseline) 3px 4px), var(--grid-line);
   }
+  /* An outline, not another `box-shadow`.
+     The base-subobject band already owns this cell's box-shadow, and it owns
+     it with two classes to the hover's one — so on every byte inside a base,
+     `.cell.band` beat `.hovered` on specificity and hovering an inherited
+     member changed nothing at all. Both signals are real and want the same
+     edge; giving them separate properties lets them compose instead of one
+     silently winning. `z-index` puts the hovered cell above its neighbours so
+     the outline is not overdrawn. */
   .hovered {
-    box-shadow: inset 0 0 0 2px var(--text-primary);
+    outline: 2px solid var(--text-primary);
+    outline-offset: -2px;
     z-index: 1;
   }
   .bar {

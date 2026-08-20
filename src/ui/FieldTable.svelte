@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { RenderModel } from '$core/types';
-  import { flattenVisible, groupColorClass, isNameable } from '$core/render';
+  import { flattenVisible, groupColorClass } from '$core/render';
   import { store } from '$state/store.svelte';
   import { fmtOffset, type Session } from '$state/session.svelte';
   import { fmtSize, fmtGroupSize, memberTooltipHtml, groupTooltipHtml } from './format';
@@ -99,9 +99,10 @@
             }}
           >
             <td class="chip-col">
-              <!-- A chip marks a member of *this* record; what lives inside a
-                   compound member is coloured by the unit above it. -->
-              {#if isNameable(leaf.path)}<span class="chip {leaf.colorClass}"></span>{/if}
+              <!-- A chip marks a member of *this* record — its own fields, and
+                   the ones it inherits. What lives inside a named compound
+                   member is coloured by the unit above it instead. -->
+              {#if leaf.direct}<span class="chip {leaf.colorClass}"></span>{/if}
             </td>
             <td class="name" style:padding-left="{indent}px">
               <span class="twist-gap"></span><span class="fname">{leaf.name}</span>
@@ -121,7 +122,7 @@
         {:else}
           {@const group = model.groups[node.ref]!}
           {@const canCollapse = node.children.length > 0}
-          {@const unitColour = isNameable(group.path) ? groupColorClass(model, group) : null}
+          {@const unitColour = group.direct ? groupColorClass(model, group) : null}
           {@const full = group.typeSizeBits}
           {@const short = node.sizeBits < full}
           <!-- Why it is short: an empty base is elided entirely (empty base

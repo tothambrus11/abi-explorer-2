@@ -97,6 +97,17 @@ export interface Leaf {
   sharesAddress: boolean;
   location: SourceLocation | null;
   colorClass?: string;
+  /**
+   * Nameable on the record being shown, without naming another member first.
+   * Its own fields are, and so are the ones an anonymous aggregate injects
+   * (`msg.crc_lo`) and the ones it inherits (`d.b`) — but a field of a named
+   * compound member is reached through it (`msg.hdr.kind`) and is a member of
+   * that member's record, not of this one.
+   *
+   * Computed from the tree, not from `path`: only the tree knows whether the
+   * thing a path names is a base or a member.
+   */
+  direct: boolean;
 }
 
 /** A compound member: a base subobject, a record-typed field, or an anonymous aggregate. */
@@ -122,6 +133,8 @@ export interface Group {
   recordId: number | null;
   /** A base carries the span of its specifier; a member, its name's position. */
   location: SourceLocation | SourceSpan | null;
+  /** Nameable on the record being shown — see `Leaf.direct`. */
+  direct: boolean;
 }
 
 /** A zero-size thing worth marking even though it draws no bytes. */

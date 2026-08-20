@@ -13,6 +13,7 @@ const mark = (
   members: records.map((record, i) => ({ record, leaf: i })),
   items: [],
   colorClass,
+  colorByRecord: Object.fromEntries(directRecords.map((r) => [r, colorClass])),
   directRecords,
 });
 const line = (n: number, marks: MemberMark[]): LineInfo => ({

@@ -605,14 +605,15 @@ test.describe('ABI Explorer', () => {
     await expect(page.locator('.record .title')).toContainText('Probe');
   });
 
-  test('inherited members: every row lights its own bytes, and is named in the legend', async ({
+  test('inherited members get colours of their own, and the base still gathers them', async ({
     page,
   }) => {
-    // A record with three bases and three vtable pointers, which is where both
-    // halves of this went wrong. The grid painted the inherited members in
-    // their own colours; the table drew no chip beside a single base row and
-    // the gutter drew the neutral ring, because the vtable pointer inside each
-    // base counted as a second colour and made the base look multi-coloured.
+    // A record with three bases and three vtable pointers. An inherited member
+    // is nameable on the derived object — `d.b`, with nothing written in
+    // between — so it is a member of D in its own right and gets its own
+    // colour, exactly like the field D declares itself. The base is a
+    // container in the layout and not in the language: it gathers them, and
+    // has no colour of its own because its bytes have several.
     await waitReady(page);
     await page.selectOption('#example', '6'); // C++ virtual inheritance (diamond)
     await expect.poll(() => page.locator('#record-chips .chip').count()).toBeGreaterThan(3);
@@ -620,43 +621,74 @@ test.describe('ABI Explorer', () => {
     await expect(page.locator('.field-table tbody tr')).toHaveCount(10);
 
     const bytes = (t: string | null) => Number(/(-?\d+)\s*B/.exec(t ?? '')?.[1] ?? NaN);
+    const litNow = () =>
+      page.evaluate(() =>
+        [...document.querySelectorAll('.grid .cell')]
+          .map((c, b) => (c.classList.contains('hovered') ? b : -1))
+          .filter((b) => b >= 0),
+      );
+
     const rows = page.locator('.field-table tbody tr');
-    const seen: string[] = [];
+    const chipOf = new Map<string, string>();
     for (let i = 0; i < (await rows.count()); i++) {
       const row = rows.nth(i);
       const name = (await row.locator('td.name').textContent())?.trim() ?? '';
       const at = bytes(await row.locator('td').nth(3).textContent());
       const size = bytes(await row.locator('td').nth(4).textContent());
       await row.hover();
-      const lit = await page.evaluate(() =>
-        [...document.querySelectorAll('.grid .cell')]
-          .map((c, b) => (c.classList.contains('hovered') ? b : -1))
-          .filter((b) => b >= 0),
+      // Exactly its own bytes — a base row included, which is what gathering
+      // its members means.
+      expect(await litNow(), `${name} (@${at}, ${size} B)`).toEqual(
+        Array.from({ length: size }, (_, k) => at + k),
       );
-      // Exactly its own bytes — not one more, which is what "a border around
-      // most of the other sections" would look like.
-      const expected = Array.from({ length: size }, (_, k) => at + k);
-      expect(lit, `${name} (@${at}, ${size} B)`).toEqual(expected);
-
       const chip = row.locator('td.chip-col .chip');
-      if ((await chip.count()) > 0) {
-        // Just the colour token: the class also carries Svelte's scope hash.
-        const cls = (await chip.getAttribute('class')) ?? '';
-        seen.push(/\bc-[\w-]+/.exec(cls)?.[0] ?? cls);
-      }
+      // The class also carries Svelte's scope hash.
+      const cls = (await chip.count()) ? ((await chip.getAttribute('class')) ?? '') : '';
+      chipOf.set(name, /\bc-[\w-]+/.exec(cls)?.[0] ?? '');
     }
 
-    // Each of the three bases is named in the legend, in a colour of its own —
-    // and `d`, the one member D declares itself.
-    expect(seen.sort()).toEqual(['c-1', 'c-2', 'c-3', 'c-4']);
+    // Four members, four colours — `d`, and the three it inherits.
+    const members = ['b', 'c', 'd', 'a'].map((n) => chipOf.get(n));
+    expect(new Set(members).size, `inherited members share a colour: ${members.join()}`).toBe(4);
+    expect(members.every((c) => c && c !== 'c-special')).toBe(true);
+    // The vtable pointers keep the category they share.
+    expect(chipOf.get('B vtable pointer')).toBe('c-special');
+    // The bases carry none: their bytes are several colours now.
+    expect(chipOf.get('▾ B base')).toBe('');
+    expect(chipOf.get('▾ virtual A base')).toBe('');
 
-    // The gutter agrees: no neutral rings where a declarator introduces one
-    // base. `c-compound` is for a declarator that genuinely stands for several.
-    const dots = await page.evaluate(() =>
-      [...document.querySelectorAll('[class*="member-dot"]')].map((d) => d.className),
-    );
-    expect(dots.length).toBeGreaterThan(0);
-    expect(dots.filter((c) => c.includes('member-c-compound'))).toEqual([]);
+    // The gutter agrees with the grid *for the record on screen*. `b` is
+    // declared inside `struct B`, and B numbers its own members from scratch —
+    // the dot has to be D's colour for it, not B's.
+    const dots = await page.evaluate(() => {
+      const lines = [...document.querySelectorAll('.view-line')];
+      return [...document.querySelectorAll('[class*="member-dot"]')].map((d) => ({
+        colour: /member-(c-[\w-]+)/.exec(d.className)?.[1] ?? '',
+        // Monaco renders spaces as U+00A0, so `startsWith` needs the real ones.
+        line: (lines.find((l) => l.contains(d))?.textContent ?? '').replace(/\u00a0/g, ' ').trim(),
+      }));
+    });
+    for (const [name, decl] of [
+      ['b', 'struct B :'],
+      ['c', 'struct C :'],
+      ['d', 'struct D :'],
+      ['a', 'struct A {'],
+    ] as const) {
+      const on = dots.filter((d) => d.line.startsWith(decl) && d.colour !== 'c-compound');
+      expect(
+        on.map((d) => d.colour),
+        `dot on ${decl} for ${name}`,
+      ).toEqual([chipOf.get(name)]);
+    }
+    // A base clause introduces several colours, so it gets the neutral ring.
+    expect(dots.filter((d) => d.colour === 'c-compound').length).toBe(3);
+
+    // Hovering the base where the inheritance is *written* gathers its
+    // members in the grid, the same as hovering its row.
+    await hoverWord(page, 'struct D', 'B');
+    expect(await litNow(), 'hovering `: B` lights B’s bytes').toEqual([
+      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+    ]);
   });
 
   test('stacked view shows all records and links hovers across sections', async ({ page }) => {
