@@ -522,6 +522,12 @@ test.describe('ABI Explorer', () => {
     await expect(page.locator('#results')).toBeVisible({ timeout: 120_000 });
     await page.selectOption('#target', 'avr-unknown-unknown');
     await expect.poll(() => statValues(page)).toEqual(['21', '1', '0']);
+    // The headers are local too, not just the wasm — this is what shipping
+    // them in the payload rather than fetching them on demand is for.
+    await page.selectOption('#target', 'x86_64-unknown-linux-gnu');
+    await page.selectOption('#example', '9'); // C++ standard library (libc++)
+    await expect.poll(() => page.locator('.record .title').textContent()).toContain('Probe');
+    expect((await statValues(page))[0]).toBe('72');
     await context.setOffline(false);
   });
 });
