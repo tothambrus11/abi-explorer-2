@@ -87,10 +87,10 @@ const LOCAL_NAME = { wasm: 'abi_query.wasm', glue: 'abi_query.mjs', headers: 'ab
 
 let fetched = 0;
 for (const [key, entry] of Object.entries(manifest.files)) {
-  const local = LOCAL_NAME[key];
-  if (!local) continue;
-  if (await upToDate(local, entry.sha256)) {
-    console.log(`  ok        ${local}`);
+  const name = LOCAL_NAME[key];
+  if (!name) continue;
+  if (await upToDate(name, entry.sha256)) {
+    console.log(`  ok        ${name}`);
     continue;
   }
   const body = await get(entry.path);
@@ -100,15 +100,25 @@ for (const [key, entry] of Object.entries(manifest.files)) {
       `${entry.path}: sha256 mismatch\n  expected ${entry.sha256}\n  got      ${got}`,
     );
   }
-  await writeFile(path.join(DEST, local), body);
-  console.log(`  fetched   ${local}  (${(body.length / 1048576).toFixed(1)} MB)`);
+  await writeFile(path.join(DEST, name), body);
+  console.log(`  fetched   ${name}  (${(body.length / 1048576).toFixed(1)} MB)`);
   fetched++;
 }
 
 for (const file of ['index.mjs', 'index.d.ts']) {
   await writeFile(path.join(DEST, file), await get(file));
 }
-await writeFile(path.join(DEST, 'manifest.json'), JSON.stringify(manifest, null, 2));
+
+// The manifest is written with the paths *this* directory uses, not the ones
+// the release used. `load()` resolves the files through it, so a manifest still
+// naming `wasm-9ec58989c571.wasm` next to a file called `abi_query.wasm` is a
+// 404 with a plausible-looking cause. The hashes stay: they are how a re-run
+// knows it has nothing to do.
+const local = { ...manifest, files: { ...manifest.files } };
+for (const [key, entry] of Object.entries(local.files)) {
+  if (LOCAL_NAME[key]) local.files[key] = { ...entry, path: LOCAL_NAME[key] };
+}
+await writeFile(path.join(DEST, 'manifest.json'), JSON.stringify(local, null, 2));
 
 console.log(
   fetched ? `\n${fetched} file(s) downloaded into public/vendor/abi/` : '\nalready current',
