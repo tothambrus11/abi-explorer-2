@@ -1,12 +1,17 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
-/vendor/*
+# Only the content-addressed files, by name. Cloudflare Pages *merges* the
+# rules that match a path — it does not let a later one override an earlier
+# one — so `/vendor/*` plus an exception for the manifest produced
+# `max-age=31536000, immutable, no-cache`, which asks for both and settles
+# nothing. The rule has to not match it in the first place.
+#
+# `manifest.json` is the one file here that changes: it is what says what the
+# others are currently called, so caching it is caching the route to every
+# future release. `index.*` are not content-addressed either and are not
+# fetched at runtime; the default (revalidate) is right for both.
+/vendor/abi/abi_query-*
   Cache-Control: public, max-age=31536000, immutable
-# Named after their content, all of them — except this one, which is how a
-# reader finds out what the current names are. Immutable here (it matched
-# /vendor/* until it was called out) means a returning visitor can be told
-# about a new module a year late. Rules are applied in order and the last
-# one wins, so this must stay below /vendor/*.
 /vendor/abi/manifest.json
   Cache-Control: no-cache
 /sw.js

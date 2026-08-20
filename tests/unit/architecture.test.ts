@@ -93,9 +93,12 @@ describe('architecture', () => {
       .split('\n')
       .filter((line) => !line.trimStart().startsWith('#'));
 
-    /** What `_headers` ends up saying about a path: later rules win. */
-    const cacheControl = (target: string): string | undefined => {
-      let value: string | undefined;
+    // Every rule that matches contributes: Cloudflare Pages *merges* the
+    // values rather than letting the last one win, which is how an exception
+    // carved out of a broader rule became `immutable, no-cache` in production
+    // — asking for both and settling nothing.
+    const cacheControl = (target: string): string => {
+      const values: string[] = [];
       let matching = false;
       for (const line of rules) {
         if (!line.startsWith(' ') && line.trim() !== '') {
@@ -106,12 +109,14 @@ describe('architecture', () => {
           continue;
         }
         const [name, ...rest] = line.trim().split(':');
-        if (matching && name?.toLowerCase() === 'cache-control') value = rest.join(':').trim();
+        if (matching && name?.toLowerCase() === 'cache-control') values.push(rest.join(':').trim());
       }
-      return value;
+      return values.join(', ');
     };
 
-    expect(cacheControl('/vendor/abi/abi_query-1f3ff79bf58c.wasm.gz')).toContain('immutable');
+    expect(cacheControl('/vendor/abi/abi_query-1f3ff79bf58c.wasm.gz')).toBe(
+      'public, max-age=31536000, immutable',
+    );
     expect(cacheControl('/vendor/abi/manifest.json')).toBe('no-cache');
   });
 
