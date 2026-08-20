@@ -54,6 +54,46 @@ const BIG_ASSETS = ['abi_query.wasm', 'abi_query.data'] as const;
 const CACHE = 'abix-abi-module-v1';
 
 /**
+ * Undo gzip, if and only if the bytes are gzipped.
+ *
+ * The build ships the wasm compressed, because a 28 MB single asset is over the
+ * limit of the host this deploys to. Whether it arrives compressed is not ours
+ * to decide: a static host that recognises `.gz` sets `Content-Encoding: gzip`
+ * and the browser has already undone it by the time we see a byte, while one
+ * that does not hands over the gzip stream. Vite's preview server does the
+ * former and Cloudflare may do either.
+ *
+ * So neither a header nor a manifest flag is the authority — the bytes are. A
+ * gzip member starts with 1f 8b and a wasm module starts with 00 61 73 6d;
+ * peek at the first chunk and put it back.
+ */
+async function maybeGunzip(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+): Promise<ReadableStream<Uint8Array>> {
+  const first = await reader.read();
+  const head = first.value;
+  const gzipped =
+    !first.done && head !== undefined && head.length >= 2 && head[0] === 0x1f && head[1] === 0x8b;
+  const source = new ReadableStream<Uint8Array>({
+    start(controller) {
+      if (head !== undefined) controller.enqueue(head);
+      if (first.done) controller.close();
+    },
+    async pull(controller) {
+      const { done, value } = await reader.read();
+      if (done) controller.close();
+      else controller.enqueue(value);
+    },
+  });
+  if (!gzipped) return source;
+  // DecompressionStream is typed as taking BufferSource while a body stream
+  // yields Uint8Array; the two are the same bytes and lib.dom does not say so.
+  return (source as unknown as ReadableStream<BufferSource>).pipeThrough(
+    new DecompressionStream('gzip'),
+  );
+}
+
+/**
  * Fetch the big files ourselves, so the download has a number attached to it
  * and lands in the Cache API before the module needs it.
  *
@@ -72,57 +112,84 @@ const CACHE = 'abix-abi-module-v1';
 async function prefetch(): Promise<Map<string, string> | null> {
   if (typeof caches === 'undefined') return null;
   try {
-    const sizes = new Map<string, number>();
+    /** What Emscripten will ask for, and how to get it. */
+    interface Asset {
+      /** The name Emscripten uses; what `locateFile` is called with. */
+      name: string;
+      /** Where it actually is, which a build step may have changed. */
+      url: string;
+      /** Uncompressed length, for the progress bar. 0 when unknown. */
+      bytes: number;
+    }
+    const assets: Asset[] = BIG_ASSETS.map((name) => ({
+      name,
+      url: new URL(name, BASE).href,
+      bytes: 0,
+    }));
     try {
       const manifest = (await (await fetch(new URL('manifest.json', BASE))).json()) as {
-        files?: Record<string, { path: string; bytes: number }>;
+        files?: Record<string, { path: string; bytes: number; encoding?: string }>;
       };
       const byKey: Record<string, string> = {
         wasm: 'abi_query.wasm',
         headers: 'abi_query.data',
       };
       for (const [key, file] of Object.entries(manifest.files ?? {})) {
-        const local = byKey[key];
-        if (local) sizes.set(local, file.bytes);
+        const asset = assets.find((a) => a.name === byKey[key]);
+        if (!asset) continue;
+        asset.bytes = file.bytes;
+        // The build may have gzipped it and renamed it — a 28 MB single asset
+        // is over the limit of the host this deploys to. `bytes` stays the
+        // uncompressed length, which is what the progress bar counts against
+        // because that is what comes out of the reader either way.
+        if (file.path) asset.url = new URL(file.path, BASE).href;
       }
     } catch {
-      // A linked local build has no manifest; the bar goes indeterminate.
+      // No manifest: the plain names, and an indeterminate bar.
     }
 
     const cache = await caches.open(CACHE);
-    const total = [...sizes.values()].reduce((a, b) => a + b, 0);
+    const total = assets.reduce((a, b) => a + b.bytes, 0);
     let done = 0;
     const urls = new Map<string, string>();
 
-    for (const name of BIG_ASSETS) {
-      const url = new URL(name, BASE).href;
-      let response = await cache.match(url);
+    for (const asset of assets) {
+      // Cached decompressed, under the name Emscripten asks for: the work of
+      // undoing gzip is done once, not on every visit.
+      const key = new URL(asset.name, BASE).href;
+      let response = await cache.match(key);
       if (response) {
         // Already local: no download, and no pretending there was one.
-        done += sizes.get(name) ?? 0;
+        done += asset.bytes;
         post({ type: 'progress', phase: 'download', done, total });
       } else {
-        const network = await fetch(url);
+        const network = await fetch(asset.url);
         if (!network.ok || !network.body) return null;
         const reader = network.body.getReader();
+        const body = await maybeGunzip(reader);
+        const out = body.getReader();
         const chunks: Uint8Array[] = [];
         for (;;) {
-          const { done: finished, value } = await reader.read();
+          const { done: finished, value } = await out.read();
           if (finished) break;
           chunks.push(value);
+          // Decompressed bytes against the uncompressed total, which is what
+          // the manifest records for exactly this reason.
           done += value.byteLength;
           post({ type: 'progress', phase: 'download', done, total });
         }
-        response = new Response(new Blob(chunks as BlobPart[]), {
-          headers: network.headers,
-        });
-        await cache.put(url, response.clone());
+        response = new Response(new Blob(chunks as BlobPart[]));
+        await cache.put(key, response.clone());
       }
-      urls.set(name, URL.createObjectURL(await response.blob()));
+      urls.set(asset.name, URL.createObjectURL(await response.blob()));
     }
     return urls;
-  } catch {
-    return null; // offline, no Cache API, a partial read — Emscripten's problem now
+  } catch (e) {
+    // Offline, no Cache API, a partial read — Emscripten's problem now. Say so:
+    // a silent fall back to a path that may not exist is a stuck loading screen
+    // with nothing to go on.
+    console.warn('[abi] prefetch failed, letting the module fetch its own files', e);
+    return null;
   }
 }
 

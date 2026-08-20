@@ -50,7 +50,9 @@ export function activeBundle(): Bundle {
   return {
     bytes: 11_300_000,
     cache: {
-      url: new URL('vendor/abi/abi_query.wasm', document.baseURI).href,
+      // The header pack, not the wasm: the build gzips the wasm and gives it
+      // a different name, while this one is called the same everywhere.
+      url: new URL('vendor/abi/abi_query.data', document.baseURI).href,
       name: 'abix-abi-module-v1',
     },
   };
