@@ -24,6 +24,7 @@ import ColorPicker from './ColorPicker.svelte';
 
 const LAYOUT_KEY_WIDE = 'abix-dock-layout-v1';
 const LAYOUT_KEY_NARROW = 'abix-dock-layout-narrow-v1';
+const LAYOUT_KEY_SHORT = 'abix-dock-layout-short-v1';
 export const PANEL_EDITOR = 'editor';
 export const PANEL_LAYOUT = 'layout';
 export const PANEL_DIAGNOSTICS = 'diagnostics';
@@ -121,7 +122,15 @@ export function mountDock(container: HTMLElement, session: Session): Dock {
   // Matches the CSS `@media (max-width: 760px)` breakpoint (inclusive) used
   // across the app so the dock arrangement and the components agree.
   const narrow = () => container.clientWidth <= 760;
-  const layoutKey = () => (narrow() ? LAYOUT_KEY_NARROW : LAYOUT_KEY_WIDE);
+  /**
+   * Wide enough to put two panels side by side, but not tall enough to stack
+   * anything — a phone held sideways. Diagnostics used to take a whole panel
+   * under the code there, leaving the editor about one line tall to say
+   * "Clang is proud of you" in a box of its own.
+   */
+  const short = () => !narrow() && container.clientHeight <= 560;
+  const layoutKey = () =>
+    narrow() ? LAYOUT_KEY_NARROW : short() ? LAYOUT_KEY_SHORT : LAYOUT_KEY_WIDE;
 
   const defaultLayout = () => {
     api.clear();
@@ -145,6 +154,24 @@ export function mountDock(container: HTMLElement, session: Session): Dock {
       api
         .getPanel(PANEL_EDITOR)
         ?.group.api.setSize({ height: Math.round(container.clientHeight * 0.45) });
+      return;
+    }
+    if (short()) {
+      // Two full-height columns, and diagnostics as a tab rather than a panel:
+      // there is no vertical room to spend on a box that is usually empty.
+      api.addPanel(CORE_PANELS[0]!);
+      api.addPanel(CORE_PANELS[1]!);
+      api.addPanel({
+        id: PANEL_DIAGNOSTICS,
+        component: PANEL_DIAGNOSTICS,
+        title: 'Diagnostics',
+        position: { referencePanel: PANEL_LAYOUT, direction: 'within' },
+      });
+      api.getPanel(PANEL_LAYOUT)?.api.setActive();
+      api.layout(container.clientWidth, container.clientHeight);
+      api
+        .getPanel(PANEL_EDITOR)
+        ?.group.api.setSize({ width: Math.round(container.clientWidth * 0.42) });
       return;
     }
     ensureCorePanels();

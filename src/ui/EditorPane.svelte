@@ -154,6 +154,13 @@
     margin: 8px 0 0;
     flex: none;
   }
+  /* 52px of explanation on a 844px-tall phone, and the same sentence again in
+     the footer. The footer wins: it says which headers actually answered. */
+  @media (max-width: 760px), (max-height: 560px) {
+    .hint {
+      display: none;
+    }
+  }
   .hint :global(kbd) {
     font: inherit;
     font-size: 11px;

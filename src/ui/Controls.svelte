@@ -173,23 +173,6 @@
 </section>
 
 <style>
-  @media (max-width: 760px) {
-    .controls {
-      padding: 8px 12px;
-      gap: 8px 12px;
-    }
-    .group {
-      flex: 1 1 100%;
-      min-width: 0;
-    }
-    .group .input {
-      min-width: 0;
-      max-width: 100%;
-    }
-    .group > select#target {
-      flex: 1;
-    }
-  }
   .controls {
     display: flex;
     align-items: center;
@@ -286,5 +269,77 @@
   .rejected {
     color: var(--warn-ink);
     font-size: 12px;
+  }
+
+  /* One row, not three. Each group used to take `flex: 1 1 100%`, so a phone
+     spent 152px — a fifth of the screen — on three select widgets. Everything
+     stays on one line and the target, the only part with room to give, shrinks
+     and ellipsises. */
+  @media (max-width: 760px), (max-height: 560px) {
+    .controls {
+      padding: 5px 10px;
+      gap: 8px;
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .controls::-webkit-scrollbar {
+      display: none;
+    }
+    /* Only one group has anything to give. Letting them all shrink squeezed
+       the standard down to "gn" — the select kept its min-width and its parent
+       did not, so it simply overflowed under the next control. */
+    .group {
+      flex: 0 0 auto;
+      gap: 6px;
+    }
+    .group:nth-of-type(2) {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+    .group .input {
+      min-width: 0;
+    }
+    /* Everything may shrink except the standard: `gnu17` versus `gnu++20`
+       changes the answer, and a select squeezed to its chevron says neither. */
+    .group > select#std {
+      flex: 0 0 auto;
+      min-width: 5.6em;
+    }
+    /* The one element that can lose characters without losing its meaning:
+       the option text starts with the label a reader is scanning for. */
+    .group > select#target {
+      flex: 1 1 6em;
+      min-width: 6em;
+    }
+    /* A placeholder for a language with no compiler yet is not worth the width. */
+    .segmented label.soon {
+      display: none;
+    }
+    .segmented span {
+      padding: 4px 8px;
+    }
+    /* The words cost more room than the row has. The control itself must not
+       disappear with them — zeroing the font size took the disclosure marker
+       too and left nothing to press — so it becomes a glyph, with the label
+       still in the accessibility tree for anyone listening rather than looking. */
+    .more > summary {
+      font-size: 0;
+      padding: 2px 6px;
+      list-style: none;
+    }
+    .more > summary::-webkit-details-marker {
+      display: none;
+    }
+    .more > summary::after {
+      content: '⋯';
+      font-size: 19px;
+      line-height: 1;
+      color: var(--text-secondary);
+    }
+    .more[open] > summary::after {
+      content: '⋯';
+      color: var(--text-primary);
+    }
   }
 </style>

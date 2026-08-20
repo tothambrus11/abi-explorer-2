@@ -64,14 +64,6 @@
 </footer>
 
 <style>
-  @media (max-width: 760px) {
-    .footer {
-      padding: 6px 12px 10px;
-    }
-    .wide {
-      display: none;
-    }
-  }
   .footer {
     padding: 14px 20px 22px;
     color: var(--text-muted);
@@ -87,5 +79,36 @@
   .btn.small {
     padding: 2px 8px;
     font-size: 12px;
+  }
+
+  /* Two different problems, two different rules.
+
+     Short: a phone held sideways is 844 wide and 390 tall, so the width rule
+     never fired and the full three-line footer took a quarter of the screen.
+     It only needs to be flatter — there is width to spare.
+
+     Narrow: a portrait phone has no width, so the prose goes. Which headers
+     answered stays as long as it fits, because on a phone there is no tooltip
+     to explain why `<iostream>` did not resolve. */
+  @media (max-height: 560px) {
+    .footer {
+      padding: 4px 12px 6px;
+      gap: 5px;
+      font-size: 11.5px;
+      flex-wrap: nowrap;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .footer {
+      padding: 5px 12px 8px;
+      gap: 6px;
+      font-size: 11.5px;
+    }
+    .wide {
+      display: none;
+    }
   }
 </style>

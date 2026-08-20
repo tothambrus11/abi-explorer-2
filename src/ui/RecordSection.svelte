@@ -21,4 +21,11 @@
     margin: 2px 0 10px;
     font-size: 16px;
   }
+  /* The chip above already reads "struct Example 40 B". Two lines saying the
+     same name is a luxury of a large screen. */
+  @media (max-width: 760px), (max-height: 560px) {
+    .title {
+      display: none;
+    }
+  }
 </style>

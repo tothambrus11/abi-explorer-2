@@ -106,4 +106,35 @@
     color: var(--text-secondary);
     font-size: 12.5px;
   }
+  /* Three stacked cards cost 79px on a phone. The same three numbers laid on
+     one line cost 30, and the label is what shrinks — a reader looking at a
+     byte map already knows which number is the size. */
+  @media (max-width: 760px), (max-height: 560px) {
+    .summary {
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .tile {
+      display: flex;
+      align-items: baseline;
+      gap: 5px;
+      padding: 3px 8px;
+      min-width: 0;
+      flex: 0 1 auto;
+    }
+    .label {
+      font-size: 10px;
+      letter-spacing: 0.04em;
+    }
+    .value {
+      font-size: 15px;
+    }
+    .unit {
+      font-size: 10.5px;
+    }
+    .extras {
+      flex-basis: 100%;
+      font-size: 11.5px;
+    }
+  }
 </style>
