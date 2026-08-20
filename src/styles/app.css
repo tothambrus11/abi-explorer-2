@@ -328,7 +328,10 @@ input.input {
   position: absolute;
   right: 0;
   top: calc(100% + 6px);
-  z-index: 30;
+  /* Above the controls' own options panel (30), which hangs from the row
+     below this one and would otherwise paint over a menu opened from the top
+     bar purely because it comes later in the document. Below the tooltip. */
+  z-index: 40;
   box-sizing: border-box;
   max-width: calc(100vw - 24px);
   max-height: min(70vh, 560px);

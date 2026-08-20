@@ -32,6 +32,12 @@ import PanelTab from './PanelTab.svelte';
 const LAYOUT_KEY_WIDE = 'abix-dock-layout-v2';
 const LAYOUT_KEY_NARROW = 'abix-dock-layout-narrow-v2';
 const LAYOUT_KEY_SHORT = 'abix-dock-layout-short-v2';
+/** Retired by the bump above; nothing will ever read them again. */
+const LEGACY_LAYOUT_KEYS = [
+  'abix-dock-layout-v1',
+  'abix-dock-layout-narrow-v1',
+  'abix-dock-layout-short-v1',
+];
 /** Tab renderers: `status` shows whether the code compiled, `count` how many diagnostics. */
 const TAB_STATUS = 'tab-status';
 const TAB_COUNT = 'tab-count';
@@ -229,6 +235,14 @@ export function mountDock(container: HTMLElement, session: Session): Dock {
       ?.group.api.setSize({ width: Math.round(container.clientWidth * 0.42) });
     api.getPanel(PANEL_DIAGNOSTICS)?.group.api.setSize({ height: 140 });
   };
+
+  for (const key of LEGACY_LAYOUT_KEYS) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      /* private mode */
+    }
+  }
 
   // Restore or build the layout.
   let restored = false;

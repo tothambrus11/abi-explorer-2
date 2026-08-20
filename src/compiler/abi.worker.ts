@@ -260,9 +260,16 @@ async function fetchAssets(assets: Asset[], cache: Cache | null): Promise<Map<st
       await cache?.put(asset.url, body.clone()).catch(() => {});
     }
     // `import()` refuses a blob URL that does not claim to be JavaScript, and
-    // a body read back out of the Cache API claims nothing.
-    const type = asset.name.endsWith('.mjs') ? 'text/javascript' : 'application/octet-stream';
-    urls.set(asset.name, URL.createObjectURL(new Blob([await body.blob()], { type })));
+    // a body read back out of the Cache API claims nothing. Only the glue is
+    // re-wrapped: doing it to all three copied 47 MB to set a header that
+    // Emscripten, which fetches the other two itself, never looks at.
+    const blob = await body.blob();
+    urls.set(
+      asset.name,
+      URL.createObjectURL(
+        asset.name.endsWith('.mjs') ? new Blob([blob], { type: 'text/javascript' }) : blob,
+      ),
+    );
   }
 
   // Nothing here is named after a version, so an upgrade would otherwise leave
@@ -276,7 +283,20 @@ async function fetchAssets(assets: Asset[], cache: Cache | null): Promise<Map<st
   return urls;
 }
 
-async function boot(): Promise<AbiWasmModule> {
+/**
+ * One boot, whoever asks.
+ *
+ * `module` is only assigned once instantiation finishes, so a second message
+ * arriving before then used to start a second download and a second wasm
+ * instance — 11 MB and a few hundred megabytes of address space, for a copy
+ * that would immediately be thrown away. The promise is the thing to share,
+ * not its result. Nothing sends a request before `ready` today, which is why
+ * it never showed.
+ */
+let booting: Promise<AbiWasmModule> | null = null;
+const boot = (): Promise<AbiWasmModule> => (booting ??= instantiate());
+
+async function instantiate(): Promise<AbiWasmModule> {
   if (module) return module;
 
   const cache = await openCache();
