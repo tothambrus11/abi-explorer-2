@@ -612,6 +612,38 @@ test.describe('ABI Explorer', () => {
     expect((await statValues(page))[0]).toBe('24');
   });
 
+  test('a row whose type wraps is highlighted whole, guides and all', async ({ page }) => {
+    // libc++'s anonymous structs print as `struct (anonymous at /usr/include/
+    // c++/v1/string:884:5)`, which wraps the type column, and the name cell
+    // used to be a flex box rather than a table cell: one line tall, with the
+    // page showing through below it when the row was hovered, and the
+    // hovered colour wiping the nesting guides besides.
+    await waitReady(page);
+    await page.selectOption('#example', '9'); // C++ standard library (libc++)
+    await expect(page.locator('.record .title')).toContainText('Probe');
+    // Probe::s → basic_string's __rep_ → the union's __l member. Names are
+    // matched whole, `s` being a substring of most of them.
+    for (const name of ['s', '__rep_', '__l']) {
+      await page
+        .locator('.field-table tr.group .gname', { hasText: new RegExp(`^${name}$`) })
+        .first()
+        .click();
+    }
+    await expect(page.locator('.record .title')).toContainText('__long');
+    const row = page.locator('.field-table tr.group', { hasText: '(anonymous)' }).first();
+    const rowBox = (await row.boundingBox())!;
+    const typeBox = (await row.locator('td.type').boundingBox())!;
+    expect(typeBox.height, 'the type wraps, or this test checks nothing').toBeGreaterThan(30);
+    await row.hover();
+    await expect(row).toHaveClass(/hovered/);
+    const name = row.locator('td.name');
+    const nameBox = (await name.boundingBox())!;
+    // The cell spans the row, so the hover colour reaches the bottom…
+    expect(Math.abs(nameBox.height - rowBox.height)).toBeLessThan(2);
+    // …and the guides are still drawn under the colour.
+    await expect(name).toHaveCSS('background-image', /repeating-linear-gradient/);
+  });
+
   test('the standard library resolves on every kind of target, and says how', async ({ page }) => {
     await waitReady(page);
     await page.selectOption('#example', '9'); // C++ standard library (libc++)

@@ -109,7 +109,9 @@
               {#if leaf.direct}<span class="chip {leaf.colorClass}"></span>{/if}
             </td>
             <td class="name" style:padding-left="{indent}px" style:--depth={depth}>
-              <span class="twist-gap"></span><span class="fname">{leaf.name}</span>
+              <div class="nest">
+                <span class="twist-gap"></span><span class="fname">{leaf.name}</span>
+              </div>
             </td>
             <td class="type">{leaf.kind === 'special' ? '-' : leaf.type}</td>
             <td class="num">{fmtOffset(leaf.offsetBits)}</td>
@@ -150,33 +152,35 @@
               {#if unitColour}<span class="chip {unitColour}"></span>{/if}
             </td>
             <td class="name" style:padding-left="{indent}px" style:--depth={depth}>
-              {#if canCollapse}
+              <div class="nest">
+                {#if canCollapse}
+                  <button
+                    type="button"
+                    class="twist"
+                    aria-expanded={!collapsed.has(node.id)}
+                    onclick={(e) => {
+                      e.stopPropagation();
+                      toggle(node.id);
+                    }}>{collapsed.has(node.id) ? '▸' : '▾'}</button
+                  >
+                {:else}
+                  <span class="twist-gap"></span>
+                {/if}
                 <button
                   type="button"
-                  class="twist"
-                  aria-expanded={!collapsed.has(node.id)}
+                  class="fname gname open"
+                  title="Inspect {group.type || group.name}"
                   onclick={(e) => {
                     e.stopPropagation();
-                    toggle(node.id);
-                  }}>{collapsed.has(node.id) ? '▸' : '▾'}</button
+                    openGroup(node.ref);
+                  }}>{group.name}</button
                 >
-              {:else}
-                <span class="twist-gap"></span>
-              {/if}
-              <button
-                type="button"
-                class="fname gname open"
-                title="Inspect {group.type || group.name}"
-                onclick={(e) => {
-                  e.stopPropagation();
-                  openGroup(node.ref);
-                }}>{group.name}</button
-              >
-              {#if group.isBase}<span class="tag">base</span>{/if}
-              {#if group.isUnion}<span class="tag union">union</span>{/if}
-              {#if node.overlaps}<span class="tag overlap" title="shares bytes with a sibling"
-                  >overlaps</span
-                >{/if}
+                {#if group.isBase}<span class="tag">base</span>{/if}
+                {#if group.isUnion}<span class="tag union">union</span>{/if}
+                {#if node.overlaps}<span class="tag overlap" title="shares bytes with a sibling"
+                    >overlaps</span
+                  >{/if}
+              </div>
             </td>
             <td class="type">{group.type}</td>
             <td class="num">{fmtOffset(node.offsetBits)}</td>
@@ -197,9 +201,11 @@
               style:padding-left="{8 + m.path.length * INDENT}px"
               style:--depth={m.path.length}
             >
-              <span class="twist-gap"></span><span class="fname muted"
-                >{m.type ?? ''} :0 (unit break)</span
-              >
+              <div class="nest">
+                <span class="twist-gap"></span><span class="fname muted"
+                  >{m.type ?? ''} :0 (unit break)</span
+                >
+              </div>
             </td>
             <td class="type"></td><td class="num">{fmtOffset(m.offsetBits)}</td><td class="num"
               >0 b</td
@@ -237,8 +243,10 @@
     padding: 5px 10px;
     border-bottom: 1px solid var(--grid-line);
   }
+  /* The colour only: the name cell also carries the guide lines as a
+     background image, and a hovered row must keep them. */
   tr.hovered td {
-    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    background-color: color-mix(in srgb, var(--accent) 12%, transparent);
   }
   tr.group .gname {
     font-weight: 600;
@@ -272,27 +280,37 @@
     height: 12px;
     border-radius: 3px;
   }
-  /* A flex row, not an inline one, for two reasons.
+  /* Guides: `--depth` vertical lines, one per ancestor, each running down the
+     middle of that ancestor's twisty, so the line under an arrow is visibly
+     the arrow's. Indentation alone leaves a leaf beside a collapsible sibling
+     looking like its child, which is how `__padding1_917_` came to read as a
+     member of the union above it. They are painted on the cell, which spans
+     the row however tall the type beside it wraps; the hover colour is a
+     background-color, so the two layers compose. */
+  .name {
+    white-space: nowrap;
+    background-image: repeating-linear-gradient(
+      to right,
+      var(--guide-ink) 0 1px,
+      transparent 1px var(--indent)
+    );
+    background-position: var(--indent) 0;
+    background-size: calc(var(--depth) * var(--indent)) 100%;
+    background-repeat: no-repeat;
+  }
+  /* A flex row inside the cell, not an inline one, and not the cell itself.
      Whitespace: a group writes `{#if}…{/if} <button class="fname">` and a leaf
      writes them adjacent, so the group's name sat one collapsed space further
      right than its own children's, so siblings at one depth did not line up, in
      a column whose only job is to say what is nested in what. Flex items ignore
      the whitespace between them.
-     Guides: `--depth` vertical lines, one per ancestor, each running down the
-     middle of that ancestor's twisty, so the line under an arrow is visibly
-     the arrow's. Indentation alone leaves a leaf beside a
-     collapsible sibling looking like its child, which is how `__padding1_917_`
-     came to read as a member of the union above it. */
-  .name {
+     Not the cell: a `td` that is `display: flex` stops being a table cell and
+     takes only its content's height, so when the type column wraps the hover
+     colour and the guides stopped one line short and the page showed through
+     below the name. */
+  .nest {
     display: flex;
     align-items: center;
-    white-space: nowrap;
-    background: repeating-linear-gradient(
-        to right,
-        var(--guide-ink) 0 1px,
-        transparent 1px var(--indent)
-      )
-      var(--indent) 0 / calc(var(--depth) * var(--indent)) 100% no-repeat;
   }
   .twist,
   .twist-gap {
