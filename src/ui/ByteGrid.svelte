@@ -3,10 +3,11 @@
   // live, stripes where union members overlap, hatching for padding). Above
   // GRID_LIMIT bytes a proportional bar is drawn instead. Hover state comes
   // from the store; identity is also carried by the table, never color alone.
-  import type { Leaf, RenderModel } from '$core/types';
-  import { store, type MemberRef } from '$state/store.svelte';
+  import type { RenderModel } from '$core/types';
+  import { store } from '$state/store.svelte';
   import type { Session } from '$state/session.svelte';
   import { memberTooltipHtml } from './format';
+  import { leavesCovering } from '$state/hover';
 
   const { model, record, session }: { model: RenderModel; record: string; session: Session } =
     $props();
@@ -99,29 +100,35 @@
     return `repeating-linear-gradient(45deg, ${colors.map((c, i) => `${c} ${i * 4}px, ${c} ${(i + 1) * 4}px`).join(', ')})`;
   }
 
-  function tooltipFor(
-    leaf: Leaf,
-    byte: number | null,
-    el: Element,
-  ): { html: string; x: number; y: number } {
-    const r = el.getBoundingClientRect();
-    const html = memberTooltipHtml(leaf, byte !== null ? `byte ${byte}` : undefined);
-    return { html, x: r.left + r.width / 2, y: r.top };
+  function anchorAt(e: Event): { x: number; y: number } {
+    const r = (e.currentTarget as Element).getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top };
   }
 
-  function enter(li: number | null, byte: number | null, e: Event) {
-    const el = e.currentTarget as Element;
+  /**
+   * Hover a region of the map: a whole byte cell, or one bit of it. The
+   * intent carries the region, not a member: everyone with bits there is
+   * meant at once, so a union byte highlights each of its members in the
+   * table, and a padding cell shows just its tooltip.
+   */
+  function enterArea(fromBit: number, toBit: number, byte: number, e: Event) {
+    const covering = leavesCovering(model, fromBit, toBit).map((li) => model.leaves[li]!);
+    const html =
+      covering.length === 0
+        ? `<strong>padding</strong><br>byte ${byte}`
+        : covering.map((l) => memberTooltipHtml(l, `byte ${byte}`)).join('<br><br>');
+    const { x, y } = anchorAt(e);
+    session.hoverArea(record, fromBit, toBit, { html, x, y });
+  }
+
+  /** Hover a segment of the proportional bar, which stands for one leaf or a padding run. */
+  function enterSeg(li: number | null, e: Event) {
+    const { x, y } = anchorAt(e);
     if (li === null) {
-      const r = el.getBoundingClientRect();
-      session.hoverMember(null, {
-        html: `<strong>padding</strong><br>${byte !== null ? `byte ${byte}` : 'unused bytes'}`,
-        x: r.left + r.width / 2,
-        y: r.top,
-      });
+      session.hoverMember(null, { html: '<strong>padding</strong><br>unused bytes', x, y });
       return;
     }
-    const ref: MemberRef = { record, leaf: li };
-    session.hoverMember(ref, tooltipFor(model.leaves[li]!, byte, el));
+    session.hoverMember({ record, leaf: li }, { html: memberTooltipHtml(model.leaves[li]!), x, y });
   }
   const leave = () => {
     session.hoverMember(null, null);
@@ -144,7 +151,7 @@
         style:flex-grow={Math.max(seg.len / model.sizeBits, 0.002) * 1000}
         role="presentation"
         onmouseenter={(e) => {
-          enter(seg.li, null, e);
+          enterSeg(seg.li, e);
         }}
       ></div>
     {/each}
@@ -178,7 +185,7 @@
                     class:start={owner !== null && b * 8 + bit === model.leaves[owner]!.offsetBits}
                     role="presentation"
                     onmouseenter={(e) => {
-                      enter(owner, b, e);
+                      enterArea(b * 8 + bit, b * 8 + bit + 1, b, e);
                     }}
                   ></div>
                 {/each}
@@ -192,7 +199,7 @@
                 class:hovered={inHovered(b)}
                 role="presentation"
                 onmouseenter={(e) => {
-                  enter(null, b, e);
+                  enterArea(b * 8, b * 8 + 8, b, e);
                 }}
               ></div>
             {:else if cell.leaves.length === 1}
@@ -206,7 +213,7 @@
                 class:hovered={hovered.has(cell.leaves[0]!)}
                 role="presentation"
                 onmouseenter={(e) => {
-                  enter(cell.leaves[0]!, b, e);
+                  enterArea(b * 8, b * 8 + 8, b, e);
                 }}
               ></div>
             {:else}
@@ -220,7 +227,7 @@
                 style:background={stripe(cell.leaves)}
                 role="presentation"
                 onmouseenter={(e) => {
-                  enter(cell.leaves[0]!, b, e);
+                  enterArea(b * 8, b * 8 + 8, b, e);
                 }}
               ></div>
             {/if}

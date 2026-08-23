@@ -344,6 +344,15 @@ export class Session {
   }
 
   /**
+   * Byte-map hover on a region: a cell, or one bit of it. Every member with
+   * bits in the region is meant at once, which is how a union's overlap stays
+   * visible in the table.
+   */
+  hoverArea(record: string, fromBit: number, toBit: number, tooltip: TooltipAnchor | null): void {
+    this.hoverIntent = { kind: 'area', record, fromBit, toBit, tooltip };
+  }
+
+  /**
    * Table hover on a parent (group) row: highlights all the group's leaves and
    * points to the group's own declaration line.
    */

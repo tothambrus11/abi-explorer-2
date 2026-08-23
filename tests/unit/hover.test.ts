@@ -135,6 +135,69 @@ describe('resolveHover', () => {
   });
 });
 
+describe('resolveHover with an area intent', () => {
+  // The byte map hovers regions, not members: a whole cell, or one bit of it.
+  // Who is meant is whoever has bits there, which is several at once wherever
+  // members overlap.
+  const shared = () =>
+    inputs({ models: new Map([['S', model([leaf('a', 0, 32), leaf('b', 0, 16)])]]) });
+
+  it('names every member with bits in the area, so an overlap shows whole', () => {
+    const h = resolveHover({
+      ...shared(),
+      intent: { kind: 'area', record: 'S', fromBit: 0, toBit: 8, tooltip: null },
+    });
+    expect(h.members).toEqual([
+      { record: 'S', leaf: 0 },
+      { record: 'S', leaf: 1 },
+    ]);
+    // Each member's whole extent lights, not just the hovered byte…
+    expect(h.ranges).toEqual([
+      { record: 'S', start: 0, end: 4 },
+      { record: 'S', start: 0, end: 2 },
+    ]);
+    // …and several declarations are meant at once, so no single line is.
+    expect(h.line).toBeNull();
+    expect(h.nameRange).toBeNull();
+  });
+
+  it("an area one member occupies is that member's own hover", () => {
+    // Bytes 2..3 are a's alone; hovering there is hovering a.
+    const viaArea = resolveHover({
+      ...shared(),
+      intent: { kind: 'area', record: 'S', fromBit: 16, toBit: 24, tooltip: null },
+    });
+    const viaLeaf = resolveHover({
+      ...shared(),
+      intent: { kind: 'leaf', record: 'S', leaf: 0, tooltip: null },
+    });
+    expect(viaArea).toEqual(viaLeaf);
+  });
+
+  it('never names a member that occupies nothing', () => {
+    // An empty member sharing the address ([[no_unique_address]]) has an
+    // offset in the area but no bits anywhere.
+    const m = model([leaf('e', 0, 0, { sharesAddress: true }), leaf('a', 0, 32)]);
+    const h = resolveHover({
+      ...inputs({ models: new Map([['S', m]]) }),
+      intent: { kind: 'area', record: 'S', fromBit: 0, toBit: 8, tooltip: null },
+    });
+    expect(h.members).toEqual([{ record: 'S', leaf: 1 }]);
+  });
+
+  it('an area nothing occupies keeps its tooltip and nothing else', () => {
+    const gap = model([leaf('a', 0, 8), leaf('b', 32, 8)]); // padding at bytes 1..3
+    const tooltip = { html: 'pad', x: 0, y: 0 };
+    const h = resolveHover({
+      ...inputs({ models: new Map([['S', gap]]) }),
+      intent: { kind: 'area', record: 'S', fromBit: 8, toBit: 16, tooltip },
+    });
+    expect(h.members).toEqual([]);
+    expect(h.ranges).toEqual([]);
+    expect(h.tooltip).toBe(tooltip);
+  });
+});
+
 describe('resolveHover with several declarators on a line', () => {
   // `uint8_t lo, hi;`: the column decides which one is meant.
   const twoMarks = () => {

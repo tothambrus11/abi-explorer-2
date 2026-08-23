@@ -22,6 +22,12 @@ export interface TooltipAnchor {
 export type HoverIntent =
   | { kind: 'leaf'; record: string; leaf: number; tooltip: TooltipAnchor | null }
   | { kind: 'group'; record: string; group: number; tooltip: TooltipAnchor | null }
+  /**
+   * A region of the byte map: a cell, or one bit of it. What is meant is
+   * whoever has bits there *now*, so members that overlap (a union, a reused
+   * tail) are all meant at once.
+   */
+  | { kind: 'area'; record: string; fromBit: number; toBit: number; tooltip: TooltipAnchor | null }
   /** A padding cell: a tooltip with no member behind it. */
   | { kind: 'tooltip'; tooltip: TooltipAnchor };
 
@@ -128,16 +134,26 @@ function resolveIntent(intent: HoverIntent, i: HoverInputs): Hover {
   const model = i.models.get(intent.record);
   if (!model) return EMPTY_HOVER;
 
-  if (intent.kind === 'leaf') {
-    const leaf = model.leaves[intent.leaf];
-    if (!leaf) return EMPTY_HOVER;
-    const at = anchorOf(leaf.location);
+  if (intent.kind === 'leaf') return leafHover(model, intent.record, intent.leaf, intent.tooltip);
+
+  if (intent.kind === 'area') {
+    // Everyone with bits in the region. Overlap is the point: a union byte
+    // belongs to each of the union's members, and the table can only show
+    // that if the hover names them all.
+    const covering = leavesCovering(model, intent.fromBit, intent.toBit);
+    // Padding under the pointer: a tooltip with no member behind it.
+    if (covering.length === 0) return { ...EMPTY_HOVER, tooltip: intent.tooltip };
+    // A single occupant makes this that member's own hover, declaration line
+    // and all, so an unshared cell behaves exactly like the member's row.
+    if (covering.length === 1) return leafHover(model, intent.record, covering[0]!, intent.tooltip);
+    const items = covering.map((li) => model.leaves[li]!);
     return {
-      members: [{ record: intent.record, leaf: intent.leaf }],
-      ranges: extentOf(intent.record, [leaf]),
-      line: at?.line ?? null,
-      nameRange: nameRangeOf(at),
-      inlay: describeItems([leaf]),
+      members: covering.map((leaf) => ({ record: intent.record, leaf })),
+      ranges: extentOf(intent.record, items),
+      // Several declarations are meant at once, so no single one is.
+      line: null,
+      nameRange: null,
+      inlay: describeItems(items),
       tooltip: intent.tooltip,
     };
   }
@@ -153,6 +169,41 @@ function resolveIntent(intent: HoverIntent, i: HoverInputs): Hover {
     nameRange: nameRangeOf(at),
     inlay: describeItems([group]),
     tooltip: intent.tooltip,
+  };
+}
+
+/**
+ * The members with bits in `[fromBit, toBit)`, in declaration order. A member
+ * that occupies nothing (an empty member sharing an address) is drawn nowhere
+ * and so is never under the pointer, whatever its offset says.
+ */
+export function leavesCovering(model: RenderModel, fromBit: number, toBit: number): number[] {
+  const out: number[] = [];
+  model.leaves.forEach((leaf, li) => {
+    if (leaf.sizeBits > 0 && leaf.offsetBits < toBit && fromBit < leaf.offsetBits + leaf.sizeBits) {
+      out.push(li);
+    }
+  });
+  return out;
+}
+
+/** The hover a single member produces, whichever way it was pointed at. */
+function leafHover(
+  model: RenderModel,
+  record: string,
+  li: number,
+  tooltip: TooltipAnchor | null,
+): Hover {
+  const leaf = model.leaves[li];
+  if (!leaf) return EMPTY_HOVER;
+  const at = anchorOf(leaf.location);
+  return {
+    members: [{ record, leaf: li }],
+    ranges: extentOf(record, [leaf]),
+    line: at?.line ?? null,
+    nameRange: nameRangeOf(at),
+    inlay: describeItems([leaf]),
+    tooltip,
   };
 }
 

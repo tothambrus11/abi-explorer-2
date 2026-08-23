@@ -540,6 +540,33 @@ test.describe('ABI Explorer', () => {
     await expect(page.locator('.monaco-editor .member-name-hovered')).toHaveCount(1);
   });
 
+  test('hovering a shared byte in the grid highlights every member sharing it', async ({
+    page,
+  }) => {
+    // The DOM end of the grid-to-table law: a striped union cell stands for
+    // all of its members at once, so hovering it must light each of their
+    // rows (and their parent, whose leaves are then all hovered), not just
+    // whichever member the stripe happens to paint first.
+    await waitReady(page);
+    await page.selectOption('#example', '2'); // Union + nested
+    await expect
+      .poll(() => page.locator('.record .title').textContent())
+      .toContain('struct Message');
+    await expect(page.locator('.status.running')).toHaveCount(0);
+    await page.locator('.grid .cell.multi').first().hover();
+    await expect(page.locator('.field-table tr.hovered .fname')).toHaveText([
+      'payload',
+      'raw',
+      'word',
+      'number',
+    ]);
+    // The bubble names them all too.
+    const tip = page.locator('.abix-tip.rich');
+    await expect(tip).toContainText('raw');
+    await expect(tip).toContainText('word');
+    await expect(tip).toContainText('number');
+  });
+
   test('the byte grid brackets what a base subobject contributes', async ({ page }) => {
     await waitReady(page);
     await page.selectOption('#example', '4');

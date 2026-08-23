@@ -226,6 +226,21 @@ describe('corpus', () => {
     expect(models.some((m) => m.markers.some((k) => k.kind === 'zero-bitfield'))).toBe(true);
     // A member whose tail padding the enclosing record reuses.
     expect(groups.some((g) => g.sizeBits < g.typeSizeBits)).toBe(true);
+    // Two members sharing bits, or the grid-to-table law never sees an overlap.
+    expect(
+      models.some((m) =>
+        m.leaves.some((a, i) =>
+          m.leaves.some(
+            (b, j) =>
+              i < j &&
+              a.sizeBits > 0 &&
+              b.sizeBits > 0 &&
+              a.offsetBits < b.offsetBits + b.sizeBits &&
+              b.offsetBits < a.offsetBits + a.sizeBits,
+          ),
+        ),
+      ),
+    ).toBe(true);
   });
 });
 

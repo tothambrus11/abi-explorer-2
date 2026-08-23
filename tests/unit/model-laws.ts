@@ -82,6 +82,45 @@ function litBytes(model: RenderModel, node: TreeNode): Set<number> {
 }
 
 /**
+ * One area per distinguishable spot on the byte map, as `ByteGrid` draws it:
+ * a cell per byte, split into bit sub-cells where a bit-field lives, and each
+ * hover reporting the extent of exactly the cell under the pointer.
+ *
+ * Byte cells are enumerated one per run of identical coverage rather than one
+ * by one: between two leaf boundaries every byte is shared by the same
+ * members, so a representative checks them all and a record too large for a
+ * byte-by-byte walk still has every distinguishable area checked. Bit
+ * sub-cells are walked exhaustively; bit-fields keep them few.
+ */
+function drawnAreas(model: RenderModel): { fromBit: number; toBit: number }[] {
+  const size = model.record.sizeBytes;
+  const cuts = new Set<number>([0, size]);
+  const bitBytes = new Set<number>();
+  for (const leaf of model.leaves) {
+    if (leaf.sizeBits === 0) continue;
+    const from = Math.floor(leaf.offsetBits / 8);
+    const to = Math.min(size, Math.ceil((leaf.offsetBits + leaf.sizeBits) / 8));
+    cuts.add(from);
+    cuts.add(to);
+    if (leaf.kind === 'bitfield') for (let b = from; b < to; b++) bitBytes.add(b);
+  }
+  const edges = [...cuts].sort((a, b) => a - b);
+  const areas: { fromBit: number; toBit: number }[] = [];
+  for (let i = 0; i + 1 < edges.length; i++) {
+    const b = edges[i]!;
+    // A bit-field's byte range starts and ends on cuts, so a run is bit-split
+    // either wholly or not at all; its bits are enumerated below instead.
+    if (b < size && !bitBytes.has(b)) areas.push({ fromBit: b * 8, toBit: b * 8 + 8 });
+  }
+  for (const b of bitBytes) {
+    for (let bit = 0; bit < 8; bit++) {
+      areas.push({ fromBit: b * 8 + bit, toBit: b * 8 + bit + 1 });
+    }
+  }
+  return areas;
+}
+
+/**
  * Register every law against a set of subjects.
  *
  * `subjects` is a thunk so a suite that needs clang can defer loading it past
@@ -213,6 +252,47 @@ export function modelLaws(what: string, subjects: () => Subject[]): void {
             stray,
             `${label} / ${node.kind} ${node.ref} lights bytes outside [${lo}, ${hi})`,
           ).toEqual([]);
+        }
+      });
+    });
+  });
+
+  describe(`${what}: grid and table agree`, () => {
+    it('hovering any drawn area highlights exactly the rows sharing it', () => {
+      // The reverse of the block above: from the map back to the table.
+      // Hovering a cell issues an area intent for exactly the extent drawn,
+      // and every member with bits in that extent must light its row: at
+      // least one for any occupied cell, and *all* of them where members
+      // overlap, because a union byte belongs to each of its members at once
+      // and the table is where they are told apart. A padding cell has no
+      // row and must light none.
+      forEvery(({ label, model }) => {
+        for (const { fromBit, toBit } of drawnAreas(model)) {
+          const hover = resolveHover({
+            intent: { kind: 'area', record: KEY, fromBit, toBit, tooltip: null },
+            mouse: null,
+            cursor: null,
+            preferCursor: false,
+            models: new Map([[KEY, model]]),
+            lines: new Map(),
+            records: [],
+            current: KEY,
+          });
+          // Independent recomputation: the members whose bits lie in the area.
+          const occupying = model.leaves
+            .flatMap((l, li) =>
+              l.sizeBits > 0 && l.offsetBits < toBit && fromBit < l.offsetBits + l.sizeBits
+                ? [li]
+                : [],
+            )
+            .sort((a, b) => a - b);
+          // The rows the table lights: it reads `hover.members`, keyed by leaf.
+          const hovered = new Set(hover.members.filter((m) => m.record === KEY).map((m) => m.leaf));
+          const lit = rows(model)
+            .filter((n) => n.kind === 'leaf' && hovered.has(n.ref))
+            .map((n) => n.ref)
+            .sort((a, b) => a - b);
+          expect(lit, `${label}: bits [${fromBit}, ${toBit})`).toEqual(occupying);
         }
       });
     });
