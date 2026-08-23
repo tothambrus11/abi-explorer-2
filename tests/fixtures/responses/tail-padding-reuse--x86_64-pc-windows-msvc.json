@@ -2,7 +2,7 @@
  "source": "struct Base { int i; char c; };   /* sizeof 8, but only 5 bytes of data */\n\nstruct Derived : Base { char d; };\n/* Base occupies 8 B here, so d cannot land in Base's tail padding,\n   because Base is standard-layout. Give Base a virtual function\n   and watch d move into the padding instead. */\n",
  "options": {
   "lang": "c++",
-  "std": "gnu++20",
+  "std": "gnu++26",
   "triple": "x86_64-pc-windows-msvc",
   "pack": "",
   "msBitfields": false,

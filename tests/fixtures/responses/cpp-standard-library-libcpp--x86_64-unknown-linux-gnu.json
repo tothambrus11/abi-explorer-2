@@ -2,7 +2,7 @@
  "source": "#include <string>\n#include <vector>\n\nstruct Probe {\n  std::string s;          /* short-string optimization: a union inside */\n  std::vector<int> v;     /* three pointers */\n  std::vector<bool> vb;   /* the bitset specialization */\n};\n\n/* These are libc++'s layouts, on whatever target you pick, including\n   Windows, where the real toolchain would use MSVC's STL and get\n   different numbers. libstdc++ differs again. Read them as \"libc++\n   on this target\", never as \"the standard library on this target\". */\n",
  "options": {
   "lang": "c++",
-  "std": "gnu++20",
+  "std": "gnu++26",
   "triple": "x86_64-unknown-linux-gnu",
   "pack": "",
   "msBitfields": false,
@@ -642,7 +642,7 @@
         "endCol": 16,
         "file": "<scratch space>",
         "isMainFile": false,
-        "line": 46
+        "line": 79
        },
        "name": "__padding1_917_",
        "offsetBits": 0,
@@ -684,7 +684,7 @@
         "endCol": 16,
         "file": "<scratch space>",
         "isMainFile": false,
-        "line": 49
+        "line": 82
        },
        "name": "__padding2_917_",
        "offsetBits": 0,
@@ -2139,7 +2139,7 @@
        "endCol": 16,
        "file": "<scratch space>",
        "isMainFile": false,
-       "line": 46
+       "line": 79
       },
       "name": "__padding1_917_",
       "offsetBits": 0,
@@ -2189,7 +2189,7 @@
        "endCol": 16,
        "file": "<scratch space>",
        "isMainFile": false,
-       "line": 49
+       "line": 82
       },
       "name": "__padding2_917_",
       "offsetBits": 0,
@@ -2569,7 +2569,7 @@
         "endCol": 16,
         "file": "<scratch space>",
         "isMainFile": false,
-        "line": 46
+        "line": 79
        },
        "name": "__padding1_917_",
        "offsetBits": 0,
@@ -2607,7 +2607,7 @@
         "endCol": 16,
         "file": "<scratch space>",
         "isMainFile": false,
-        "line": 49
+        "line": 82
        },
        "name": "__padding2_917_",
        "offsetBits": 0,
@@ -3323,7 +3323,7 @@
         "endCol": 16,
         "file": "<scratch space>",
         "isMainFile": false,
-        "line": 82
+        "line": 136
        },
        "name": "__padding1_583_",
        "offsetBits": 128,
@@ -3365,7 +3365,7 @@
         "endCol": 16,
         "file": "<scratch space>",
         "isMainFile": false,
-        "line": 85
+        "line": 139
        },
        "name": "__padding2_583_",
        "offsetBits": 128,
@@ -3478,7 +3478,7 @@
        "endCol": 16,
        "file": "<scratch space>",
        "isMainFile": false,
-       "line": 82
+       "line": 136
       },
       "name": "__padding1_583_",
       "offsetBits": 0,
@@ -3528,7 +3528,7 @@
        "endCol": 16,
        "file": "<scratch space>",
        "isMainFile": false,
-       "line": 85
+       "line": 139
       },
       "name": "__padding2_583_",
       "offsetBits": 0,
@@ -3596,7 +3596,7 @@
         "endCol": 16,
         "file": "<scratch space>",
         "isMainFile": false,
-        "line": 82
+        "line": 136
        },
        "name": "__padding1_583_",
        "offsetBits": 0,
@@ -3634,7 +3634,7 @@
         "endCol": 16,
         "file": "<scratch space>",
         "isMainFile": false,
-        "line": 85
+        "line": 139
        },
        "name": "__padding2_583_",
        "offsetBits": 0,
@@ -3888,7 +3888,7 @@
         "endCol": 16,
         "file": "<scratch space>",
         "isMainFile": false,
-        "line": 77
+        "line": 135
        },
        "name": "__padding1_103_",
        "offsetBits": 128,
@@ -3930,7 +3930,7 @@
         "endCol": 16,
         "file": "<scratch space>",
         "isMainFile": false,
-        "line": 80
+        "line": 138
        },
        "name": "__padding2_103_",
        "offsetBits": 128,
@@ -4043,7 +4043,7 @@
        "endCol": 16,
        "file": "<scratch space>",
        "isMainFile": false,
-       "line": 77
+       "line": 135
       },
       "name": "__padding1_103_",
       "offsetBits": 0,
@@ -4093,7 +4093,7 @@
        "endCol": 16,
        "file": "<scratch space>",
        "isMainFile": false,
-       "line": 80
+       "line": 138
       },
       "name": "__padding2_103_",
       "offsetBits": 0,
@@ -4161,7 +4161,7 @@
         "endCol": 16,
         "file": "<scratch space>",
         "isMainFile": false,
-        "line": 77
+        "line": 135
        },
        "name": "__padding1_103_",
        "offsetBits": 0,
@@ -4199,7 +4199,7 @@
         "endCol": 16,
         "file": "<scratch space>",
         "isMainFile": false,
-        "line": 80
+        "line": 138
        },
        "name": "__padding2_103_",
        "offsetBits": 0,
@@ -4915,7 +4915,7 @@
         "endCol": 16,
         "file": "<scratch space>",
         "isMainFile": false,
-        "line": 46
+        "line": 79
        },
        "name": "__padding1_917_",
        "offsetBits": 0,
@@ -4959,7 +4959,7 @@
         "endCol": 16,
         "file": "<scratch space>",
         "isMainFile": false,
-        "line": 49
+        "line": 82
        },
        "name": "__padding2_917_",
        "offsetBits": 0,
@@ -5045,7 +5045,7 @@
         "endCol": 16,
         "file": "<scratch space>",
         "isMainFile": false,
-        "line": 82
+        "line": 136
        },
        "name": "__padding1_583_",
        "offsetBits": 320,
@@ -5089,7 +5089,7 @@
         "endCol": 16,
         "file": "<scratch space>",
         "isMainFile": false,
-        "line": 85
+        "line": 139
        },
        "name": "__padding2_583_",
        "offsetBits": 320,
@@ -5175,7 +5175,7 @@
         "endCol": 16,
         "file": "<scratch space>",
         "isMainFile": false,
-        "line": 77
+        "line": 135
        },
        "name": "__padding1_103_",
        "offsetBits": 512,
@@ -5219,7 +5219,7 @@
         "endCol": 16,
         "file": "<scratch space>",
         "isMainFile": false,
-        "line": 80
+        "line": 138
        },
        "name": "__padding2_103_",
        "offsetBits": 512,

@@ -2,7 +2,7 @@
  "source": "#include <stdint.h>\n\n#pragma pack(push, 1)\nstruct WireFormat {         /* no padding at all */\n  uint8_t  version;\n  uint32_t length;\n  uint64_t timestamp;\n};\n#pragma pack(pop)\n\nstruct Aligned {\n  _Alignas(16) uint8_t buf[10];\n  uint32_t n;\n};\n",
  "options": {
   "lang": "c",
-  "std": "gnu17",
+  "std": "gnu23",
   "triple": "x86_64-unknown-linux-gnu",
   "pack": "",
   "msBitfields": false,

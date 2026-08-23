@@ -2,7 +2,7 @@
  "source": "#include <stdint.h>\n\nstruct Packet {             /* the trailing array adds no size */\n  uint32_t length;\n  char data[];\n};\n\nstruct CacheLine {          /* _Alignas on a member raises the whole record */\n  _Alignas(64) int x;\n};\n\nstruct Holder {             /* one member forces Holder to 64 B too */\n  char c;\n  struct CacheLine line;\n  char d;\n};\n",
  "options": {
   "lang": "c",
-  "std": "gnu17",
+  "std": "gnu23",
   "triple": "x86_64-pc-windows-msvc",
   "pack": "",
   "msBitfields": false,

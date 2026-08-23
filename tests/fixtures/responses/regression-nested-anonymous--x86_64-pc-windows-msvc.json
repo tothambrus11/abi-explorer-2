@@ -2,7 +2,7 @@
  "source": "struct S {\n  struct { int a; struct { char b, c; }; };\n  union { long d; struct { short e, f; }; };\n};\n",
  "options": {
   "lang": "c",
-  "std": "gnu17",
+  "std": "gnu23",
   "triple": "x86_64-pc-windows-msvc",
   "pack": "",
   "msBitfields": false,

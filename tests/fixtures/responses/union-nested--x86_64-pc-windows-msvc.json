@@ -2,7 +2,7 @@
  "source": "#include <stdint.h>\n\nstruct Header {\n  uint16_t kind;\n  uint16_t len;\n};\n\nunion Payload {\n  uint8_t  raw[10];\n  uint32_t word;\n  double   number;\n};\n\nstruct Message {\n  struct Header hdr;\n  union Payload payload;\n  struct { uint8_t crc_lo, crc_hi; };  /* anonymous */\n};\n",
  "options": {
   "lang": "c",
-  "std": "gnu17",
+  "std": "gnu23",
   "triple": "x86_64-pc-windows-msvc",
   "pack": "",
   "msBitfields": false,

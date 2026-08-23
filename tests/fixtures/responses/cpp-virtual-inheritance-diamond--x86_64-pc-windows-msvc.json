@@ -2,7 +2,7 @@
  "source": "struct A { virtual ~A(); int a; };\n\nstruct B : virtual A { int b; };   /* A is shared… */\nstruct C : virtual A { int c; };\n\nstruct D : B, C { int d; };        /* …so D holds one A, placed last */\n\n/* Switch the target to x86_64-pc-windows-msvc to compare ABIs:\n   MSVC uses vbtable/vftable pointers and does not reuse tail padding. */\n",
  "options": {
   "lang": "c++",
-  "std": "gnu++20",
+  "std": "gnu++26",
   "triple": "x86_64-pc-windows-msvc",
   "pack": "",
   "msBitfields": false,

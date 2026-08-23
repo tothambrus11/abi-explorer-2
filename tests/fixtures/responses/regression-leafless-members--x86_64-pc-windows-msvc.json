@@ -2,7 +2,7 @@
  "source": "struct E {};\nstruct W : E {};\nstruct S { W a; W b; int i; };\n",
  "options": {
   "lang": "c++",
-  "std": "gnu++20",
+  "std": "gnu++26",
   "triple": "x86_64-pc-windows-msvc",
   "pack": "",
   "msBitfields": false,

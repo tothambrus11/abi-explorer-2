@@ -131,8 +131,11 @@ export const CXX_STANDARDS: readonly string[] = [
   'c++26',
   'gnu++26',
 ];
-export const DEFAULT_C_STD = 'gnu17';
-export const DEFAULT_CXX_STD = 'gnu++20';
+/** The newest standard of each list: what a fresh page asks for, and what the
+    corpus is recorded at. A URL carries its own standard, so a shared layout
+    keeps answering the question it was asked. */
+export const DEFAULT_C_STD = C_STANDARDS.at(-1)!;
+export const DEFAULT_CXX_STD = CXX_STANDARDS.at(-1)!;
 
 export interface Example {
   name: string;

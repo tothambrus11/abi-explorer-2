@@ -2,7 +2,7 @@
  "source": "struct Base { int a; };\nstruct Mixin { char m; };\nstruct Derived : virtual Base, Mixin { double d; };\nstruct Diamond : Derived, virtual Base { short s; };\n",
  "options": {
   "lang": "c++",
-  "std": "gnu++20",
+  "std": "gnu++26",
   "triple": "x86_64-pc-windows-msvc",
   "pack": "",
   "msBitfields": false,

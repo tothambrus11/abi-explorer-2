@@ -2,7 +2,7 @@
  "source": "struct Host;                  /* incomplete: the most general representation */\n\nstruct S {\n  int Host::*pm;              /* data member pointer */\n  void (Host::*pmf)();        /* member function pointer */\n};\n\n/* Pick x86_64-pc-windows-msvc: 12 B and 24 B, because MSVC must cover\n   every inheritance shape while Host is unknown. On Itanium both are\n   a fixed size instead. */\n",
  "options": {
   "lang": "c++",
-  "std": "gnu++20",
+  "std": "gnu++26",
   "triple": "x86_64-unknown-linux-gnu",
   "pack": "",
   "msBitfields": false,

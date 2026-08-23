@@ -2,7 +2,7 @@
  "source": "struct Flags {\n  unsigned kind      : 3;\n  unsigned visible   : 1;\n  unsigned dirty     : 1;\n  unsigned           : 0;  /* force new unit */\n  unsigned refcount  : 20;\n  short    balance   : 9;  /* straddles units on some ABIs */\n  char     suffix;\n};\n",
  "options": {
   "lang": "c",
-  "std": "gnu17",
+  "std": "gnu23",
   "triple": "x86_64-pc-windows-msvc",
   "pack": "",
   "msBitfields": false,

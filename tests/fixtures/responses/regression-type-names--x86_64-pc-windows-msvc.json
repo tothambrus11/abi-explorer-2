@@ -2,7 +2,7 @@
  "source": "typedef struct { int a; long b; } Pair;\nusing u32 = unsigned int;\ntypedef Pair PairAlias;\nstruct S { Pair p; u32 n; };\n",
  "options": {
   "lang": "c++",
-  "std": "gnu++20",
+  "std": "gnu++26",
   "triple": "x86_64-pc-windows-msvc",
   "pack": "",
   "msBitfields": false,

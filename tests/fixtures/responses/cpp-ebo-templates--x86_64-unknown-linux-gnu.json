@@ -2,7 +2,7 @@
  "source": "struct Empty {};\n\nstruct WithEbo : Empty {    /* empty base optimization */\n  char c;\n};\n\ntemplate <typename T>\nstruct Pair {\n  T first;\n  char second;\n};\n\nPair<double> pd;            /* instantiate to see layout */\nPair<char>   pc;\n",
  "options": {
   "lang": "c++",
-  "std": "gnu++20",
+  "std": "gnu++26",
   "triple": "x86_64-unknown-linux-gnu",
   "pack": "",
   "msBitfields": false,

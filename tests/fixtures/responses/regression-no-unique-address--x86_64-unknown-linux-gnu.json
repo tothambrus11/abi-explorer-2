@@ -2,7 +2,7 @@
  "source": "struct E {};\nstruct Shared { [[no_unique_address]] E e; int i; };\nstruct Own { E e; int i; };\n",
  "options": {
   "lang": "c++",
-  "std": "gnu++20",
+  "std": "gnu++26",
   "triple": "x86_64-unknown-linux-gnu",
   "pack": "",
   "msBitfields": false,

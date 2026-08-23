@@ -2,7 +2,7 @@
  "source": "struct Base {\n  virtual ~Base();\n  int x;\n};\n\nstruct Mixin {\n  virtual void tick();\n  char tag;\n};\n\nstruct Derived : Base, Mixin {\n  char extra;             /* reuses Mixin tail padding? */\n};\n\nstruct Diamond : virtual Base {\n  double d;\n};\n",
  "options": {
   "lang": "c++",
-  "std": "gnu++20",
+  "std": "gnu++26",
   "triple": "x86_64-pc-windows-msvc",
   "pack": "",
   "msBitfields": false,

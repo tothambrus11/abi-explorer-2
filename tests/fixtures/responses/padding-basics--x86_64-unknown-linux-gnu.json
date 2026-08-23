@@ -2,7 +2,7 @@
  "source": "#include <stdint.h>\n\nstruct Example {\n  uint8_t  flag;      /* 1 byte, then padding  */\n  uint32_t count;     /* wants 4-byte alignment */\n  uint8_t  tag;\n  uint64_t id;        /* wants 8-byte alignment */\n  char     name[5];\n  void    *userdata;  /* pointer size varies!   */\n};\n",
  "options": {
   "lang": "c",
-  "std": "gnu17",
+  "std": "gnu23",
   "triple": "x86_64-unknown-linux-gnu",
   "pack": "",
   "msBitfields": false,

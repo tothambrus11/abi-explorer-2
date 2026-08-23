@@ -2,7 +2,7 @@
  "source": "struct S {\n  unsigned a : 3;\n  unsigned b : 30;\n  unsigned : 0;\n  unsigned c : 5;\n  char tail;\n};\n",
  "options": {
   "lang": "c",
-  "std": "gnu17",
+  "std": "gnu23",
   "triple": "x86_64-unknown-linux-gnu",
   "pack": "",
   "msBitfields": false,

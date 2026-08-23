@@ -2,7 +2,7 @@
  "source": "struct Empty {};\n\nstruct WithNua {                      /* e shares i's address: sizeof 4 */\n  [[no_unique_address]] Empty e;\n  int i;\n};\n\nstruct WithPlain {                    /* e needs its own byte: sizeof 8 */\n  Empty e;\n  int i;\n};\n",
  "options": {
   "lang": "c++",
-  "std": "gnu++20",
+  "std": "gnu++26",
   "triple": "x86_64-pc-windows-msvc",
   "pack": "",
   "msBitfields": false,
