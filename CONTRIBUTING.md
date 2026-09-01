@@ -36,11 +36,24 @@ there shows up here on reload:
 cd ../clang-abi-wasm && scripts/build.sh wasm && scripts/dev-link.sh ../abi-explorer-2
 ```
 
-For hylo-abi-wasm, build the reactor and stage it the way a release would be:
+[hylo-abi-wasm](https://github.com/tothambrus11/hylo-abi-wasm) wants a checkout
+of the compiler beside it, on the branch carrying the layout query until that is
+merged:
 
 ```sh
-cd ../hylo-abi-wasm
+git clone -b wasm-layout-query --recursive https://github.com/hylo-lang/hylo-new.git
+git clone https://github.com/tothambrus11/hylo-abi-wasm.git
+```
+
+Then build and stage it the way a release would be. The second `swift build` is
+not redundant: `hylo-layout` is what depends on `HyloStandardLibrary`, so it is
+what puts the standard library's sources where `stdlib-json.mjs` reads them.
+
+```sh
+cd hylo-abi-wasm
 swift build -c release --swift-sdk <wasm-sdk> --product hylo-layout-reactor \
+  -Xswiftc -gnone -Xswiftc -Osize
+swift build -c release --swift-sdk <wasm-sdk> --product hylo-layout \
   -Xswiftc -gnone -Xswiftc -Osize
 BIN=$(swift build -c release --swift-sdk <wasm-sdk> --show-bin-path)
 wasm-opt -Os --strip-debug -o hylo_layout.wasm "$BIN/hylo-layout-reactor.wasm"
