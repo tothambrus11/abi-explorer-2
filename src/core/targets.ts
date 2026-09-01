@@ -1,3 +1,5 @@
+import type { Language } from './options';
+
 // Curated target triples, language standards, and example sources.
 
 export interface Target {
@@ -139,7 +141,7 @@ export const DEFAULT_CXX_STD = CXX_STANDARDS.at(-1)!;
 
 export interface Example {
   name: string;
-  lang: 'c' | 'c++';
+  lang: Language;
   source: string;
 }
 
@@ -349,6 +351,27 @@ struct Holder {             /* one member forces Holder to 64 B too */
   struct CacheLine line;
   char d;
 };
+`,
+  },
+  {
+    name: 'Hylo: reordered storage',
+    lang: 'hylo',
+    source: `/// Hylo stores members in order of decreasing alignment, so the order they
+/// are declared in is not the order they are stored in: 'flag' ends up last,
+/// after 'id', and nothing is padded between them.
+public struct Header {
+  let flag: Builtin.i8
+  let count: Builtin.i32
+  let id: Builtin.i64
+}
+
+/// An enum is a sum type: its cases are stored one over another, and the
+/// discriminator that says which one is live goes after the payload.
+public enum Message {
+  case ping
+  case data(bytes: Builtin.i64)
+  case code(value: Builtin.i16)
+}
 `,
   },
 ];

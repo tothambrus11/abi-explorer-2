@@ -192,7 +192,9 @@ describe.skipIf(!moduleAvailable)('the real module', () => {
   // The whole app, over everything the site ships: analyse, model, index. Not
   // an assertion about any one layout: an assertion that nothing in the chain
   // from wasm to the editor's gutter throws or comes back empty.
-  for (const ex of EXAMPLES) {
+  // clang's examples only: the Hylo one is answered by a different module,
+  // which this suite does not load.
+  for (const ex of EXAMPLES.filter((e) => e.lang !== 'hylo')) {
     it(`drives the app end to end: ${ex.name}`, async () => {
       const options = opts({ lang: ex.lang, std: defaultStdFor(ex.lang) });
       const a = await abi.analyze(ex.source, options);

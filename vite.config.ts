@@ -1,8 +1,21 @@
+import { existsSync } from 'node:fs';
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { VitePWA } from 'vite-plugin-pwa';
 
+/**
+ * Did `npm run hylo:fetch` find a Hylo module to serve?
+ *
+ * The clang module is required, so nothing has to ask about it. Hylo's is
+ * optional: a build without it is a working site that has no Hylo compiler,
+ * and offering the language anyway would be a button that fails when pressed.
+ */
+const hyloAvailable = existsSync(
+  new URL('./public/vendor/hylo/manifest.json', import.meta.url).pathname,
+);
+
 export default defineConfig({
+  define: { __HYLO_AVAILABLE__: JSON.stringify(hyloAvailable) },
   plugins: [
     svelte(),
     VitePWA({
@@ -40,8 +53,8 @@ export default defineConfig({
       },
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2,ttf,webmanifest}'],
-        // The wasm module is cached lazily by the service worker's own route.
-        globIgnores: ['**/vendor/abi/*'],
+        // The compiler modules are cached lazily by the service worker's own routes.
+        globIgnores: ['**/vendor/abi/*', '**/vendor/hylo/*'],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
       },
       devOptions: { enabled: false },

@@ -4,7 +4,8 @@
 
 ```sh
 npm install
-npm run abi:fetch    # the layout module (a pinned clang-abi-wasm release)
+npm run abi:fetch    # the C/C++ layout module (a pinned clang-abi-wasm release)
+npm run hylo:fetch   # the Hylo one (optional: without it, Hylo is offered as unsupported)
 npm run dev          # Vite dev server
 ```
 
@@ -22,7 +23,11 @@ If you change one of the shipped examples in `src/core/targets.ts`, run
 `npm run fixtures` afterwards. The recorded corpus keeps its own copy of each
 example's source, so without that step the tests keep checking the old text.
 
-## Working on the module
+## Working on a module
+
+There are two, one per language, and a session downloads whichever language it
+uses. `src/compiler/Backends.ts` is what keeps them apart; `tests/e2e/hylo.spec.ts`
+is what checks that selecting one does not fetch the other.
 
 To iterate on clang-abi-wasm itself, point the app at a local build. A rebuild
 there shows up here on reload:
@@ -31,23 +36,42 @@ there shows up here on reload:
 cd ../clang-abi-wasm && scripts/build.sh wasm && scripts/dev-link.sh ../abi-explorer-2
 ```
 
-`npm run abi:fetch` leaves that symlink alone.
+For hylo-abi-wasm, build the reactor and stage it the way a release would be:
+
+```sh
+cd ../hylo-abi-wasm
+swift build -c release --swift-sdk <wasm-sdk> --product hylo-layout-reactor \
+  -Xswiftc -gnone -Xswiftc -Osize
+BIN=$(swift build -c release --swift-sdk <wasm-sdk> --show-bin-path)
+wasm-opt -Os --strip-debug -o hylo_layout.wasm "$BIN/hylo-layout-reactor.wasm"
+node tools/stdlib-json.mjs "$BIN" > hylo_stdlib.json
+node tools/package-release.mjs hylo_layout.wasm hylo_stdlib.json local dist
+```
+
+then point the app at `dist` with a symlink at `public/vendor/hylo`, or serve
+it and set `HYLO_MODULE_BASE`. Both fetch scripts leave a symlink alone.
 
 ## Layout
 
 ```
 src/core/          pure, unit-tested: render (wire to model, colours), types,
                    options, url-state, targets, themes, ansi
-src/compiler/      abi.worker (the module in a Worker), AbiClient (protocol),
-                   AbiAnalyzer (query to Analysis, caching, spelling probes)
+src/compiler/      abi.worker / hylo.worker (a module in a Worker), AbiClient
+                   (protocol), Backends (which compiler answers, and which one
+                   is not downloaded), AbiAnalyzer (query to Analysis, caching,
+                   spelling probes), hylo-wire (Hylo layouts as the wire shape
+                   the views read), module-assets (fetch, decompress, cache),
+                   wasi-shim (just enough WASI for a module with no files)
 src/state/         store (Svelte 5 runes), session (orchestration, hover, type
                    docs), code-locations (the editor's per-line index), theme
 src/ui/            Svelte components, Monaco setup, dockview integration, themes
 tests/unit/        vitest; tests/fixtures/responses holds the recorded corpus
 tests/e2e/         Playwright against the production build
-tools/             fetch-abi-module.mjs (pull a pinned module release),
-                   stage-module.mjs (gzip and content-address it for the host)
-public/vendor/abi  the layout module the site serves
+tools/             fetch-abi-module.mjs, fetch-hylo-module.mjs (pull a pinned
+                   module release), stage-module.mjs (gzip and content-address
+                   them for the host)
+public/vendor/abi  the C/C++ layout module the site serves
+public/vendor/hylo the Hylo one, when the build found a release
 ```
 
 `src/core` must stay free of browser globals and must not import from the other
@@ -81,14 +105,18 @@ The `.real.` suites skip themselves when no module is present.
 ## Deployment
 
 Cloudflare Pages via Git integration: build command `npm run build`, output
-directory `dist`. The build fetches the pinned module first, because a site
-built without it loads and then cannot answer anything. It keeps going on a
-network failure only when the module is already there.
+directory `dist`. The build fetches the pinned clang module first, because a
+site built without it loads and then cannot answer anything. It keeps going on
+a network failure only when the module is already there. The Hylo module is
+optional: a build without it is a working site that offers C and C++ and says
+Hylo has no compiler here, which `vite.config.ts` decides from whether the
+manifest is present.
 
-`tools/stage-module.mjs` then prepares `dist/vendor/abi/` for a static host. It
-gzips the wasm and the header pack, which takes a first visit from 47 MB to
-about 11 MB and gets the wasm under Cloudflare's 25 MiB per-asset limit. It
-also names every file after its content.
+`tools/stage-module.mjs` then prepares `dist/vendor/` for a static host. It
+gzips each module's wasm (and clang's header pack), which takes clang from
+47 MB to about 11 MB and Hylo from 49 MB to about 19 MB, and gets both under
+Cloudflare's 25 MiB per-asset limit. It also names every file after its
+content.
 
 Those names are the update path. The directory is served `immutable` and cached
 `CacheFirst` by the service worker, so a new module published under an old name
@@ -96,7 +124,8 @@ is one no returning visitor would ever fetch. `manifest.json` is the single
 mutable file: read network-first with the cached copy as the offline fallback,
 and every loader resolves through it. The worker deletes cache entries the
 current manifest does not name, so an upgrade also reclaims the previous
-module's ~11 MB.
+module's megabytes. Each module has a cache of its own, so using one language
+never evicts the other's.
 
 CI (`.github/workflows/ci.yml`) fetches the pinned clang-abi-wasm release, then
 runs lint, type-check, the unit suites (including the ones that drive the real

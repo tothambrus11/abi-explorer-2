@@ -1,20 +1,34 @@
 <script lang="ts">
   import { store } from '$state/store.svelte';
   import { TARGET_GROUPS } from '$core/targets';
-  import { standardsFor, splitExtraFlags, type Language } from '$core/options';
+  import { HYLO_AVAILABLE, standardsFor, splitExtraFlags, type Language } from '$core/options';
   import { isKnownTriple } from '$core/url-state';
   import { tooltip } from './tooltip';
 
   const CUSTOM = '__custom__';
-  // `soon` marks a language with no backend yet: selectable would silently
-  // compile the source as C and label the result Hylo.
+  // `soon` marks a language with no backend in this build: selectable would
+  // silently compile the source as C and label the result Hylo. Hylo's module
+  // is optional (see `HYLO_AVAILABLE`), so which it is depends on the build.
   const LANGS: { id: Language; label: string; tip: string; soon?: boolean }[] = [
     { id: 'c', label: 'C', tip: 'Compile as C' },
     { id: 'c++', label: 'C++', tip: 'Compile as C++' },
-    { id: 'hylo', label: 'Hylo', tip: 'Hylo: not supported yet', soon: true },
+    HYLO_AVAILABLE
+      ? { id: 'hylo', label: 'Hylo', tip: 'Lay out Hylo types (downloads the Hylo compiler)' }
+      : { id: 'hylo', label: 'Hylo', tip: 'Hylo: not supported by this build', soon: true },
   ];
-  let selectValue = $state(isKnownTriple(store.options.triple) ? store.options.triple : CUSTOM);
+  // Hylo describes one ABI and takes none of clang's flags, so the target
+  // selector and the options below it have nothing to say about it.
+  const clangOptions = $derived(store.options.lang !== 'hylo');
+  const asSelected = (t: string) => (isKnownTriple(t) ? t : CUSTOM);
+  let selectValue = $state(asSelected(store.options.triple));
   let customTriple = $state(isKnownTriple(store.options.triple) ? '' : store.options.triple);
+  // Selecting Hylo replaces the triple with its one ABI and going back restores
+  // the previous one, neither of which this selector was told about. Without
+  // this it would come back showing "Custom triple…" over an empty box while
+  // the options held a perfectly ordinary target.
+  $effect(() => {
+    if (clangOptions) selectValue = asSelected(store.options.triple);
+  });
   const stds = $derived(standardsFor(store.options.lang));
   const rejectedFlags = $derived(splitExtraFlags(store.options.extraFlags)[1]);
 
@@ -76,7 +90,7 @@
       {/if}
     </div>
 
-    <div class="group">
+    <div class="group" class:hidden={!clangOptions}>
       <select
         id="target"
         class="input"
@@ -109,7 +123,7 @@
     </div>
   </div>
 
-  <details class="more">
+  <details class="more" class:hidden={!clangOptions}>
     <summary>More options</summary>
     <div class="grid">
       <label
@@ -199,6 +213,13 @@
     align-items: center;
     gap: 8px;
   }
+  /* Controls that mean nothing in the selected language. Hidden rather than
+     disabled: a greyed-out list of LLVM triples beside a Hylo source reads as
+     something that could be chosen, and none of them can. */
+  .hidden {
+    display: none;
+  }
+
   .segmented {
     display: inline-flex;
     gap: 2px;

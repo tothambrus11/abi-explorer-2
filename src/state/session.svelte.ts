@@ -11,7 +11,7 @@
 // They arrive together now, so one resource is left and the loop is gone.
 
 import { AbiAnalyzer, type AnalysedRecord, type Analysis } from '$compiler/AbiAnalyzer';
-import type { AbiClient } from '$compiler/AbiClient';
+import { backendFor, type Backends } from '$compiler/Backends';
 import type { CompileOptions } from '$core/options';
 import { describeRecord, describeSpelling, subjectAt } from './type-hover';
 import { decodeShareState, encodeShareState, type ShareState } from '$core/url-state';
@@ -125,8 +125,8 @@ export class Session {
   /** Record owning the hovered line, for record-follows-cursor in tabs mode. */
   private readonly hoverPrimary: string | null = $derived(hoveredPrimary(this.hoverInputs));
 
-  constructor(private readonly client: AbiClient) {
-    this.analyzer = new AbiAnalyzer(client);
+  constructor(private readonly backends: Backends) {
+    this.analyzer = new AbiAnalyzer(backends);
   }
 
   /**
@@ -140,15 +140,19 @@ export class Session {
    * DOM-independent, so the app mounts while it runs).
    */
   async boot(): Promise<void> {
+    // The selected language decides which module is about to be downloaded,
+    // and each is asked about separately: they are different sizes and a
+    // visitor may have one cached and not the other.
+    this.backends.select(store.options.lang);
     // No usable hint (or the check threw): behave as on an unmetered link.
-    const ask = await shouldAskBeforeDownload().catch(() => false);
+    const ask = await shouldAskBeforeDownload(this.backends.selected).catch(() => false);
     if (ask) store.awaitingDownloadConsent = true;
     else this.startModule();
   }
 
   /** Wire reactive effects. Returns a disposer. */
   start(): () => void {
-    const offStatus = this.client.onStatus((s) => {
+    const offStatus = this.backends.onStatus((s) => {
       store.compiler = s;
     });
 
@@ -157,6 +161,16 @@ export class Session {
       // module's status, which changes on every progress tick during the
       // download. Dedup-by-input is what keeps that from turning into a
       // hundred identical queries the moment it becomes ready.
+      // Choosing a language chooses a compiler, and the second one is not
+      // downloaded until something needs it (see `Backends`). The gate decides
+      // again for it: it is a different download of a different size, and one
+      // the visitor may not have cached.
+      $effect(() => {
+        const lang = store.options.lang;
+        if (backendFor(lang) === this.backends.selected) return;
+        this.backends.select(lang);
+        void this.boot();
+      });
       $effect(() => {
         const input: CompileInput = { source: store.source, options: { ...store.options } };
         if (store.compiler.state === 'ready') this.compile.trigger(input);
@@ -262,7 +276,7 @@ export class Session {
 
   private startModule(): void {
     store.awaitingDownloadConsent = false;
-    void this.client.start().catch(() => {});
+    void this.backends.start().catch(() => {});
   }
 
   /** The user opted into the download on a metered connection; remember and go. */

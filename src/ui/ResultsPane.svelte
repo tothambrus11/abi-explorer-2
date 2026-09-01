@@ -2,6 +2,7 @@
   import { store } from '$state/store.svelte';
   import type { Session } from '$state/session.svelte';
   import { bundle } from '$state/download-gate';
+  import { backendFor } from '$compiler/Backends';
   import RecordSection from './RecordSection.svelte';
   import Rows3 from '@lucide/svelte/icons/rows-3';
   import PanelTop from '@lucide/svelte/icons/panel-top';
@@ -11,8 +12,13 @@
   // From the module's manifest, so this and the progress bar below it are the
   // same number rather than two guesses at it. 0 until it is known.
   let downloadMb = $state(0);
-  void bundle().then((b) => {
-    if (b) downloadMb = Math.round(b.bytes / 1048576);
+  $effect(() => {
+    // The figure follows the language: the two modules are different sizes,
+    // and quoting clang's while Hylo is downloading would be the same lie the
+    // hard-coded "~11 MB" used to be.
+    void bundle(backendFor(store.options.lang)).then((b) => {
+      if (b) downloadMb = Math.round(b.bytes / 1048576);
+    });
   });
   const loading = $derived(store.compiler.state !== 'ready');
   const stacked = $derived(store.view === 'stack');

@@ -102,11 +102,18 @@ export const REGRESSION_SOURCES: CorpusSource[] = [
   },
 ];
 
-/** Every source the corpus covers: the shipped examples, plus the regressions. */
+/**
+ * Every source the corpus covers: the shipped examples, plus the regressions.
+ *
+ * Only the ones clang answers. The corpus is a record of what *this* module
+ * computes for a source at a triple, and a Hylo example has neither: its
+ * compiler is a different module, and it has one ABI rather than a list of
+ * triples. It is covered by hylo-abi-wasm's own smoke test instead.
+ */
 export function corpusSources(): CorpusSource[] {
-  const examples = EXAMPLES.map((ex) => ({
+  const examples = EXAMPLES.filter((ex) => ex.lang !== 'hylo').map((ex) => ({
     name: slug(ex.name),
-    lang: ex.lang,
+    lang: ex.lang as 'c' | 'c++',
     source: ex.source,
     triples: DEFAULT_TRIPLES,
   }));

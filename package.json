@@ -6,7 +6,7 @@
   "description": "Visualize C/C++ struct layouts for any LLVM target \u2014 clang compiled to WebAssembly, running in your browser.",
   "scripts": {
     "dev": "vite",
-    "build": "npm run abi:fetch && vite build && node tools/stage-module.mjs",
+    "build": "npm run abi:fetch && npm run hylo:fetch && vite build && node tools/stage-module.mjs",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json && tsc -p tsconfig.node.json --noEmit",
     "lint": "eslint .",
@@ -15,7 +15,8 @@
     "test:watch": "vitest",
     "e2e": "playwright test",
     "fixtures": "ABIX_CAPTURE=1 vitest run tests/unit/corpus.capture.test.ts",
-    "abi:fetch": "node tools/fetch-abi-module.mjs"
+    "abi:fetch": "node tools/fetch-abi-module.mjs",
+    "hylo:fetch": "node tools/fetch-hylo-module.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

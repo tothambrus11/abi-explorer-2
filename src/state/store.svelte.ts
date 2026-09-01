@@ -7,6 +7,7 @@ import type { ModuleStatus } from '$compiler/AbiClient';
 import {
   DEFAULT_OPTIONS,
   defaultStdFor,
+  HYLO_TRIPLE,
   standardsFor,
   type CompileOptions,
   type Language,
@@ -143,9 +144,20 @@ class Store {
 
   // -------------------------------------------------------- actions ----
 
+  /**
+   * The triple to go back to when a C or C++ language is chosen again.
+   *
+   * Hylo has one ABI and no triple to pick, so selecting it replaces whatever
+   * target was chosen. Losing that choice on the way back would be a silent
+   * change of answer for a user who only wanted to look at Hylo for a moment.
+   */
+  private lastClangTriple = DEFAULT_OPTIONS.triple;
+
   setLanguage(lang: Language): void {
     if (this.options.lang === lang) return;
+    if (this.options.lang !== 'hylo') this.lastClangTriple = this.options.triple;
     this.options.lang = lang;
+    this.options.triple = lang === 'hylo' ? HYLO_TRIPLE : this.lastClangTriple;
     if (!standardsFor(lang).includes(this.options.std)) this.options.std = defaultStdFor(lang);
   }
 

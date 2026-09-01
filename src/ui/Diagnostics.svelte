@@ -3,6 +3,9 @@
   import { parseAnsi } from '$core/ansi';
   const ansi = $derived(store.analysis?.diagnosticsText ?? '');
   const spans = $derived(parseAnsi(ansi));
+  // Whose approval this is. There are two compilers now, and only one of them
+  // is clang.
+  const compiler = $derived(store.options.lang === 'hylo' ? 'Hylo' : 'Clang');
 </script>
 
 <div class="diagnostics">
@@ -12,7 +15,7 @@
           class={s.color === null ? '' : `c${s.color}`}>{s.text}</span
         >{/each}</pre>
   {:else}
-    <p class="empty">Clang is proud of you.</p>
+    <p class="empty">{compiler} is proud of you.</p>
   {/if}
 </div>
 

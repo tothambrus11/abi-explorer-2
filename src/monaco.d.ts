@@ -13,3 +13,6 @@ declare module 'monaco-editor/editor/editor.worker.js?worker' {
   const WorkerCtor: new () => Worker;
   export default WorkerCtor;
 }
+
+/** Defined by `vite.config.ts`: whether a Hylo module was built into this site. */
+declare const __HYLO_AVAILABLE__: boolean;

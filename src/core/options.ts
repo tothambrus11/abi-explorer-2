@@ -42,7 +42,25 @@ export const DEFAULT_OPTIONS: CompileOptions = {
   extraFlags: '',
 };
 
-// Hylo is a placeholder for now: no standards, no compiler backend yet.
+/**
+ * The ABI Hylo lays types out for.
+ *
+ * The compiler describes exactly one so far, so this is a name rather than a
+ * choice: there is no triple to pick and the selector is hidden for Hylo.
+ */
+export const HYLO_TRIPLE = 'hylo';
+
+/**
+ * Was a Hylo module built into this site?
+ *
+ * `vite.config.ts` defines this from whether `npm run hylo:fetch` found a
+ * release to serve. Offering the language without one is a button that fails
+ * when pressed, so the UI shows it as having no compiler here instead.
+ */
+export const HYLO_AVAILABLE: boolean =
+  typeof __HYLO_AVAILABLE__ === 'boolean' ? __HYLO_AVAILABLE__ : false;
+
+/** Hylo has no standards to choose between; its compiler has had one release. */
 export function standardsFor(lang: Language): readonly string[] {
   return lang === 'c++' ? CXX_STANDARDS : lang === 'hylo' ? [] : C_STANDARDS;
 }
@@ -113,8 +131,13 @@ export function splitExtraFlags(text: string): [string[], string[]] {
 /**
  * The clang flags these options mean. Target, language and standard are fields
  * of the request, not flags, so they are not here.
+ *
+ * Hylo takes none of them: they name clang's own knobs, and a `-fpack-struct`
+ * left over from a C session must not follow the user into a language where it
+ * means nothing.
  */
 export function buildFlags(opts: CompileOptions): string[] {
+  if (opts.lang === 'hylo') return [];
   const flags: string[] = ['-Wno-unused'];
   if (opts.pack) flags.push('-fpack-struct=' + opts.pack);
   if (opts.msBitfields) flags.push('-mms-bitfields');

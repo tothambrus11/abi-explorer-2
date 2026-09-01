@@ -33,59 +33,82 @@ import { readFile, writeFile, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 
-const DIST = path.join(new URL('..', import.meta.url).pathname, 'dist', 'vendor', 'abi');
-const MANIFEST = path.join(DIST, 'manifest.json');
+const VENDOR = path.join(new URL('..', import.meta.url).pathname, 'dist', 'vendor');
 
-/** The glue is 310 kB and is fetched before there is a progress bar to show. */
-const COMPRESS = new Set(['wasm', 'headers']);
+/**
+ * The modules to stage, and which of each one's files are worth compressing.
+ *
+ * The glue is 310 kB and is fetched before there is a progress bar to show, so
+ * it is left alone; the Hylo standard library is 75 kB of source, which is not
+ * worth a decompression step in the worker either.
+ *
+ * clang is required, because a site that cannot answer a C question is not
+ * this site. Hylo is not: without it the app offers C and C++, and says Hylo
+ * has no compiler here.
+ */
+const MODULES = [
+  { dir: 'abi', compress: new Set(['wasm', 'headers']), required: true },
+  { dir: 'hylo', compress: new Set(['wasm']), required: false },
+];
 
-if (!existsSync(MANIFEST)) {
-  console.error(`no module in ${DIST}: run \`npm run abi:fetch\` before building`);
-  process.exit(1);
-}
-
-const manifest = JSON.parse(await readFile(MANIFEST, 'utf8'));
 const mb = (n) => (n / 1048576).toFixed(1);
 let before = 0;
 let after = 0;
 
-for (const [key, entry] of Object.entries(manifest.files ?? {})) {
-  const source = path.join(DIST, entry.path);
-  if (!existsSync(source)) {
-    console.error(`${entry.path} is in the manifest but not in ${DIST}`);
-    process.exit(1);
+for (const { dir, compress: COMPRESS, required } of MODULES) {
+  const DIST = path.join(VENDOR, dir);
+  const MANIFEST = path.join(DIST, 'manifest.json');
+  if (!existsSync(MANIFEST)) {
+    if (required) {
+      console.error(`no module in ${DIST}: run \`npm run abi:fetch\` before building`);
+      process.exit(1);
+    }
+    console.log(`  no module in vendor/${dir}, skipping`);
+    continue;
   }
 
-  const raw = await readFile(source);
-  const body = COMPRESS.has(key) ? gzipSync(raw, { level: 9 }) : raw;
-  // Named after what is served, so a re-compression that changes a byte gets a
-  // new URL. The extension is kept: hosts pick a content type from it, and
-  // `.gz` is what tells a host not to compress it a second time.
-  const stamp = createHash('sha256').update(body).digest('hex').slice(0, 12);
-  const ext = path.extname(entry.path);
-  const name = `${path.basename(entry.path, ext)}-${stamp}${ext}${COMPRESS.has(key) ? '.gz' : ''}`;
+  const manifest = JSON.parse(await readFile(MANIFEST, 'utf8'));
+  for (const [key, entry] of Object.entries(manifest.files ?? {})) {
+    const source = path.join(DIST, entry.path);
+    if (!existsSync(source)) {
+      console.error(`${entry.path} is in the manifest but not in ${DIST}`);
+      process.exit(1);
+    }
 
-  await writeFile(path.join(DIST, name), body);
-  await rm(source);
+    const raw = await readFile(source);
+    const body = COMPRESS.has(key) ? gzipSync(raw, { level: 9 }) : raw;
+    // Named after what is served, so a re-compression that changes a byte gets
+    // a new URL. The extension is kept: hosts pick a content type from it, and
+    // `.gz` is what tells a host not to compress it a second time.
+    const stamp = createHash('sha256').update(body).digest('hex').slice(0, 12);
+    const ext = path.extname(entry.path);
+    const name = `${path.basename(entry.path, ext)}-${stamp}${ext}${COMPRESS.has(key) ? '.gz' : ''}`;
 
-  // `bytes` stays the uncompressed length, which is what the file is once it
-  // is here, and what has to be read back out of the cache. `transferBytes` is
-  // what the connection spends, which is the number the progress bar counts
-  // and the consent gate quotes.
-  manifest.files[key] = {
-    ...entry,
-    path: name,
-    ...(COMPRESS.has(key) ? { encoding: 'gzip' } : {}),
-    bytes: raw.length,
-    transferBytes: body.length,
-  };
+    await writeFile(path.join(DIST, name), body);
+    await rm(source);
 
-  if (COMPRESS.has(key)) {
-    before += raw.length;
-    after += body.length;
+    // `bytes` stays the uncompressed length, which is what the file is once it
+    // is here, and what has to be read back out of the cache. `transferBytes`
+    // is what the connection spends, which is the number the progress bar
+    // counts and the consent gate quotes.
+    manifest.files[key] = {
+      ...entry,
+      path: name,
+      ...(COMPRESS.has(key) ? { encoding: 'gzip' } : {}),
+      bytes: raw.length,
+      transferBytes: body.length,
+    };
+
+    if (COMPRESS.has(key)) {
+      before += raw.length;
+      after += body.length;
+    }
+    console.log(`  ${dir}/${entry.path}  ->  ${name}  (${mb(body.length)} MiB)`);
   }
-  console.log(`  ${entry.path}  ->  ${name}  (${mb(body.length)} MiB)`);
+
+  await writeFile(MANIFEST, JSON.stringify(manifest, null, 2));
 }
 
-await writeFile(MANIFEST, JSON.stringify(manifest, null, 2));
-console.log(`first visit: ${mb(before)} MiB -> ${mb(after)} MiB`);
+// Not a first visit's cost any more, now that there are two modules and a
+// visitor downloads whichever language they chose.
+console.log(`compressed: ${mb(before)} MiB -> ${mb(after)} MiB`);

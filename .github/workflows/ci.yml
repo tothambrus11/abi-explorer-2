@@ -21,13 +21,21 @@ jobs:
         with:
           path: public/vendor/abi
           key: abi-module-${{ hashFiles('tools/fetch-abi-module.mjs') }}
-      # The layout module the site serves. Everything past this point (the
-      # unit suites that drive it, the build, the e2e run) uses the same copy,
-      # so a release that changed an answer fails here rather than in
-      # production. `npm run build` would fetch it anyway; doing it up front
-      # means the test suites see it too.
+      - uses: actions/cache@v4
+        with:
+          path: public/vendor/hylo
+          key: hylo-module-${{ hashFiles('tools/fetch-hylo-module.mjs') }}
+      # The layout modules the site serves. Everything past this point (the
+      # unit suites that drive them, the build, the e2e run) uses the same
+      # copies, so a release that changed an answer fails here rather than in
+      # production. `npm run build` would fetch them anyway; doing it up front
+      # means the test suites see them too.
       - name: Fetch the clang-abi-wasm release
         run: npm run abi:fetch
+      # Optional: a build with no Hylo module offers the language as
+      # unsupported, and the Hylo end-to-end tests skip themselves.
+      - name: Fetch the hylo-abi-wasm release
+        run: npm run hylo:fetch
       - run: npm run lint
       - run: npm run check
       - run: npm test
@@ -49,7 +57,12 @@ jobs:
         with:
           path: public/vendor/abi
           key: abi-module-${{ hashFiles('tools/fetch-abi-module.mjs') }}
+      - uses: actions/cache@v4
+        with:
+          path: public/vendor/hylo
+          key: hylo-module-${{ hashFiles('tools/fetch-hylo-module.mjs') }}
       - run: npm run abi:fetch
+      - run: npm run hylo:fetch
       - run: npx playwright install --with-deps chromium
       - name: End-to-end (Playwright, production build)
         run: PW_CHANNEL=chromium npx playwright test

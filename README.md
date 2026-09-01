@@ -1,9 +1,10 @@
 # ABI Explorer
 
-See how C and C++ compilers lay out your structs: where each field lands, how
-big it is, what it is aligned to, and where the padding goes. For any target
-LLVM supports, computed by clang itself, compiled to WebAssembly and running in
-your browser. No server, works offline. Live at <https://abiexplorer.org>.
+See how compilers lay out your types: where each field lands, how big it is,
+what it is aligned to, and where the padding goes. C and C++ for any target
+LLVM supports, computed by clang itself; Hylo, computed by its own compiler.
+Both compiled to WebAssembly and running in your browser. No server, works
+offline. Live at <https://abiexplorer.org>.
 
 ![screenshot](docs/screenshot.png)
 
@@ -42,9 +43,26 @@ Panels (Code, Layout, Diagnostics) dock and resize. Six themes ship, and there
 is an editor if you want your own. Share copies a link with your source and
 options in it, and the whole thing installs as a PWA.
 
+### Hylo
+
+Selecting Hylo asks the Hylo compiler instead, and the answers are worth
+looking at because the rules are different. Hylo stores a record's members in
+order of decreasing alignment rather than in declaration order, so a struct
+that would be full of holes in C usually has none; and a Hylo `enum` is a sum
+type, its cases stored one over another with a discriminator after them, which
+the grid draws the way it draws a union.
+
+Hylo has one ABI so far, so there is no target to pick and the flags that mean
+something to clang are hidden.
+
+Each language's compiler is downloaded only if you select that language: a
+session that stays in C never fetches the Hylo module, and one that starts in
+Hylo never fetches clang.
+
 ## How it works
 
-The app asks one question and reads the answer.
+The app asks one question and reads the answer. There are two compilers that
+can answer it, and the app loads whichever the selected language needs.
 
 [clang-abi-wasm](https://github.com/tothambrus11/clang-abi-wasm) is clang's
 frontend, meaning the parser, semantic analysis and every target's ABI
@@ -61,6 +79,14 @@ their source ranges, vtable and vbtable pointers, padding runs, source
 locations, type names, clang's diagnostics both structured and rendered. And
 the drawing itself: which extents exist, what contains what, what overlaps
 what.
+
+[hylo-abi-wasm](https://github.com/tothambrus11/hylo-abi-wasm) answers the same
+question for Hylo, out of the Hylo compiler's own front end. It is a
+WebAssembly *reactor* rather than a command: it type checks the standard
+library once, when it loads, and every query afterwards is served from a copy
+of the resulting program. That is why the first Hylo answer takes about a
+second and the rest take about fifteen milliseconds. Its smaller answer is
+expressed in the same shape as clang's, so every view reads one format.
 
 That last part matters more than it sounds. Containment is not recoverable from
 a list of offsets. Working out which byte belongs to which field of which base

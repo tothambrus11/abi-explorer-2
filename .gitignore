@@ -5,6 +5,7 @@ playwright-report/
 test-results/
 coverage/
 *.local
-# The layout module: about 48 MB, fetched by `npm run abi:fetch`, or a symlink
-# to a local build put there by clang-abi-wasm's scripts/dev-link.sh.
+# The layout modules: tens of megabytes each, fetched by `npm run abi:fetch`
+# and `npm run hylo:fetch`, or a symlink to a local build.
 public/vendor/abi
+public/vendor/hylo

@@ -3,15 +3,36 @@
 // asks `needsDownloadConsent`. Kept apart from the pure decision in
 // $core/metered so the rules stay testable without a DOM.
 
+import type { BackendId } from '$compiler/Backends';
 import { needsDownloadConsent, type ConnectionHint } from '$core/metered';
 
 const CONSENT_KEY = 'abix-download-consent';
 
-/** Where the module is served from, by the same construction the worker uses. */
-const BASE = new URL(
-  (import.meta.env['VITE_ABI_BASE'] as string | undefined) ?? 'vendor/abi/',
-  new URL(import.meta.env.BASE_URL, location.origin),
-).href;
+/**
+ * Each backend's module: where it is served from, which cache the worker
+ * leaves it in, and which of its files are the ones worth asking about.
+ *
+ * The bases are built the way the workers build them, so the gate and the
+ * worker always agree about which module they are talking about.
+ */
+const BACKENDS: Record<BackendId, { base: string; cache: string; big: string[] }> = {
+  clang: {
+    base: new URL(
+      (import.meta.env['VITE_ABI_BASE'] as string | undefined) ?? 'vendor/abi/',
+      new URL(import.meta.env.BASE_URL, location.origin),
+    ).href,
+    cache: 'abix-abi-module-v1',
+    big: ['wasm', 'headers'],
+  },
+  hylo: {
+    base: new URL(
+      (import.meta.env['VITE_HYLO_BASE'] as string | undefined) ?? 'vendor/hylo/',
+      new URL(import.meta.env.BASE_URL, location.origin),
+    ).href,
+    cache: 'abix-hylo-module-v1',
+    big: ['wasm'],
+  },
+};
 
 /** `navigator.connection` where implemented (Chromium); undefined elsewhere. */
 function connection(): ConnectionHint | undefined {
@@ -46,8 +67,6 @@ export interface Bundle {
   urls: string[];
 }
 
-const CACHE_NAME = 'abix-abi-module-v1';
-
 /**
  * The bundle, from the module's own manifest.
  *
@@ -59,9 +78,10 @@ const CACHE_NAME = 'abix-abi-module-v1';
  * Null when the manifest cannot be read, which on a first visit means the
  * download would fail anyway.
  */
-async function readBundle(): Promise<Bundle | null> {
+async function readBundle(id: BackendId): Promise<Bundle | null> {
+  const { base, cache, big: keys } = BACKENDS[id];
   try {
-    const url = new URL('manifest.json', BASE).href;
+    const url = new URL('manifest.json', base).href;
     // Network first, then the copy the worker cached on an earlier visit,
     // the same order the worker uses, so the two agree about which module
     // they are talking about. Offline with everything cached is exactly when
@@ -69,30 +89,33 @@ async function readBundle(): Promise<Bundle | null> {
     // ask.
     let response = await fetch(url, { cache: 'no-cache' }).catch(() => undefined);
     if (!response?.ok) {
-      response = await caches.match(url, { cacheName: CACHE_NAME }).catch(() => undefined);
+      response = await caches.match(url, { cacheName: cache }).catch(() => undefined);
     }
     if (!response?.ok) return null;
     const manifest = (await response.json()) as {
       files?: Record<string, { path?: string; bytes: number; transferBytes?: number }>;
     };
-    const big = ['wasm', 'headers']
-      .map((key) => manifest.files?.[key])
-      .filter((file) => file !== undefined);
+    const big = keys.map((key) => manifest.files?.[key]).filter((file) => file !== undefined);
     if (big.length === 0) return null;
     return {
       bytes: big.reduce((n, file) => n + (file.transferBytes ?? file.bytes), 0),
-      urls: big.map((file) => new URL(file.path ?? '', BASE).href),
+      urls: big.map((file) => new URL(file.path ?? '', base).href),
     };
   } catch {
     return null; // offline, or no manifest to read
   }
 }
 
-let pending: Promise<Bundle | null> | null = null;
+const pending = new Map<BackendId, Promise<Bundle | null>>();
 
-/** Memoised: the manifest is read once per page, by whoever asks first. */
-export function bundle(): Promise<Bundle | null> {
-  return (pending ??= readBundle());
+/** Memoised per backend: each manifest is read once per page, by whoever asks first. */
+export function bundle(id: BackendId): Promise<Bundle | null> {
+  let p = pending.get(id);
+  if (!p) {
+    p = readBundle(id);
+    pending.set(id, p);
+  }
+  return p;
 }
 
 /**
@@ -105,10 +128,10 @@ export function bundle(): Promise<Bundle | null> {
  * puts each file in the cache as it finishes it, so even a visit abandoned
  * halfway leaves the first file there.
  */
-async function availableLocally(b: Bundle): Promise<boolean> {
+async function availableLocally(id: BackendId, b: Bundle): Promise<boolean> {
   try {
     const found = await Promise.all(
-      b.urls.map((url) => caches.match(url, { cacheName: CACHE_NAME })),
+      b.urls.map((url) => caches.match(url, { cacheName: BACKENDS[id].cache })),
     );
     return found.every(Boolean);
   } catch {
@@ -116,12 +139,20 @@ async function availableLocally(b: Bundle): Promise<boolean> {
   }
 }
 
-/** Should we ask the user before starting the download? */
-export async function shouldAskBeforeDownload(): Promise<boolean> {
-  const b = await bundle();
+/**
+ * Should we ask the user before starting `id`'s download?
+ *
+ * Asked per backend, because the answer differs per backend: a visitor who
+ * accepted clang's 11 MB on this connection has not thereby accepted Hylo's,
+ * and one who has clang cached is still facing a fresh download the first time
+ * they select Hylo. Consent, once given, covers both: it is an answer about
+ * the connection rather than about a particular file.
+ */
+export async function shouldAskBeforeDownload(id: BackendId): Promise<boolean> {
+  const b = await bundle(id);
   return needsDownloadConsent({
     connection: connection(),
     consented: hasConsent(),
-    availableLocally: b !== null && (await availableLocally(b)),
+    availableLocally: b !== null && (await availableLocally(id, b)),
   });
 }

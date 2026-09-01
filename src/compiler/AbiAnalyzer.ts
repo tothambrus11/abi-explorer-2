@@ -10,16 +10,21 @@
 // Now: one query. Layout, member sizes, source locations, containment, overlap
 // and padding arrive together, because they were never separate questions.
 
-import { buildFlags, type CompileOptions } from '$core/options';
+import { buildFlags, HYLO_TRIPLE, type CompileOptions, type Language } from '$core/options';
 import { fromWire, type WireHeaders, type WireRecord, type WireResponse } from '$core/render';
 import type { Diagnostic, RecordLayout, RenderModel, SourceLocation } from '$core/types';
 
-/** What this needs from clang-abi-wasm. Async because the real one is a worker. */
+/**
+ * What this needs from a backend. Async because the real ones are workers.
+ *
+ * `lang` is what decides which backend answers, so it is no longer only a
+ * spelling of clang's `-x`: see `Backends`.
+ */
 export interface AbiModule {
   query(request: {
     source: string;
     triple: string;
-    lang?: 'c' | 'c++';
+    lang?: Language;
     std?: string;
     flags?: string[];
   }): Promise<WireResponse>;
@@ -140,6 +145,11 @@ export class AbiAnalyzer {
     spelling: string,
     signal?: AbortSignal,
   ): Promise<{ bits: number; align: number } | null> {
+    // The probe is a C construct (`__typeof__` in a struct clang is asked to
+    // lay out beside the user's). Hylo answers hover from the type its own
+    // compiler assigned the cursor, so there is nothing to probe for.
+    if (analysis.options.lang === 'hylo') return Promise.resolve(null);
+
     const key = this.key(analysis.source, analysis.options) + '\0' + spelling;
     const hit = this.spellings.get(key);
     if (hit) return hit;
@@ -173,8 +183,10 @@ export class AbiAnalyzer {
   private request(source: string, o: CompileOptions) {
     return {
       source,
-      triple: o.triple,
-      lang: o.lang === 'c++' ? ('c++' as const) : ('c' as const),
+      // Hylo has one ABI, whatever triple a shared link or an earlier C
+      // session left in the options.
+      triple: o.lang === 'hylo' ? HYLO_TRIPLE : o.triple,
+      lang: o.lang,
       ...(o.std ? { std: o.std } : {}),
       flags: buildFlags(o),
     };
