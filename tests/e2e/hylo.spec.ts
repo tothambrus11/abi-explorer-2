@@ -213,10 +213,24 @@ test.describe('Hylo', () => {
       .poll(() => statValues(page), { timeout: 240_000 })
       .toEqual(['16', '4', '16', '0']);
 
-    // One member holding two, not two side by side: the table indents `a` and
-    // `b` under each of `x` and `y`, as it does for a nested struct in C.
     const names = page.locator('.field-table tbody tr .fname');
+    // Collapsed to begin with: the record's own members are what it is.
+    await expect.poll(() => names.allTextContents()).toEqual(['x', 'y']);
+
+    // One member holding two, not two side by side: opened, the table indents
+    // `a` and `b` under each of `x` and `y`, as it does for a nested struct in C.
+    const collapsed = page.locator('.field-table [aria-expanded="false"]');
+    while ((await collapsed.count()) > 0) await collapsed.first().click();
     await expect.poll(() => names.allTextContents()).toEqual(['x', 'a', 'b', 'y', 'a', 'b']);
+
+    // And its type can be opened as a record of its own, which needs the group
+    // to name the record this answer laid out for it.
+    // The name is the button that drills; the row itself only hovers.
+    await page
+      .locator('.field-table tr.group .gname', { hasText: /^x$/ })
+      .first()
+      .click();
+    await expect(page.locator('.record .title')).toContainText('struct Inner');
   });
 
   test('the details popover stays on the screen wherever the row ends', async ({ page }) => {

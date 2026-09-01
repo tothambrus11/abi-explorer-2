@@ -72,7 +72,12 @@ export class Backends implements AbiModule {
 
   constructor(private readonly make: (id: BackendId) => AbiClient) {}
 
-  /** The active backend's status; `idle` before it has been started. */
+  /**
+   * The active backend's status, which is `idle` until that backend is started.
+   *
+   * Never the other backend's: a module still loading in the background must
+   * not report progress over the one being waited on.
+   */
   get status(): ModuleStatus {
     return this.statuses.get(this.active) ?? IDLE;
   }
@@ -106,7 +111,13 @@ export class Backends implements AbiModule {
     return this.active;
   }
 
-  /** Begin loading the active backend's module, if it is not already. */
+  /**
+   * Begins loading the active backend's module.
+   *
+   * Idempotent, and resolves when that module is ready. Starts nothing else:
+   * the other language's module stays undownloaded until something asks it a
+   * question.
+   */
   start(): Promise<void> {
     return this.client(this.active).start();
   }
@@ -132,6 +143,12 @@ export class Backends implements AbiModule {
 
   // ------------------------------------------------------------ AbiModule --
 
+  /**
+   * Answers `request` with the backend for its language, starting that backend
+   * if this is the first thing to need it. Routing is by `request.lang` alone,
+   * not by what is selected, so a stale in-flight query cannot be answered by
+   * the wrong compiler.
+   */
   query(request: Parameters<AbiModule['query']>[0]): Promise<WireResponse> {
     return this.client(backendFor(request.lang ?? 'c')).query(request);
   }

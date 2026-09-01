@@ -81,7 +81,12 @@ export class History {
     this.recordedAt = now;
   }
 
-  /** The state before the present, or `null` if there is none. */
+  /**
+   * Steps back one state and returns it, or returns `null` at the oldest.
+   *
+   * The state stepped out of becomes redoable. The returned snapshot is a copy:
+   * the caller may hand it straight to the store without aliasing the history.
+   */
   undo(): Snapshot | null {
     const previous = this.past.at(-1);
     if (!previous) return null;
@@ -93,7 +98,10 @@ export class History {
     return clone(previous);
   }
 
-  /** The state undone out of most recently, or `null` if there is none. */
+  /**
+   * Steps forward one state and returns it, or returns `null` when nothing was
+   * undone. Exactly undoes an `undo`, and is emptied by any new `record`.
+   */
   redo(): Snapshot | null {
     const next = this.future[0];
     if (!next) return null;
@@ -118,7 +126,14 @@ export class History {
   }
 }
 
-/** Does this key event mean undo, redo, or neither? */
+/**
+ * What this key event asks for, if anything.
+ *
+ * Reads only the fields named, so it can be tested without a DOM. Returns
+ * `null` for every event that is not undo or redo, including a bare `z`: the
+ * caller consumes the event only when this says to, so typing still reaches
+ * the editor.
+ */
 export function historyIntent(e: {
   key: string;
   ctrlKey: boolean;

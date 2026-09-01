@@ -363,17 +363,17 @@ struct Holder {             /* one member forces Holder to 64 B too */
 /// are declared in is not the order they are stored in: 'flag' ends up last,
 /// after 'id', and nothing is padded between them.
 public struct Header {
-  let flag: Builtin.i8
-  let count: Builtin.i32
-  let id: Builtin.i64
+  let flag: Bool
+  let count: Int32
+  let id: Int64
 }
 
 /// An enum is a sum type: its cases are stored one over another, and the
 /// discriminator that says which one is live goes after the payload.
 public enum Message {
   case ping
-  case data(bytes: Builtin.i64)
-  case code(value: Builtin.i16)
+  case data(bytes: Int64)
+  case code(value: Int16)
 }
 `,
   },

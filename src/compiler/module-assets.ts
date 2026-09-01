@@ -22,8 +22,10 @@ export interface AssetSpec {
 /** A file that arrived, with the sizes the manifest promised. */
 export interface Asset {
   name: string;
-  /** Content-addressed, so it changes on every release. */
+  /** Where it is served from. Content-addressed in a build, plain in a checkout. */
   url: string;
+  /** The digest the manifest records, which is what identifies the content. */
+  sha256?: string;
   /** Uncompressed length: what the file is once it is here. */
   bytes: number;
   /** What crosses the network, which is less where the build gzipped it. */
@@ -32,8 +34,28 @@ export interface Asset {
 
 interface ManifestFile {
   path?: string;
+  sha256?: string;
   bytes: number;
   transferBytes?: number;
+}
+
+/**
+ * What this file is cached under.
+ *
+ * Not simply its URL. A build names every file after its content, so a new
+ * release is a URL nothing has cached and an old entry is unreachable; a
+ * checkout keeps the plain names the fetch tool writes, so `hylo_layout.wasm`
+ * is the same URL for every version ever published. Cached under that, the
+ * first module a developer loaded was the one they kept, however many releases
+ * or local rebuilds came after: the manifest said the module had changed and
+ * the cache went on answering with the old one.
+ *
+ * The digest is what actually identifies the content, and the manifest carries
+ * it either way, so the cache is keyed by it. The request still goes to the
+ * real URL; only the key differs.
+ */
+function cacheKey(asset: Asset): string {
+  return asset.sha256 === undefined ? asset.url : `${asset.url}?sha256=${asset.sha256}`;
 }
 
 /**
@@ -52,6 +74,17 @@ interface ManifestFile {
  * same policy, but cannot be relied on for it: a dedicated worker starts
  * alongside the registration, so its fetches on a first visit may go out
  * before anything is controlling them.
+ */
+/**
+ * Resolves each of `specs` against the manifest at `base`.
+ *
+ * - Requires `base` to end in a slash: every file is resolved relative to it.
+ * - Returns one asset per spec the manifest names, in the order given. A spec
+ *   the manifest does not name is skipped rather than reported: a module may
+ *   ship fewer files than a consumer knows how to use.
+ * - Throws only when the manifest can be neither fetched nor found in `cache`,
+ *   which on a first visit means the download would fail anyway.
+ * - Writes the manifest to `cache` when it came from the network.
  */
 export async function resolveAssets(
   base: string,
@@ -80,6 +113,7 @@ export async function resolveAssets(
     assets.push({
       name: spec.name,
       url: new URL(file.path ?? spec.name, base).href,
+      ...(file.sha256 === undefined ? {} : { sha256: file.sha256 }),
       bytes: file.bytes,
       transferBytes: file.transferBytes ?? file.bytes,
     });
@@ -87,7 +121,13 @@ export async function resolveAssets(
   return assets;
 }
 
-/** The Cache API, where there is one. An insecure origin has none. */
+/**
+ * The cache called `name`, or `null` where there is none.
+ *
+ * Never throws: an insecure origin has no Cache API at all, and a browser with
+ * storage disabled fails the open. Both mean "no cache", which every caller
+ * here treats as "fetch it again" rather than as an error.
+ */
 export async function openCache(name: string): Promise<Cache | null> {
   if (typeof caches === 'undefined') return null;
   return caches.open(name).catch(() => null);
@@ -150,6 +190,19 @@ const isGzip = (head: Uint8Array | undefined): boolean =>
  * fails the write) but the download is not, so caching failures cost the next
  * visit, not this one.
  */
+/**
+ * Fetches every asset, decompressing what the build gzipped.
+ *
+ * - Returns a blob per asset, keyed by `Asset.name`, with one entry per input.
+ * - Calls `onProgress(done, total)` in bytes across the assets `counted`
+ *   accepts, counted on the near side of decompression so the number matches
+ *   what the connection spends. `total` may grow mid-flight when a host undoes
+ *   the gzip in transit, which is not known until the first bytes arrive.
+ * - Throws if any asset cannot be fetched and is not cached; caching failures
+ *   are swallowed, since they cost the next visit rather than this one.
+ * - Leaves `cache` holding exactly the current assets and the manifest: entries
+ *   for anything else are deleted, so an upgrade reclaims what it replaced.
+ */
 export async function fetchAssets(
   base: string,
   assets: readonly Asset[],
@@ -165,7 +218,8 @@ export async function fetchAssets(
     // Cached decompressed, under the content-addressed URL it came from: the
     // work of undoing gzip is done once, and a new release cannot collide with
     // an old one because no two versions share a name.
-    let body = cache ? await cache.match(asset.url) : undefined;
+    const key = cacheKey(asset);
+    let body = cache ? await cache.match(key) : undefined;
     if (body) {
       if (counted(asset.name)) {
         done += asset.transferBytes;
@@ -213,7 +267,7 @@ export async function fetchAssets(
         chunks.push(value);
       }
       body = new Response(new Blob(chunks as BlobPart[]));
-      await cache?.put(asset.url, body.clone()).catch(() => {});
+      await cache?.put(key, body.clone()).catch(() => {});
     }
     bodies.set(asset.name, await body.blob());
   }
@@ -221,7 +275,7 @@ export async function fetchAssets(
   // Nothing here is named after a version, so an upgrade would otherwise leave
   // the whole previous module cached forever.
   if (cache) {
-    const keep = new Set([new URL('manifest.json', base).href, ...assets.map((a) => a.url)]);
+    const keep = new Set([new URL('manifest.json', base).href, ...assets.map(cacheKey)]);
     for (const request of await cache.keys()) {
       if (!keep.has(request.url)) await cache.delete(request);
     }

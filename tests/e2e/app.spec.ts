@@ -25,6 +25,37 @@ async function hoverWord(page: Page, needle: string, word: string): Promise<void
 
 const statValues = (page: Page) => page.locator('.summary .value').allTextContents();
 
+/**
+ * Opens every collapsible row.
+ *
+ * The table starts collapsed: a record's own members are what it is, and what
+ * is inside one of them is a question the reader asks by opening it. Tests
+ * about what is *inside* a member ask first.
+ */
+async function expandAll(page: Page): Promise<void> {
+  // The table has to exist first: called straight after picking an example, it
+  // would otherwise find nothing collapsed because nothing is drawn yet, and
+  // silently expand none of it.
+  await expect(page.locator('.field-table tbody tr').first()).toBeVisible({ timeout: 60_000 });
+  await expect(page.locator('.field-table [aria-expanded]').first()).toBeVisible({
+    timeout: 60_000,
+  });
+
+  const collapsed = page.locator('.field-table [aria-expanded="false"]');
+  // Expanding reveals more to expand, so this runs until there is nothing
+  // left. A pass at a time rather than one click at a time: libc++'s probe
+  // nests several levels and each level is many rows.
+  for (let pass = 0; pass < 40; pass++) {
+    const n = await collapsed.count();
+    if (n === 0) return;
+    for (let i = 0; i < n; i++) {
+      // Always the first: each click removes one from the set.
+      await collapsed.first().click();
+    }
+  }
+  throw new Error('the table never finished expanding');
+}
+
 const ABI_DIST = path.join(process.cwd(), 'dist', 'vendor', 'abi');
 
 /** What the module cache holds, by file name. */
@@ -324,6 +355,7 @@ test.describe('ABI Explorer', () => {
   test('compound members: nested struct, union, anonymous', async ({ page }) => {
     await waitReady(page);
     await page.selectOption('#example', { label: 'Union + nested' });
+    await expandAll(page);
     await expect(page.locator('#record-chips .chip')).toHaveCount(3);
     // A named compound member is one unit, so its circle carries one colour,
     // the same colour its nested fields share in the table.
@@ -380,6 +412,7 @@ test.describe('ABI Explorer', () => {
   test('chips and the member count follow the record’s own members', async ({ page }) => {
     await waitReady(page);
     await page.selectOption('#example', { label: 'Union + nested' });
+    await expandAll(page);
     await expect(page.locator('.record .title')).toContainText('Message');
 
     // The chip marks a member of Message: `hdr` has one, its nested fields do not.
@@ -412,12 +445,17 @@ test.describe('ABI Explorer', () => {
     await hdr.hover();
     await expect(page.locator('.monaco-editor .member-line-hovered')).toHaveCount(1);
     await expect(page.locator('[role=tooltip]')).toBeVisible();
-    // Collapsing the parent hides its leaf rows.
-    await expect(page.locator('.field-table tr.hovered .fname')).toHaveText(['hdr', 'kind', 'len']);
-    await hdr.locator('.twist').click();
+
+    // Collapsed to begin with, so what a group holds is hidden until asked for.
     await expect(page.locator('.field-table .fname', { hasText: 'kind' })).toHaveCount(0);
     await hdr.locator('.twist').click();
     await expect(page.locator('.field-table .fname', { hasText: 'kind' })).toHaveCount(1);
+    // Hovering the parent still lights every leaf it holds, now that they show.
+    await hdr.hover();
+    await expect(page.locator('.field-table tr.hovered .fname')).toHaveText(['hdr', 'kind', 'len']);
+    // And collapsing it hides them again.
+    await hdr.locator('.twist').click();
+    await expect(page.locator('.field-table .fname', { hasText: 'kind' })).toHaveCount(0);
   });
 
   test('drilling: a compound member opens its own record', async ({ page }) => {
@@ -551,6 +589,7 @@ test.describe('ABI Explorer', () => {
     // whichever member the stripe happens to paint first.
     await waitReady(page);
     await page.selectOption('#example', { label: 'Union + nested' });
+    await expandAll(page);
     await expect
       .poll(() => page.locator('.record .title').textContent())
       .toContain('struct Message');
@@ -587,6 +626,7 @@ test.describe('ABI Explorer', () => {
   test('C++: virtual bases on MSVC and Itanium, private members measured', async ({ page }) => {
     await waitReady(page);
     await page.selectOption('#example', { label: 'Virtual & bases' });
+    await expandAll(page);
     await expect(page.locator('#record-chips .chip')).toHaveCount(4);
     await expect
       .poll(() => page.locator('.record .title').textContent())
@@ -624,8 +664,11 @@ test.describe('ABI Explorer', () => {
     await page.selectOption('#example', { label: 'Using standard library (libc++)' });
     await expect(page.locator('.record .title')).toContainText('Probe');
     // Probe::s → basic_string's __rep_ → the union's __l member. Names are
-    // matched whole, `s` being a substring of most of them.
+    // matched whole, `s` being a substring of most of them. Each record is
+    // opened first: `__rep_` sits inside an anonymous group, and a table that
+    // starts collapsed has not drawn it yet.
     for (const name of ['s', '__rep_', '__l']) {
+      await expandAll(page);
       await page
         .locator('.field-table tr.group .gname', { hasText: new RegExp(`^${name}$`) })
         .first()
@@ -701,6 +744,7 @@ test.describe('ABI Explorer', () => {
     // collapsible sibling read as its child.
     await waitReady(page);
     await page.selectOption('#example', { label: 'Using standard library (libc++)' });
+    await expandAll(page);
     await expect
       .poll(() => page.locator('.record .title').textContent(), { timeout: 120_000 })
       .toContain('Probe');
@@ -751,6 +795,7 @@ test.describe('ABI Explorer', () => {
     // catch one silently eating the other is to compare what is rendered.
     await waitReady(page);
     await page.selectOption('#example', { label: 'Virtual inheritance (diamond)' });
+    await expandAll(page);
     await expect.poll(() => page.locator('#record-chips .chip').count()).toBeGreaterThan(3);
     await page.locator('#record-chips .chip', { hasText: 'struct D' }).click();
     await expect(page.locator('.field-table tbody tr')).toHaveCount(10);
@@ -790,6 +835,7 @@ test.describe('ABI Explorer', () => {
     // has no colour of its own because its bytes have several.
     await waitReady(page);
     await page.selectOption('#example', { label: 'Virtual inheritance (diamond)' });
+    await expandAll(page);
     await expect.poll(() => page.locator('#record-chips .chip').count()).toBeGreaterThan(3);
     await page.locator('#record-chips .chip', { hasText: 'struct D' }).click();
     await expect(page.locator('.field-table tbody tr')).toHaveCount(10);
@@ -870,6 +916,9 @@ test.describe('ABI Explorer', () => {
     await page.selectOption('#example', { label: 'Union + nested' });
     await page.click('#view-toggle');
     await expect(page.locator('.record')).toHaveCount(3);
+    // After the switch: stacking draws a table per record, and each of them
+    // starts collapsed.
+    await expandAll(page);
     await expect(page.locator('#record-chips')).toBeHidden();
     await hoverWord(page, 'uint16_t kind;', 'kind');
     await expect(page.locator('.field-table tr.hovered')).toHaveCount(2); // Header and Message sections

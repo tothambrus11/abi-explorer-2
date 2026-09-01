@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { RenderModel } from '$core/types';
+  import type { RenderModel, TreeNode } from '$core/types';
   import { flattenVisible, groupColorClass } from '$core/render';
   import { store } from '$state/store.svelte';
   import { fmtOffset, type Session } from '$state/session.svelte';
@@ -23,10 +23,32 @@
   const { model, record, session }: { model: RenderModel; record: string; session: Session } =
     $props();
 
-  // Collapsed node ids (default: everything expanded). Reassigned on toggle so
-  // the derived flat list recomputes.
-  let collapsed = $state(new Set<string>());
+  /** Shared so `open` has something stable to be when nothing is opened. */
+  const EMPTY: ReadonlySet<string> = new Set<string>();
+
+  // Everything starts collapsed: a record's own members are what it is, and what
+  // is inside one of them is a question the reader asks by opening it. A struct
+  // of structs otherwise opens as a wall of rows in which the members
+  // themselves are the hard part to find.
+  //
+  // What is held is therefore what the reader *opened*, stamped with the model
+  // it belongs to. Node ids are positions (`g0`, `l3`), so carrying them onto
+  // another record would open unrelated rows; recording the model means a
+  // different one starts shut without an effect that watches for the change and
+  // writes back, which is a loop waiting to happen — and did happen: the table
+  // stopped responding to clicks entirely.
+  let opened: { model: RenderModel; ids: ReadonlySet<string> } | null = $state.raw(null);
+  const open = $derived.by(() => {
+    const o = opened;
+    return o !== null && o.model === model ? o.ids : EMPTY;
+  });
+  const collapsed = $derived(new Set(collapsibleIds(model.tree).filter((id) => !open.has(id))));
   const rows = $derived(flattenVisible(model.tree, collapsed));
+
+  /** Every node that can be collapsed, at any depth. */
+  function collapsibleIds(nodes: TreeNode[]): string[] {
+    return nodes.flatMap((n) => (n.children.length ? [n.id, ...collapsibleIds(n.children)] : []));
+  }
 
   const hovered = $derived(
     new Set(store.hover.members.filter((m) => m.record === record).map((m) => m.leaf)),
@@ -54,10 +76,11 @@
     return out;
   });
 
+  /** Opens a shut node, or shuts an open one. */
   function toggle(id: string) {
-    const next = new Set(collapsed);
+    const next = new Set<string>(open);
     if (!next.delete(id)) next.add(id);
-    collapsed = next;
+    opened = { model, ids: next };
   }
 
   function anchor(e: Event): { x: number; y: number } {

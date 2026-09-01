@@ -133,6 +133,9 @@ function spellingSubject(spelling: string, analysis: Analysis): Subject {
  * Worth stating for Hylo and not for C, because Hylo's `size` is the bytes an
  * instance actually needs and can be less than the step between two of them,
  * where C's `sizeof` is already rounded up and the two are the same number.
+ *
+ * Total: an alignment of zero or less is treated as nothing to round to, so
+ * the size comes back unchanged rather than dividing by zero.
  */
 export function strideOf(size: number, align: number): number {
   if (align <= 0) return size;
@@ -152,6 +155,14 @@ function vocabulary(lang: Language): { size: string; align: string; stride: bool
     : { size: 'sizeof', align: 'alignof', stride: false };
 }
 
+/**
+ * The hover card for a record, in Markdown.
+ *
+ * `lang` decides the vocabulary, not the numbers: Hylo has a size, an alignment
+ * and a stride, and C has `sizeof` and `alignof`, which are its own operators.
+ * Rows that would say nothing are omitted, except the stride, which is always
+ * stated so that one type's card is not shorter than another's.
+ */
 export function describeRecord(entry: AnalysedRecord, lang: Language): string {
   const r = entry.record;
   // Members of the record itself. A compound member counts once, not once per
@@ -174,7 +185,14 @@ export function describeRecord(entry: AnalysedRecord, lang: Language): string {
   return `**\`${entry.key}\`** · ${n} member${n === 1 ? '' : 's'}\n\n| | |\n|---|---|\n${rows.join('\n')}`;
 }
 
-/** Markdown for a measured spelling that is not a record of its own. */
+/**
+ * The hover card for a spelling that no record was laid out for, in Markdown.
+ *
+ * Says less than `describeRecord` because less is known: this is what clang's
+ * probe recovers from one field of a probe struct. Hylo never reaches here —
+ * a cursor there is answered with the type's whole layout, and gets the same
+ * card a declaration does.
+ */
 export function describeSpelling(
   spelling: string,
   alias: string | null,

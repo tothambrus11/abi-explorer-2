@@ -63,7 +63,11 @@ export interface Bundle {
    * number the progress bar counts up to, because both read it from here.
    */
   bytes: number;
-  /** The files that have to arrive, by their content-addressed URLs. */
+  /**
+   * The keys those files are cached under, which carry the content's digest:
+   * see `cacheKey` in `module-assets`. Probing the plain URL would miss them,
+   * and the gate would ask again for a module already on disk.
+   */
   urls: string[];
 }
 
@@ -93,13 +97,19 @@ async function readBundle(id: BackendId): Promise<Bundle | null> {
     }
     if (!response?.ok) return null;
     const manifest = (await response.json()) as {
-      files?: Record<string, { path?: string; bytes: number; transferBytes?: number }>;
+      files?: Record<
+        string,
+        { path?: string; sha256?: string; bytes: number; transferBytes?: number }
+      >;
     };
     const big = keys.map((key) => manifest.files?.[key]).filter((file) => file !== undefined);
     if (big.length === 0) return null;
     return {
       bytes: big.reduce((n, file) => n + (file.transferBytes ?? file.bytes), 0),
-      urls: big.map((file) => new URL(file.path ?? '', base).href),
+      urls: big.map((file) => {
+        const url = new URL(file.path ?? '', base).href;
+        return file.sha256 === undefined ? url : `${url}?sha256=${file.sha256}`;
+      }),
     };
   } catch {
     return null; // offline, or no manifest to read

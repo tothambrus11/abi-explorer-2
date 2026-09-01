@@ -88,6 +88,10 @@ const location = (r: HyloRegion | null | undefined): WireLocation | null =>
 /**
  * The byte ranges of `size` bytes that no part covers.
  *
+ * Takes every part at every depth, since a byte covered by a nested member is
+ * covered; passing only the top level would report a record of records as
+ * entirely padding.
+ *
  * Hylo reorders members by alignment, which mostly removes padding rather than
  * creating it, but not always: a record's size is rounded to nothing, so the
  * gap of a trailing small member is real, and an enum whose payloads differ in
@@ -121,6 +125,8 @@ function paddingRuns(parts: HyloPart[], size: number): { startBits: number; endB
 function build(
   layout: HyloLayout,
   id: number,
+  /** The id of the record laid out for a type, where this answer laid one out. */
+  idOfType: (type: string) => number | null,
 ): { leaves: WireLeaf[]; groups: WireGroup[]; tree: WireNode[] } {
   const leaves: WireLeaf[] = [];
   const groups: WireGroup[] = [];
@@ -180,7 +186,10 @@ function build(
         path: ancestors,
         ownerId: id,
         ownerName: owner,
-        recordId: null,
+        // What "inspect this member's type" opens. Null where the answer laid
+        // no record out for it, which is a type from another module: there is
+        // nothing to open, and the option is not offered.
+        recordId: idOfType(p.type),
         isBase: false,
         isUnion: p.isEnum ?? false,
         leafIndexes: Array.from({ length: leaves.length - before }, (_, k) => before + k),
@@ -199,8 +208,12 @@ function flatten(parts: HyloPart[]): HyloPart[] {
   return parts.flatMap((p) => [p, ...flatten(p.parts ?? [])]);
 }
 
-function toRecord(layout: HyloLayout, id: number): WireRecord {
-  const { leaves, groups, tree } = build(layout, id);
+function toRecord(
+  layout: HyloLayout,
+  id: number,
+  idOfType: (type: string) => number | null,
+): WireRecord {
+  const { leaves, groups, tree } = build(layout, id, idOfType);
   const runs = paddingRuns(flatten(layout.parts), layout.size);
   return {
     id,
@@ -263,7 +276,18 @@ const SEVERITY: Record<string, WireDiagnostic['severity']> = {
   note: 'note',
 };
 
-/** The module's answer, in the shape the analyzer and the views read. */
+/**
+ * The module's answer, in the shape the analyzer and the views read.
+ *
+ * - Total: every answer maps, including one carrying `error`, which becomes an
+ *   unsuccessful response rather than throwing. A view is never handed nothing.
+ * - Record ids are positions in `answer.layouts`, so a member whose type this
+ *   answer laid out names it in `WireGroup.recordId` and can be opened.
+ * - Offsets arrive absolute, from the start of the described instance, at every
+ *   depth; they are converted to bits and not rebased.
+ * - A part with parts of its own becomes a group, and only its leafmost parts
+ *   become leaves, which is what lets one table draw this and clang's answer.
+ */
 export function toWireResponse(answer: HyloAnswer, version: string): WireResponse {
   if (answer.error !== undefined) {
     return {
@@ -279,6 +303,12 @@ export function toWireResponse(answer: HyloAnswer, version: string): WireRespons
       records: [],
     };
   }
+
+  // A record's id is its position, so a member whose type this answer laid out
+  // can name it and be opened.
+  const layouts = answer.layouts ?? [];
+  const ids = new Map(layouts.map((l, i) => [l.type, i]));
+  const idOfType = (type: string) => ids.get(type) ?? null;
 
   const diagnostics: WireDiagnostic[] = (answer.diagnostics ?? []).map((d) => ({
     severity: SEVERITY[d.level] ?? 'error',
@@ -300,6 +330,6 @@ export function toWireResponse(answer: HyloAnswer, version: string): WireRespons
       .map((d) => `${String(d.site.line)}:${String(d.site.column)}: ${d.level}: ${d.message}`)
       .join('\n'),
     typedefs: [],
-    records: (answer.layouts ?? []).map(toRecord),
+    records: layouts.map((l, i) => toRecord(l, i, idOfType)),
   };
 }
