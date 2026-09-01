@@ -131,6 +131,33 @@ test.describe('Hylo', () => {
     await expect(page.locator('#target')).toBeVisible();
   });
 
+  test('the details popover stays on the screen wherever the row ends', async ({ page }) => {
+    await page.goto('/');
+    await ready(page);
+
+    // The icon sits at the end of a row whose contents depend on the language,
+    // so it moves. In Hylo the target selector and the options are gone, which
+    // puts the icon far to the left, where a panel anchored to its right edge
+    // used to hang off the screen.
+    await selectLanguage(page, 'Hylo');
+    await page.hover('#info-button');
+    const panel = page.locator('#info-panel');
+    await expect(panel).toBeVisible();
+
+    const seen = async () => {
+      const box = (await panel.boundingBox())!;
+      const width = page.viewportSize()!.width;
+      return { left: box.x >= 0, right: box.x + box.width <= width };
+    };
+    expect(await seen()).toEqual({ left: true, right: true });
+
+    // And in C, where the row is at its longest and the icon furthest right.
+    await selectLanguage(page, 'C');
+    await page.hover('#info-button');
+    await expect(panel).toBeVisible();
+    expect(await seen()).toEqual({ left: true, right: true });
+  });
+
   test('lays an enum out as a union, and reports an error against its line', async ({ page }) => {
     await page.goto('/');
     await ready(page);

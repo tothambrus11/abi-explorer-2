@@ -5,7 +5,7 @@
   const spans = $derived(parseAnsi(ansi));
   // Whose approval this is. There are two compilers now, and only one of them
   // is clang.
-  const compiler = $derived(store.options.lang === 'hylo' ? 'Hylo' : 'Clang');
+  const compiler = $derived(store.options.lang === 'hylo' ? 'hc' : 'Clang');
 </script>
 
 <div class="diagnostics">

@@ -5,8 +5,8 @@
 // layer, so `<iostream>` compiles on Linux and not on Darwin. The reason
 // should be readable somewhere rather than guessed from the error.
 //
-// Pure, and here rather than in the footer, because two places show it now:
-// the footer on a wide screen, and the top bar's details popover on a phone.
+// Pure, and here rather than in the view that shows it, because it is a
+// statement about the answer rather than about the layout of the page.
 
 import type { WireHeaders } from './render';
 

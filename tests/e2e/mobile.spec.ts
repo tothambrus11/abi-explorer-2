@@ -95,15 +95,14 @@ test.describe('on a phone', () => {
     await expect(tab(page, 'Code').locator('[role=status].error')).toBeVisible();
   });
 
-  test('the footer keeps only what a phone has room for', async ({ page }) => {
+  test('nothing states the compiler except the details popover', async ({ page }) => {
     await ready(page);
-    // The version and the prose moved into the details popover. Asserted by
-    // visibility and by height, not by text: `toContainText` reads
-    // `textContent`, which a `display: none` span is still very much part of.
-    await expect(page.locator('#clang-version')).toBeHidden();
-    await expect(page.locator('#header-config')).toBeHidden();
-    const footer = (await page.locator('.footer').boundingBox())!;
-    expect(footer.height, 'one short line, not three').toBeLessThan(34);
+    // The footer that used to carry this is gone: three lines of prose across
+    // the bottom of a 390px screen was a quarter of the viewport spent on text
+    // nobody read twice. What it said is in the popover, and nowhere else.
+    await expect(page.locator('#compiler-version')).toBeHidden();
+    await page.click('#info-button');
+    await expect(page.locator('#compiler-version')).toBeVisible();
   });
 });
 
@@ -114,6 +113,8 @@ test.describe('on a desktop', () => {
     const diagnostics = (await tab(page, 'Diagnostics').boundingBox())!;
     // Its own group, below the editor, not a tab beside the layout.
     expect(diagnostics.y, 'a strip of its own, lower down').toBeGreaterThan(layout.y + 100);
-    await expect(page.locator('#clang-version')).toBeVisible();
+    // The popover is where the compiler is named, on any width.
+    await page.hover('#info-button');
+    await expect(page.locator('#compiler-version')).toBeVisible();
   });
 });

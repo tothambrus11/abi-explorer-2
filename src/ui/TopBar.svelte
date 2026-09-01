@@ -1,6 +1,6 @@
 <script lang="ts">
   import ThemeMenu from './ThemeMenu.svelte';
-  import InfoMenu from './InfoMenu.svelte';
+  import { store } from '$state/store.svelte';
   import LayoutTemplate from '@lucide/svelte/icons/layout-template';
   import type { Session } from '$state/session.svelte';
   const { session, onResetLayout }: { session: Session; onResetLayout: () => void } = $props();
@@ -30,8 +30,18 @@
       aria-label="Reset panel layout"
       use:tooltip={'Reset panel layout'}><LayoutTemplate size={16} /></button
     >
+    {#if store.swVersionAvailable}
+      <!-- A new build is cached and waiting. This was the footer's, and the
+           footer is gone; it is the one thing there that asked to be acted on
+           rather than read, so it cannot live inside a popover. -->
+      <button
+        class="btn small"
+        onclick={() => {
+          location.reload();
+        }}>Update available: reload</button
+      >
+    {/if}
     <ThemeMenu />
-    <InfoMenu />
     <a
       class="icon-btn"
       href="https://github.com/tothambrus11/abi-explorer-2"

@@ -22,6 +22,42 @@ export function backendFor(lang: Language): BackendId {
   return lang === 'hylo' ? 'hylo' : 'clang';
 }
 
+/** How a backend is referred to on screen, and what it is. */
+export interface BackendDescription {
+  /** What to call the compiler in a sentence. */
+  name: string;
+  /** The compiler's own home. */
+  home: string;
+  /** The WebAssembly build of it that this app loads. */
+  module: { name: string; url: string };
+  /** What a record is called in this language, for the "nothing here" note. */
+  declarations: string;
+  /** Whether the language resolves standard headers, which only clang does. */
+  headers: boolean;
+}
+
+const DESCRIPTIONS: Record<BackendId, BackendDescription> = {
+  clang: {
+    name: 'clang',
+    home: 'https://llvm.org/',
+    module: { name: 'clang-abi-wasm', url: 'https://github.com/tothambrus11/clang-abi-wasm' },
+    declarations: 'struct/class/union definitions',
+    headers: true,
+  },
+  hylo: {
+    name: 'the Hylo compiler',
+    home: 'https://hylo-lang.org/',
+    module: { name: 'hylo-abi-wasm', url: 'https://github.com/tothambrus11/hylo-abi-wasm' },
+    declarations: 'struct or enum declarations',
+    headers: false,
+  },
+};
+
+/** How to describe whichever compiler answers for `lang`. */
+export function describeBackend(lang: Language): BackendDescription {
+  return DESCRIPTIONS[backendFor(lang)];
+}
+
 /** Nothing has been chosen yet, so nothing is loading. */
 const IDLE: ModuleStatus = { state: 'idle' };
 

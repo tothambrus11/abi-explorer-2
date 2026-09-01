@@ -2,7 +2,7 @@
   import { store } from '$state/store.svelte';
   import type { Session } from '$state/session.svelte';
   import { bundle } from '$state/download-gate';
-  import { backendFor } from '$compiler/Backends';
+  import { backendFor, describeBackend } from '$compiler/Backends';
   import RecordSection from './RecordSection.svelte';
   import Rows3 from '@lucide/svelte/icons/rows-3';
   import PanelTop from '@lucide/svelte/icons/panel-top';
@@ -24,23 +24,26 @@
   const stacked = $derived(store.view === 'stack');
   const empty = $derived(store.analysis !== null && store.visibleRecords.length === 0);
   const mb = (n: number) => (n / 1048576).toFixed(0);
+  // Which compiler is being waited on. Naming clang while Hylo downloads would
+  // be the same lie the hard-coded "~11 MB" used to be.
+  const backend = $derived(describeBackend(store.options.lang));
   const loadText = $derived.by(() => {
     const c = store.compiler;
     switch (c.state) {
       case 'idle':
         return 'Starting…';
       case 'loading':
-        if (c.phase === 'compile') return 'Preparing clang…';
-        // No total means the worker could not read the manifest and let
-        // Emscripten fetch the files itself. Say what is happening rather than
-        // invent a percentage.
+        if (c.phase === 'compile') return `Preparing ${backend.name}…`;
+        // No total means the worker could not read the manifest and fetched the
+        // files some other way. Say what is happening rather than invent a
+        // percentage.
         return c.total
-          ? `Downloading clang (wasm)… ${mb(c.done)} of ${mb(c.total)} MB`
-          : 'Downloading clang (wasm)…';
+          ? `Downloading ${backend.name} (wasm)… ${mb(c.done)} of ${mb(c.total)} MB`
+          : `Downloading ${backend.name} (wasm)…`;
       case 'ready':
         return '';
       case 'failed':
-        return `Failed to load clang: ${c.message}`;
+        return `Failed to load ${backend.name}: ${c.message}`;
     }
   });
   /** Null when there is nothing honest to fill a bar with. */
@@ -57,15 +60,15 @@
     <div class="loading consent">
       <p id="consent-text">
         You appear to be on a metered or slow connection. Analysing layouts needs a one-time
-        {#if downloadMb}<strong>~{downloadMb} MB</strong>{/if} download of clang (cached afterwards, and
-        the app then works offline).
+        {#if downloadMb}<strong>~{downloadMb} MB</strong>{/if} download of {backend.name} (cached
+        afterwards, and the app then works offline).
       </p>
       <button
         id="allow-download"
         class="allow"
         onclick={() => {
           session.allowDownload();
-        }}>Download clang{downloadMb ? ` (${String(downloadMb)} MB)` : ''}</button
+        }}>Download {backend.name}{downloadMb ? ` (${String(downloadMb)} MB)` : ''}</button
       >
     </div>
   {:else if loading}
@@ -92,7 +95,9 @@
   {:else if empty}
     <p class="empty" id="empty-note">
       {store.analysis?.code === 0
-        ? 'No struct/class/union definitions found. Define one in the editor, and make sure templates are instantiated.'
+        ? `No ${backend.declarations} found. Define one in the editor${
+            store.options.lang === 'c++' ? ', and make sure templates are instantiated' : ''
+          }.`
         : 'Compilation failed. Fix the errors below.'}
     </p>
   {:else if store.analysis}

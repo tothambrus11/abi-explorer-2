@@ -6,7 +6,6 @@
   import TopBar from '$ui/TopBar.svelte';
   import Controls from '$ui/Controls.svelte';
   import Tooltip from '$ui/Tooltip.svelte';
-  import Footer from '$ui/Footer.svelte';
   import { mountDock, type Dock } from '$ui/dock';
 
   const { session }: { session: Session } = $props();
@@ -34,7 +33,6 @@
   <TopBar {session} onResetLayout={() => dock?.resetLayout()} />
   <Controls />
   <main class="dock" bind:this={dockHost}></main>
-  <Footer />
 </div>
 <Tooltip />
 

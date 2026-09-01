@@ -4,6 +4,7 @@
   import { HYLO_AVAILABLE, standardsFor, splitExtraFlags, type Language } from '$core/options';
   import { isKnownTriple } from '$core/url-state';
   import { tooltip } from './tooltip';
+  import InfoMenu from './InfoMenu.svelte';
 
   const CUSTOM = '__custom__';
   // `soon` marks a language with no backend in this build: selectable would
@@ -190,6 +191,10 @@
       >
     </div>
   </details>
+
+  <!-- Last in the row, after whichever dropdowns the language has: it describes
+       what answered the query the row configures. -->
+  <InfoMenu />
 </section>
 
 <style>

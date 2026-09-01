@@ -44,7 +44,9 @@ const abiManifest = async (): Promise<Manifest> =>
 test.describe('ABI Explorer', () => {
   test('compiles the default example and reacts to target changes', async ({ page }) => {
     await waitReady(page);
-    await expect(page.locator('#clang-version')).toContainText('clang version');
+    await expect(page.locator('#info-panel')).toBeHidden();
+    await page.hover('#info-button');
+    await expect(page.locator('#compiler-version')).toContainText('clang version');
     expect(await statValues(page)).toEqual(['40', '8', '13']);
     await expect(page.locator('.field-table tbody tr[class]').first()).toBeVisible();
 
@@ -648,18 +650,21 @@ test.describe('ABI Explorer', () => {
     await waitReady(page);
     await page.selectOption('#example', '9'); // C++ standard library (libc++)
     await expect.poll(() => statValues(page)).toEqual(['72', '8', '0']);
-    // musl's own tree on Linux, and the footer says so.
+    // musl's own tree on Linux, and the details say so.
+    await page.hover('#info-button');
     await expect(page.locator('#header-config')).toContainText('libc++ · musl (x86_64)');
 
     // A target musl has no headers for: it still resolves, over this target's
-    // own scalar types, and the footer says which layer answered.
+    // own scalar types, and the details say which layer answered.
     await page.selectOption('#target', 'aarch64-apple-macosx');
+    await page.hover('#info-button');
     await expect(page.locator('#header-config')).toContainText('libc++ · musl (portable)');
     await expect(page.locator('#results')).toBeVisible();
     await expect(page.locator('.record .title')).toContainText('Probe');
 
     // …including Windows, where nothing of the MSVC runtime is shipped.
     await page.selectOption('#target', 'x86_64-pc-windows-msvc');
+    await page.hover('#info-button');
     await expect(page.locator('#header-config')).toContainText('musl (portable)');
     await expect(page.locator('.record .title')).toContainText('Probe');
   });
@@ -918,7 +923,15 @@ test.describe('ABI Explorer', () => {
 
   test('works offline after the first visit (PWA)', async ({ page, context }) => {
     await waitReady(page);
-    await expect(page.locator('#offline-status')).toBeVisible({ timeout: 30_000 });
+    await expect
+      .poll(
+        async () => {
+          await page.hover('#info-button');
+          return page.locator('#offline-status').isVisible();
+        },
+        { timeout: 30_000 },
+      )
+      .toBe(true);
     await context.setOffline(true);
     await page.reload();
     await expect(page.locator('#results')).toBeVisible({ timeout: 120_000 });

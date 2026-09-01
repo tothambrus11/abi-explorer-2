@@ -107,12 +107,8 @@
     class="editor"
     bind:this={host}
     role="region"
-    aria-label="C or C++ source code editor"
+    aria-label="Source code editor"
   ></div>
-  <p class="hint">
-    The C library (musl) and libc++ resolve for every target. See the footer for which headers
-    answered. Templates must be instantiated to appear.
-  </p>
 </section>
 
 <style>
