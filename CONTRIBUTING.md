@@ -36,13 +36,11 @@ there shows up here on reload:
 cd ../clang-abi-wasm && scripts/build.sh wasm && scripts/dev-link.sh ../abi-explorer-2
 ```
 
-[hylo-abi-wasm](https://github.com/tothambrus11/hylo-abi-wasm) wants a checkout
-of the compiler beside it, on the branch carrying the layout query until that is
-merged:
+[hylo-abi-wasm](https://github.com/tothambrus11/hylo-abi-wasm) carries the
+compiler as a submodule, so one recursive clone brings everything:
 
 ```sh
-git clone -b wasm-layout-query --recursive https://github.com/hylo-lang/hylo-new.git
-git clone https://github.com/tothambrus11/hylo-abi-wasm.git
+git clone --recursive https://github.com/tothambrus11/hylo-abi-wasm.git
 ```
 
 Then build and stage it the way a release would be. The second `swift build` is
