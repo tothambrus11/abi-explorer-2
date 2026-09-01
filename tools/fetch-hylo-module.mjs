@@ -27,7 +27,7 @@ const DEST = path.join(ROOT, 'public', 'vendor', 'hylo');
 const REPO = process.env['HYLO_MODULE_REPO'] ?? 'tothambrus11/hylo-abi-wasm';
 
 /** Pinned here rather than floating: the site's layouts must not change on a whim. */
-const DEFAULT_VERSION = 'v0.1.0';
+const DEFAULT_VERSION = 'v0.1.1';
 
 const version = process.argv[2] ?? process.env['HYLO_MODULE_VERSION'] ?? DEFAULT_VERSION;
 const base =

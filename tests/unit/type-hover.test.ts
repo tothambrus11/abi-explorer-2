@@ -10,6 +10,8 @@ import { describe, it, expect } from 'vitest';
 import {
   subjectAt,
   describeRecord,
+  describeSpelling,
+  strideOf,
   widenToTemplateArgs,
   type HoverContext,
 } from '$state/type-hover';
@@ -130,7 +132,7 @@ describe('describeRecord', () => {
 
   it('counts the record’s own members and quotes its numbers', () => {
     const example = a.records.find((r) => r.key === 'struct Example')!;
-    const md = describeRecord(example);
+    const md = describeRecord(example, 'c');
     expect(md).toContain('`struct Example`');
     expect(md).toContain('6 members');
     expect(md).toContain(`| sizeof | **${example.record.sizeBytes}** B |`);
@@ -142,7 +144,46 @@ describe('describeRecord', () => {
       .flatMap((e) => e.analysis.records)
       .find((r) => r.model.leaves.length === 1 && r.model.groups.length === 0);
     expect(one, 'a one-member record somewhere in the corpus').toBeDefined();
-    expect(describeRecord(one!)).toContain('1 member\n');
+    expect(describeRecord(one!, 'c')).toContain('1 member\n');
+  });
+});
+
+describe('a Hylo record', () => {
+  const a = entry('padding-basics--x86_64-unknown-linux-gnu').analysis;
+
+  it('is measured in Hylo’s words, not C’s operators', () => {
+    // `sizeof` and `alignof` are C operators; writing them beside a Hylo type
+    // names something the language does not have.
+    const example = a.records.find((r) => r.key === 'struct Example')!;
+    const md = describeRecord(example, 'hylo');
+    expect(md).toContain('| size |');
+    expect(md).toContain('| align |');
+    expect(md).not.toContain('sizeof');
+    expect(md).not.toContain('alignof');
+  });
+
+  it('states the stride where it differs from the size', () => {
+    // Hylo's size is the bytes an instance needs, which can be less than the
+    // step from one to the next in an array. C's `sizeof` is already rounded.
+    expect(strideOf(9, 8)).toBe(16);
+    expect(strideOf(3, 2)).toBe(4);
+    expect(strideOf(8, 8), 'already a multiple').toBe(8);
+    expect(strideOf(0, 1), 'an empty type').toBe(0);
+    expect(strideOf(4, 0), 'no alignment to round to').toBe(4);
+  });
+
+  it('states the stride even where it is the size', () => {
+    // A card that drops a row when the number is unsurprising reads as a card
+    // that could not work it out, and `Int` then says less than a struct does.
+    const md = describeSpelling('Int', null, { bits: 64, align: 8 }, 'hylo');
+    expect(md).toContain('| size | **8** B |');
+    expect(md).toContain('| stride | **8** B |');
+  });
+
+  it('says the stride when the size is not a multiple of the alignment', () => {
+    const md = describeSpelling('Pair', null, { bits: 72, align: 8 }, 'hylo');
+    expect(md).toContain('| size | **9** B |');
+    expect(md).toContain('| stride | **16** B |');
   });
 });
 

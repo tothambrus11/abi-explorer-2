@@ -323,7 +323,7 @@ test.describe('ABI Explorer', () => {
 
   test('compound members: nested struct, union, anonymous', async ({ page }) => {
     await waitReady(page);
-    await page.selectOption('#example', '2');
+    await page.selectOption('#example', { label: 'Union + nested' });
     await expect(page.locator('#record-chips .chip')).toHaveCount(3);
     // A named compound member is one unit, so its circle carries one colour,
     // the same colour its nested fields share in the table.
@@ -379,7 +379,7 @@ test.describe('ABI Explorer', () => {
 
   test('chips and the member count follow the record’s own members', async ({ page }) => {
     await waitReady(page);
-    await page.selectOption('#example', '2');
+    await page.selectOption('#example', { label: 'Union + nested' });
     await expect(page.locator('.record .title')).toContainText('Message');
 
     // The chip marks a member of Message: `hdr` has one, its nested fields do not.
@@ -405,7 +405,7 @@ test.describe('ABI Explorer', () => {
 
   test('grouped table: hovering a parent row and collapsing it', async ({ page }) => {
     await waitReady(page);
-    await page.selectOption('#example', '2');
+    await page.selectOption('#example', { label: 'Union + nested' });
     const hdr = page.locator('.field-table tr.group', { hasText: 'hdr' }).first();
     // Hovering the parent row highlights its declaration line in the editor and
     // shows the group tooltip.
@@ -422,7 +422,7 @@ test.describe('ABI Explorer', () => {
 
   test('drilling: a compound member opens its own record', async ({ page }) => {
     await waitReady(page);
-    await page.selectOption('#example', '2');
+    await page.selectOption('#example', { label: 'Union + nested' });
     await expect(page.locator('.record .title')).toContainText('Message');
 
     // Clicking the `hdr` row inspects struct Header, and the caret follows.
@@ -436,7 +436,7 @@ test.describe('ABI Explorer', () => {
 
     // An anonymous member has no name to write, but is still inspectable: it is
     // shown even though it is not listed as a record of its own.
-    await page.selectOption('#example', '2');
+    await page.selectOption('#example', { label: 'Union + nested' });
     await expect(page.locator('.record .title')).toContainText('Message');
     await page.locator('.field-table tr.group .open', { hasText: '(anonymous)' }).first().click();
     await expect(page.locator('.field-table .fname')).toHaveText(['crc_lo', 'crc_hi']);
@@ -445,7 +445,7 @@ test.describe('ABI Explorer', () => {
   // Issue #3: an explicit tab pick must not be undone by the cursor rule.
   test('picking a record from the tabs moves the caret to its declaration', async ({ page }) => {
     await waitReady(page);
-    await page.selectOption('#example', '2');
+    await page.selectOption('#example', { label: 'Union + nested' });
     await expect(page.locator('#record-chips .chip')).toHaveCount(3);
 
     // Pick Header, not the default selection (the last record is).
@@ -478,7 +478,7 @@ test.describe('ABI Explorer', () => {
     page,
   }) => {
     await waitReady(page);
-    await page.selectOption('#example', '2');
+    await page.selectOption('#example', { label: 'Union + nested' });
     await expect(page.locator('#record-chips .chip')).toHaveCount(3, { timeout: 60_000 });
     await expect(page.locator('.record .title')).toContainText('Message');
 
@@ -498,7 +498,7 @@ test.describe('ABI Explorer', () => {
     await expect(page.locator('.summary .label').first()).toHaveText('sizeof');
     await expect(page.locator('.summary .label').nth(1)).toHaveText('alignof');
 
-    await page.selectOption('#example', '6'); // virtual inheritance (diamond)
+    await page.selectOption('#example', { label: 'Virtual inheritance (diamond)' });
     await expect(page.locator('#record-chips .chip')).toHaveCount(4, { timeout: 60_000 });
     await page.locator('#record-chips .chip', { hasText: 'struct D ' }).click();
     await expect(page.locator('.record .title')).toContainText('struct D');
@@ -522,7 +522,7 @@ test.describe('ABI Explorer', () => {
     // non-virtual size rather than its sizeof, none of which is recoverable
     // from a list of offsets, and all of which decides which bytes light up.
     await waitReady(page);
-    await page.selectOption('#example', '6'); // C++ virtual inheritance (diamond)
+    await page.selectOption('#example', { label: 'Virtual inheritance (diamond)' });
     await expect.poll(() => page.locator('.record .title').textContent()).toContain('struct D');
 
     await page.locator('.field-table tr.group', { hasText: 'virtual A' }).first().hover();
@@ -550,7 +550,7 @@ test.describe('ABI Explorer', () => {
     // rows (and their parent, whose leaves are then all hovered), not just
     // whichever member the stripe happens to paint first.
     await waitReady(page);
-    await page.selectOption('#example', '2'); // Union + nested
+    await page.selectOption('#example', { label: 'Union + nested' });
     await expect
       .poll(() => page.locator('.record .title').textContent())
       .toContain('struct Message');
@@ -571,7 +571,7 @@ test.describe('ABI Explorer', () => {
 
   test('the byte grid brackets what a base subobject contributes', async ({ page }) => {
     await waitReady(page);
-    await page.selectOption('#example', '4');
+    await page.selectOption('#example', { label: 'Virtual & bases' });
     await expect
       .poll(() => page.locator('.record .title').textContent())
       .toContain('struct Diamond');
@@ -586,7 +586,7 @@ test.describe('ABI Explorer', () => {
 
   test('C++: virtual bases on MSVC and Itanium, private members measured', async ({ page }) => {
     await waitReady(page);
-    await page.selectOption('#example', '4');
+    await page.selectOption('#example', { label: 'Virtual & bases' });
     await expect(page.locator('#record-chips .chip')).toHaveCount(4);
     await expect
       .poll(() => page.locator('.record .title').textContent())
@@ -604,7 +604,7 @@ test.describe('ABI Explorer', () => {
     // it is reached by its id from the member that uses it. Nothing in the app
     // matches a printed type name to find it, which is the point.
     await waitReady(page);
-    await page.selectOption('#example', '9'); // C++ standard library (libc++)
+    await page.selectOption('#example', { label: 'Using standard library (libc++)' });
     await expect(page.locator('.record .title')).toContainText('Probe');
     await expect(page.locator('#record-chips .chip')).toHaveCount(1);
 
@@ -621,7 +621,7 @@ test.describe('ABI Explorer', () => {
     // page showing through below it when the row was hovered, and the
     // hovered colour wiping the nesting guides besides.
     await waitReady(page);
-    await page.selectOption('#example', '9'); // C++ standard library (libc++)
+    await page.selectOption('#example', { label: 'Using standard library (libc++)' });
     await expect(page.locator('.record .title')).toContainText('Probe');
     // Probe::s → basic_string's __rep_ → the union's __l member. Names are
     // matched whole, `s` being a substring of most of them.
@@ -648,7 +648,7 @@ test.describe('ABI Explorer', () => {
 
   test('the standard library resolves on every kind of target, and says how', async ({ page }) => {
     await waitReady(page);
-    await page.selectOption('#example', '9'); // C++ standard library (libc++)
+    await page.selectOption('#example', { label: 'Using standard library (libc++)' });
     await expect.poll(() => statValues(page)).toEqual(['72', '8', '0']);
     // musl's own tree on Linux, and the details say so.
     await page.hover('#info-button');
@@ -675,8 +675,8 @@ test.describe('ABI Explorer', () => {
     // `Pair`, and the index, which knew that spelling only as the first
     // instantiation to register it, answered `Pair<double>` twice.
     await waitReady(page);
-    await page.selectOption('#example', '5'); // C++ EBO & templates
-    await expect.poll(() => page.locator('#record-chips .chip').count()).toBeGreaterThan(3);
+    await page.selectOption('#example', { label: 'Template instantiation' });
+    await expect.poll(() => page.locator('#record-chips .chip').count()).toBeGreaterThan(1);
     const hover = page.locator('.monaco-editor .monaco-hover:not(.hidden)');
 
     await hoverWord(page, 'Pair<double> pd;', 'Pair');
@@ -700,7 +700,7 @@ test.describe('ABI Explorer', () => {
     // siblings', and with no guide lines to fall back on, a leaf beside a
     // collapsible sibling read as its child.
     await waitReady(page);
-    await page.selectOption('#example', '9'); // C++ standard library (libc++)
+    await page.selectOption('#example', { label: 'Using standard library (libc++)' });
     await expect
       .poll(() => page.locator('.record .title').textContent(), { timeout: 120_000 })
       .toContain('Probe');
@@ -750,7 +750,7 @@ test.describe('ABI Explorer', () => {
     // screen. Both signals are real and want the same edge; the only way to
     // catch one silently eating the other is to compare what is rendered.
     await waitReady(page);
-    await page.selectOption('#example', '6'); // C++ virtual inheritance (diamond)
+    await page.selectOption('#example', { label: 'Virtual inheritance (diamond)' });
     await expect.poll(() => page.locator('#record-chips .chip').count()).toBeGreaterThan(3);
     await page.locator('#record-chips .chip', { hasText: 'struct D' }).click();
     await expect(page.locator('.field-table tbody tr')).toHaveCount(10);
@@ -789,7 +789,7 @@ test.describe('ABI Explorer', () => {
     // container in the layout and not in the language: it gathers them, and
     // has no colour of its own because its bytes have several.
     await waitReady(page);
-    await page.selectOption('#example', '6'); // C++ virtual inheritance (diamond)
+    await page.selectOption('#example', { label: 'Virtual inheritance (diamond)' });
     await expect.poll(() => page.locator('#record-chips .chip').count()).toBeGreaterThan(3);
     await page.locator('#record-chips .chip', { hasText: 'struct D' }).click();
     await expect(page.locator('.field-table tbody tr')).toHaveCount(10);
@@ -867,7 +867,7 @@ test.describe('ABI Explorer', () => {
 
   test('stacked view shows all records and links hovers across sections', async ({ page }) => {
     await waitReady(page);
-    await page.selectOption('#example', '2');
+    await page.selectOption('#example', { label: 'Union + nested' });
     await page.click('#view-toggle');
     await expect(page.locator('.record')).toHaveCount(3);
     await expect(page.locator('#record-chips')).toBeHidden();
@@ -905,6 +905,56 @@ test.describe('ABI Explorer', () => {
     await expect(page.locator('.record .title')).toContainText('Example');
   });
 
+  test('undo and redo cover the options as well as the text', async ({ page }) => {
+    await waitReady(page);
+    expect(await statValues(page)).toEqual(['40', '8', '13']);
+
+    // Nothing has been done yet, so there is nothing to undo.
+    await expect(page.locator('#undo')).toBeDisabled();
+    await expect(page.locator('#redo')).toBeDisabled();
+
+    // An option change is a step: this is the half an editor's own undo stack
+    // knows nothing about.
+    await page.selectOption('#target', 'avr-unknown-unknown');
+    await expect.poll(() => statValues(page)).toEqual(['21', '1', '0']);
+    await expect(page.locator('#undo')).toBeEnabled();
+
+    await page.locator('#undo').click();
+    await expect.poll(() => statValues(page)).toEqual(['40', '8', '13']);
+    await page.locator('#redo').click();
+    await expect.poll(() => statValues(page)).toEqual(['21', '1', '0']);
+
+    // And the keyboard, which has to beat the editor to the keystroke.
+    await page.locator('.monaco-editor').click();
+    await page.keyboard.press('ControlOrMeta+z');
+    await expect.poll(() => statValues(page)).toEqual(['40', '8', '13']);
+    await page.keyboard.press('ControlOrMeta+Shift+z');
+    await expect.poll(() => statValues(page)).toEqual(['21', '1', '0']);
+  });
+
+  test('undo puts back the text, one step per pause', async ({ page }) => {
+    await waitReady(page);
+    await page.locator('.monaco-editor').click();
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.type('struct A { char a; };');
+    await expect.poll(() => statValues(page), { timeout: 30_000 }).toEqual(['1', '1', '0']);
+
+    // One step, not one per character.
+    await page.locator('#undo').click();
+    await expect.poll(() => statValues(page), { timeout: 30_000 }).toEqual(['40', '8', '13']);
+  });
+
+  test('the history does not survive a reload', async ({ page }) => {
+    await waitReady(page);
+    await page.selectOption('#target', 'avr-unknown-unknown');
+    await expect(page.locator('#undo')).toBeEnabled();
+    await page.reload();
+    await expect(page.locator('#results')).toBeVisible({ timeout: 240_000 });
+    // The URL carries the state but not how it was arrived at, and undoing
+    // across a reload would put back something the visitor never did here.
+    await expect(page.locator('#undo')).toBeDisabled();
+  });
+
   test('share URL round-trips source and options', async ({ page, context }) => {
     await waitReady(page);
     await page.selectOption('#target', 'msp430-none-elf');
@@ -940,7 +990,7 @@ test.describe('ABI Explorer', () => {
     // The headers are local too, not just the wasm; this is what shipping
     // them in the payload rather than fetching them on demand is for.
     await page.selectOption('#target', 'x86_64-unknown-linux-gnu');
-    await page.selectOption('#example', '9'); // C++ standard library (libc++)
+    await page.selectOption('#example', { label: 'Using standard library (libc++)' });
     await expect.poll(() => page.locator('.record .title').textContent()).toContain('Probe');
     expect((await statValues(page))[0]).toBe('72');
     await context.setOffline(false);

@@ -1,0 +1,3479 @@
+{
+ "source": "#include <string>\n#include <vector>\n\nstruct Probe {\n  std::string s;          /* short-string optimization: a union inside */\n  std::vector<int> v;     /* three pointers */\n  std::vector<bool> vb;   /* the bitset specialization */\n};\n\n/* These are libc++'s layouts, on whatever target you pick, including\n   Windows, where the real toolchain would use MSVC's STL and get\n   different numbers. libstdc++ differs again. Read them as \"libc++\n   on this target\", never as \"the standard library on this target\". */\n",
+ "options": {
+  "lang": "c++",
+  "std": "gnu++26",
+  "triple": "x86_64-pc-windows-msvc",
+  "pack": "",
+  "msBitfields": false,
+  "shortEnums": false,
+  "shortWchar": false,
+  "warnPadded": false,
+  "extraFlags": ""
+ },
+ "response": {
+  "clangVersion": "clang version 22.1.8 (https://github.com/llvm/llvm-project.git ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)",
+  "diagnostics": [],
+  "diagnosticsText": "",
+  "error": null,
+  "exitCode": 0,
+  "headers": {
+   "cLibrary": "musl",
+   "cLibraryArch": "generic",
+   "cxxLibrary": "libc++",
+   "localization": false,
+   "threads": true
+  },
+  "ok": true,
+  "records": [
+   {
+    "alignBits": 8,
+    "bases": [],
+    "dataSizeBits": 0,
+    "fields": [],
+    "id": 0,
+    "isAnonymous": false,
+    "isEmpty": true,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": false,
+    "kind": "class",
+    "location": {
+     "col": 7,
+     "endCol": 16,
+     "file": "/usr/include/c++/v1/__memory/allocator.h",
+     "isMainFile": false,
+     "line": 62
+    },
+    "name": "allocator",
+    "nonVirtualAlignBits": 8,
+    "nonVirtualSizeBits": 0,
+    "paddingBits": 8,
+    "paddingRuns": [
+     {
+      "endBits": 8,
+      "startBits": 0
+     }
+    ],
+    "parentRecordId": null,
+    "preferredAlignBits": 8,
+    "printedName": "class std::allocator<char>",
+    "qualifiedName": "std::allocator",
+    "range": {
+     "col": 1,
+     "endCol": 16,
+     "endLine": 21,
+     "line": 20
+    },
+    "render": {
+     "groups": [],
+     "leaves": [],
+     "markers": [],
+     "paddingBytes": 1,
+     "paddingRuns": [
+      {
+       "endBits": 8,
+       "startBits": 0
+      }
+     ],
+     "tree": []
+    },
+    "sizeBits": 8,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 8,
+    "bases": [],
+    "dataSizeBits": 0,
+    "fields": [],
+    "id": 1,
+    "isAnonymous": false,
+    "isEmpty": true,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": false,
+    "kind": "class",
+    "location": {
+     "col": 7,
+     "endCol": 16,
+     "file": "/usr/include/c++/v1/__memory/allocator.h",
+     "isMainFile": false,
+     "line": 62
+    },
+    "name": "allocator",
+    "nonVirtualAlignBits": 8,
+    "nonVirtualSizeBits": 0,
+    "paddingBits": 8,
+    "paddingRuns": [
+     {
+      "endBits": 8,
+      "startBits": 0
+     }
+    ],
+    "parentRecordId": null,
+    "preferredAlignBits": 8,
+    "printedName": "class std::allocator<int>",
+    "qualifiedName": "std::allocator",
+    "range": {
+     "col": 1,
+     "endCol": 2,
+     "endLine": 146,
+     "line": 61
+    },
+    "render": {
+     "groups": [],
+     "leaves": [],
+     "markers": [],
+     "paddingBytes": 1,
+     "paddingRuns": [
+      {
+       "endBits": 8,
+       "startBits": 0
+      }
+     ],
+     "tree": []
+    },
+    "sizeBits": 8,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 8,
+    "bases": [],
+    "dataSizeBits": 0,
+    "fields": [],
+    "id": 2,
+    "isAnonymous": false,
+    "isEmpty": true,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": false,
+    "kind": "class",
+    "location": {
+     "col": 7,
+     "endCol": 16,
+     "file": "/usr/include/c++/v1/__memory/allocator.h",
+     "isMainFile": false,
+     "line": 62
+    },
+    "name": "allocator",
+    "nonVirtualAlignBits": 8,
+    "nonVirtualSizeBits": 0,
+    "paddingBits": 8,
+    "paddingRuns": [
+     {
+      "endBits": 8,
+      "startBits": 0
+     }
+    ],
+    "parentRecordId": null,
+    "preferredAlignBits": 8,
+    "printedName": "class std::allocator<unsigned long long>",
+    "qualifiedName": "std::allocator",
+    "range": {
+     "col": 1,
+     "endCol": 16,
+     "endLine": 21,
+     "line": 20
+    },
+    "render": {
+     "groups": [],
+     "leaves": [],
+     "markers": [],
+     "paddingBytes": 1,
+     "paddingRuns": [
+      {
+       "endBits": 8,
+       "startBits": 0
+      }
+     ],
+     "tree": []
+    },
+    "sizeBits": 8,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 64,
+    "bases": [],
+    "dataSizeBits": 192,
+    "fields": [
+     {
+      "access": "private",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "union std::basic_string<char>::__rep",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": true,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 34,
+       "endCol": 40,
+       "file": "/usr/include/c++/v1/string",
+       "isMainFile": false,
+       "line": 917
+      },
+      "name": "__rep_",
+      "offsetBits": 0,
+      "recordId": 8,
+      "sizeBits": 192,
+      "typeSpelling": "__rep"
+     },
+     {
+      "access": "private",
+      "alignBits": 8,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "class std::allocator<char>",
+      "explicitAlignBits": null,
+      "id": 1,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": true,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 58,
+       "endCol": 66,
+       "file": "/usr/include/c++/v1/string",
+       "isMainFile": false,
+       "line": 917
+      },
+      "name": "__alloc_",
+      "offsetBits": 0,
+      "recordId": 0,
+      "sizeBits": 8,
+      "typeSpelling": "allocator_type"
+     }
+    ],
+    "id": 3,
+    "isAnonymous": false,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": false,
+    "kind": "class",
+    "location": {
+     "col": 7,
+     "endCol": 19,
+     "file": "/usr/include/c++/v1/string",
+     "isMainFile": false,
+     "line": 728
+    },
+    "name": "basic_string",
+    "nonVirtualAlignBits": 64,
+    "nonVirtualSizeBits": 192,
+    "paddingBits": 0,
+    "paddingRuns": [],
+    "parentRecordId": null,
+    "preferredAlignBits": 64,
+    "printedName": "std::string",
+    "qualifiedName": "std::basic_string",
+    "range": {
+     "col": 1,
+     "endCol": 19,
+     "endLine": 43,
+     "line": 42
+    },
+    "render": {
+     "groups": [
+      {
+       "alignBits": 8,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        0,
+        1
+       ],
+       "location": {
+        "col": 5,
+        "endCol": 11,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 895
+       },
+       "name": "(anonymous)",
+       "offsetBits": 0,
+       "ownerId": 6,
+       "ownerName": "__short",
+       "path": [
+        "__rep_",
+        "__s"
+       ],
+       "recordId": 7,
+       "sizeBits": 8,
+       "type": "struct (anonymous at /usr/include/c++/v1/string:895:5)",
+       "typeSizeBits": 8
+      },
+      {
+       "alignBits": 8,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        0,
+        1,
+        2,
+        3
+       ],
+       "location": {
+        "col": 13,
+        "endCol": 16,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 908
+       },
+       "name": "__s",
+       "offsetBits": 0,
+       "ownerId": 8,
+       "ownerName": "__rep",
+       "path": [
+        "__rep_"
+       ],
+       "recordId": 6,
+       "sizeBits": 192,
+       "type": "__short",
+       "typeSizeBits": 192
+      },
+      {
+       "alignBits": 8,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        4,
+        5
+       ],
+       "location": {
+        "col": 5,
+        "endCol": 11,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 884
+       },
+       "name": "(anonymous)",
+       "offsetBits": 0,
+       "ownerId": 4,
+       "ownerName": "__long",
+       "path": [
+        "__rep_",
+        "__l"
+       ],
+       "recordId": 5,
+       "sizeBits": 64,
+       "type": "struct (anonymous at /usr/include/c++/v1/string:884:5)",
+       "typeSizeBits": 64
+      },
+      {
+       "alignBits": 64,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        4,
+        5,
+        6,
+        7
+       ],
+       "location": {
+        "col": 12,
+        "endCol": 15,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 909
+       },
+       "name": "__l",
+       "offsetBits": 0,
+       "ownerId": 8,
+       "ownerName": "__rep",
+       "path": [
+        "__rep_"
+       ],
+       "recordId": 4,
+       "sizeBits": 192,
+       "type": "__long",
+       "typeSizeBits": 192
+      },
+      {
+       "alignBits": 64,
+       "isBase": false,
+       "isUnion": true,
+       "kind": "member",
+       "leafIndexes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+       ],
+       "location": {
+        "col": 34,
+        "endCol": 40,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 917
+       },
+       "name": "__rep_",
+       "offsetBits": 0,
+       "ownerId": 3,
+       "ownerName": "basic_string",
+       "path": [],
+       "recordId": 8,
+       "sizeBits": 192,
+       "type": "__rep",
+       "typeSizeBits": 192
+      }
+     ],
+     "leaves": [
+      {
+       "alignBits": 0,
+       "kind": "bitfield",
+       "location": {
+        "col": 21,
+        "endCol": 31,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 896
+       },
+       "name": "__is_long_",
+       "offsetBits": 0,
+       "ownerId": 7,
+       "ownerName": "",
+       "path": [
+        "__rep_",
+        "__s",
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 1,
+       "type": "unsigned char"
+      },
+      {
+       "alignBits": 0,
+       "kind": "bitfield",
+       "location": {
+        "col": 21,
+        "endCol": 28,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 897
+       },
+       "name": "__size_",
+       "offsetBits": 1,
+       "ownerId": 7,
+       "ownerName": "",
+       "path": [
+        "__rep_",
+        "__s",
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 7,
+       "type": "unsigned char"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 65,
+        "endCol": 75,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 899
+       },
+       "name": "__padding_",
+       "offsetBits": 0,
+       "ownerId": 6,
+       "ownerName": "__short",
+       "path": [
+        "__rep_",
+        "__s"
+       ],
+       "sharesAddress": true,
+       "sizeBits": 0,
+       "type": "__padding<sizeof(value_type) - 1>"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 16,
+        "endCol": 23,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 900
+       },
+       "name": "__data_",
+       "offsetBits": 8,
+       "ownerId": 6,
+       "ownerName": "__short",
+       "path": [
+        "__rep_",
+        "__s"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 184,
+       "type": "value_type[23]"
+      },
+      {
+       "alignBits": 0,
+       "kind": "bitfield",
+       "location": {
+        "col": 17,
+        "endCol": 27,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 885
+       },
+       "name": "__is_long_",
+       "offsetBits": 0,
+       "ownerId": 5,
+       "ownerName": "",
+       "path": [
+        "__rep_",
+        "__l",
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 1,
+       "type": "size_type"
+      },
+      {
+       "alignBits": 0,
+       "kind": "bitfield",
+       "location": {
+        "col": 17,
+        "endCol": 23,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 886
+       },
+       "name": "__cap_",
+       "offsetBits": 1,
+       "ownerId": 5,
+       "ownerName": "",
+       "path": [
+        "__rep_",
+        "__l",
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 63,
+       "type": "size_type"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 15,
+        "endCol": 22,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 888
+       },
+       "name": "__size_",
+       "offsetBits": 64,
+       "ownerId": 4,
+       "ownerName": "__long",
+       "path": [
+        "__rep_",
+        "__l"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "size_type"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 13,
+        "endCol": 20,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 889
+       },
+       "name": "__data_",
+       "offsetBits": 128,
+       "ownerId": 4,
+       "ownerName": "__long",
+       "path": [
+        "__rep_",
+        "__l"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "pointer"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 58,
+        "endCol": 66,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 917
+       },
+       "name": "__alloc_",
+       "offsetBits": 0,
+       "ownerId": 3,
+       "ownerName": "basic_string",
+       "path": [],
+       "sharesAddress": true,
+       "sizeBits": 0,
+       "type": "allocator_type"
+      }
+     ],
+     "markers": [],
+     "paddingBytes": 0,
+     "paddingRuns": [],
+     "tree": [
+      {
+       "children": [
+        {
+         "children": [
+          {
+           "children": [
+            {
+             "children": [],
+             "kind": "leaf",
+             "overlaps": false,
+             "ref": 0
+            },
+            {
+             "children": [],
+             "kind": "leaf",
+             "overlaps": false,
+             "ref": 1
+            }
+           ],
+           "kind": "group",
+           "overlaps": false,
+           "ref": 0
+          },
+          {
+           "children": [],
+           "kind": "leaf",
+           "overlaps": false,
+           "ref": 2
+          },
+          {
+           "children": [],
+           "kind": "leaf",
+           "overlaps": false,
+           "ref": 3
+          }
+         ],
+         "kind": "group",
+         "overlaps": true,
+         "ref": 1
+        },
+        {
+         "children": [
+          {
+           "children": [
+            {
+             "children": [],
+             "kind": "leaf",
+             "overlaps": false,
+             "ref": 4
+            },
+            {
+             "children": [],
+             "kind": "leaf",
+             "overlaps": false,
+             "ref": 5
+            }
+           ],
+           "kind": "group",
+           "overlaps": false,
+           "ref": 2
+          },
+          {
+           "children": [],
+           "kind": "leaf",
+           "overlaps": false,
+           "ref": 6
+          },
+          {
+           "children": [],
+           "kind": "leaf",
+           "overlaps": false,
+           "ref": 7
+          }
+         ],
+         "kind": "group",
+         "overlaps": true,
+         "ref": 3
+        }
+       ],
+       "kind": "group",
+       "overlaps": false,
+       "ref": 4
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 8
+      }
+     ]
+    },
+    "sizeBits": 192,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 64,
+    "bases": [],
+    "dataSizeBits": 192,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 8,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "struct std::basic_string<char>::__long::(anonymous at /usr/include/c++/v1/string:884:5)",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": true,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 5,
+       "endCol": 11,
+       "file": "/usr/include/c++/v1/string",
+       "isMainFile": false,
+       "line": 884
+      },
+      "name": "",
+      "offsetBits": 0,
+      "recordId": 5,
+      "sizeBits": 64,
+      "typeSpelling": "struct (anonymous at /usr/include/c++/v1/string:884:5)"
+     },
+     {
+      "access": "public",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "unsigned long long",
+      "explicitAlignBits": null,
+      "id": 1,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 15,
+       "endCol": 22,
+       "file": "/usr/include/c++/v1/string",
+       "isMainFile": false,
+       "line": 888
+      },
+      "name": "__size_",
+      "offsetBits": 64,
+      "recordId": null,
+      "sizeBits": 64,
+      "typeSpelling": "size_type"
+     },
+     {
+      "access": "public",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "char *",
+      "explicitAlignBits": null,
+      "id": 2,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 13,
+       "endCol": 20,
+       "file": "/usr/include/c++/v1/string",
+       "isMainFile": false,
+       "line": 889
+      },
+      "name": "__data_",
+      "offsetBits": 128,
+      "recordId": null,
+      "sizeBits": 64,
+      "typeSpelling": "pointer"
+     }
+    ],
+    "id": 4,
+    "isAnonymous": false,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": false,
+    "kind": "struct",
+    "location": {
+     "col": 10,
+     "endCol": 16,
+     "file": "/usr/include/c++/v1/string",
+     "isMainFile": false,
+     "line": 876
+    },
+    "name": "__long",
+    "nonVirtualAlignBits": 64,
+    "nonVirtualSizeBits": 192,
+    "paddingBits": 0,
+    "paddingRuns": [],
+    "parentRecordId": 3,
+    "preferredAlignBits": 64,
+    "printedName": "struct std::basic_string<char>::__long",
+    "qualifiedName": "std::basic_string<char>::__long",
+    "range": {
+     "col": 3,
+     "endCol": 4,
+     "endLine": 890,
+     "line": 876
+    },
+    "render": {
+     "groups": [
+      {
+       "alignBits": 8,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        0,
+        1
+       ],
+       "location": {
+        "col": 5,
+        "endCol": 11,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 884
+       },
+       "name": "(anonymous)",
+       "offsetBits": 0,
+       "ownerId": 4,
+       "ownerName": "__long",
+       "path": [],
+       "recordId": 5,
+       "sizeBits": 64,
+       "type": "struct (anonymous at /usr/include/c++/v1/string:884:5)",
+       "typeSizeBits": 64
+      }
+     ],
+     "leaves": [
+      {
+       "alignBits": 0,
+       "kind": "bitfield",
+       "location": {
+        "col": 17,
+        "endCol": 27,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 885
+       },
+       "name": "__is_long_",
+       "offsetBits": 0,
+       "ownerId": 5,
+       "ownerName": "",
+       "path": [
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 1,
+       "type": "size_type"
+      },
+      {
+       "alignBits": 0,
+       "kind": "bitfield",
+       "location": {
+        "col": 17,
+        "endCol": 23,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 886
+       },
+       "name": "__cap_",
+       "offsetBits": 1,
+       "ownerId": 5,
+       "ownerName": "",
+       "path": [
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 63,
+       "type": "size_type"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 15,
+        "endCol": 22,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 888
+       },
+       "name": "__size_",
+       "offsetBits": 64,
+       "ownerId": 4,
+       "ownerName": "__long",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "size_type"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 13,
+        "endCol": 20,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 889
+       },
+       "name": "__data_",
+       "offsetBits": 128,
+       "ownerId": 4,
+       "ownerName": "__long",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "pointer"
+      }
+     ],
+     "markers": [],
+     "paddingBytes": 0,
+     "paddingRuns": [],
+     "tree": [
+      {
+       "children": [
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 0
+        },
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 1
+        }
+       ],
+       "kind": "group",
+       "overlaps": false,
+       "ref": 0
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 2
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 3
+      }
+     ]
+    },
+    "sizeBits": 192,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 8,
+    "bases": [],
+    "dataSizeBits": 64,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 0,
+      "bitWidth": 1,
+      "canonicalTypeSpelling": "unsigned long long",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": true,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 17,
+       "endCol": 27,
+       "file": "/usr/include/c++/v1/string",
+       "isMainFile": false,
+       "line": 885
+      },
+      "name": "__is_long_",
+      "offsetBits": 0,
+      "recordId": null,
+      "sizeBits": 1,
+      "typeSpelling": "size_type"
+     },
+     {
+      "access": "public",
+      "alignBits": 0,
+      "bitWidth": 63,
+      "canonicalTypeSpelling": "unsigned long long",
+      "explicitAlignBits": null,
+      "id": 1,
+      "isAnonymousMember": false,
+      "isBitField": true,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 17,
+       "endCol": 23,
+       "file": "/usr/include/c++/v1/string",
+       "isMainFile": false,
+       "line": 886
+      },
+      "name": "__cap_",
+      "offsetBits": 1,
+      "recordId": null,
+      "sizeBits": 63,
+      "typeSpelling": "size_type"
+     }
+    ],
+    "id": 5,
+    "isAnonymous": true,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": false,
+    "kind": "struct",
+    "location": {
+     "col": 5,
+     "endCol": 11,
+     "file": "/usr/include/c++/v1/string",
+     "isMainFile": false,
+     "line": 884
+    },
+    "name": "",
+    "nonVirtualAlignBits": 8,
+    "nonVirtualSizeBits": 64,
+    "paddingBits": 0,
+    "paddingRuns": [],
+    "parentRecordId": 4,
+    "preferredAlignBits": 8,
+    "printedName": "struct std::basic_string<char>::__long::(anonymous at /usr/include/c++/v1/string:884:5)",
+    "qualifiedName": "std::basic_string<char>::__long::(anonymous struct at /usr/include/c++/v1/string:884:5)",
+    "range": {
+     "col": 5,
+     "endCol": 6,
+     "endLine": 887,
+     "line": 884
+    },
+    "render": {
+     "groups": [],
+     "leaves": [
+      {
+       "alignBits": 0,
+       "kind": "bitfield",
+       "location": {
+        "col": 17,
+        "endCol": 27,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 885
+       },
+       "name": "__is_long_",
+       "offsetBits": 0,
+       "ownerId": 5,
+       "ownerName": "",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 1,
+       "type": "size_type"
+      },
+      {
+       "alignBits": 0,
+       "kind": "bitfield",
+       "location": {
+        "col": 17,
+        "endCol": 23,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 886
+       },
+       "name": "__cap_",
+       "offsetBits": 1,
+       "ownerId": 5,
+       "ownerName": "",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 63,
+       "type": "size_type"
+      }
+     ],
+     "markers": [],
+     "paddingBytes": 0,
+     "paddingRuns": [],
+     "tree": [
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 0
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 1
+      }
+     ]
+    },
+    "sizeBits": 64,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 8,
+    "bases": [],
+    "dataSizeBits": 192,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 8,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "struct std::basic_string<char>::__short::(anonymous at /usr/include/c++/v1/string:895:5)",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": true,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 5,
+       "endCol": 11,
+       "file": "/usr/include/c++/v1/string",
+       "isMainFile": false,
+       "line": 895
+      },
+      "name": "",
+      "offsetBits": 0,
+      "recordId": 7,
+      "sizeBits": 8,
+      "typeSpelling": "struct (anonymous at /usr/include/c++/v1/string:895:5)"
+     },
+     {
+      "access": "public",
+      "alignBits": 8,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "struct std::__padding<0>",
+      "explicitAlignBits": null,
+      "id": 1,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": true,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 65,
+       "endCol": 75,
+       "file": "/usr/include/c++/v1/string",
+       "isMainFile": false,
+       "line": 899
+      },
+      "name": "__padding_",
+      "offsetBits": 0,
+      "recordId": 9,
+      "sizeBits": 8,
+      "typeSpelling": "__padding<sizeof(value_type) - 1>"
+     },
+     {
+      "access": "public",
+      "alignBits": 8,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "char[23]",
+      "explicitAlignBits": null,
+      "id": 2,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 16,
+       "endCol": 23,
+       "file": "/usr/include/c++/v1/string",
+       "isMainFile": false,
+       "line": 900
+      },
+      "name": "__data_",
+      "offsetBits": 8,
+      "recordId": null,
+      "sizeBits": 184,
+      "typeSpelling": "value_type[23]"
+     }
+    ],
+    "id": 6,
+    "isAnonymous": false,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": false,
+    "kind": "struct",
+    "location": {
+     "col": 10,
+     "endCol": 17,
+     "file": "/usr/include/c++/v1/string",
+     "isMainFile": false,
+     "line": 894
+    },
+    "name": "__short",
+    "nonVirtualAlignBits": 8,
+    "nonVirtualSizeBits": 192,
+    "paddingBits": 0,
+    "paddingRuns": [],
+    "parentRecordId": 3,
+    "preferredAlignBits": 8,
+    "printedName": "struct std::basic_string<char>::__short",
+    "qualifiedName": "std::basic_string<char>::__short",
+    "range": {
+     "col": 3,
+     "endCol": 4,
+     "endLine": 901,
+     "line": 894
+    },
+    "render": {
+     "groups": [
+      {
+       "alignBits": 8,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        0,
+        1
+       ],
+       "location": {
+        "col": 5,
+        "endCol": 11,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 895
+       },
+       "name": "(anonymous)",
+       "offsetBits": 0,
+       "ownerId": 6,
+       "ownerName": "__short",
+       "path": [],
+       "recordId": 7,
+       "sizeBits": 8,
+       "type": "struct (anonymous at /usr/include/c++/v1/string:895:5)",
+       "typeSizeBits": 8
+      }
+     ],
+     "leaves": [
+      {
+       "alignBits": 0,
+       "kind": "bitfield",
+       "location": {
+        "col": 21,
+        "endCol": 31,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 896
+       },
+       "name": "__is_long_",
+       "offsetBits": 0,
+       "ownerId": 7,
+       "ownerName": "",
+       "path": [
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 1,
+       "type": "unsigned char"
+      },
+      {
+       "alignBits": 0,
+       "kind": "bitfield",
+       "location": {
+        "col": 21,
+        "endCol": 28,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 897
+       },
+       "name": "__size_",
+       "offsetBits": 1,
+       "ownerId": 7,
+       "ownerName": "",
+       "path": [
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 7,
+       "type": "unsigned char"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 65,
+        "endCol": 75,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 899
+       },
+       "name": "__padding_",
+       "offsetBits": 0,
+       "ownerId": 6,
+       "ownerName": "__short",
+       "path": [],
+       "sharesAddress": true,
+       "sizeBits": 0,
+       "type": "__padding<sizeof(value_type) - 1>"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 16,
+        "endCol": 23,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 900
+       },
+       "name": "__data_",
+       "offsetBits": 8,
+       "ownerId": 6,
+       "ownerName": "__short",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 184,
+       "type": "value_type[23]"
+      }
+     ],
+     "markers": [],
+     "paddingBytes": 0,
+     "paddingRuns": [],
+     "tree": [
+      {
+       "children": [
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 0
+        },
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 1
+        }
+       ],
+       "kind": "group",
+       "overlaps": false,
+       "ref": 0
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 2
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 3
+      }
+     ]
+    },
+    "sizeBits": 192,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 8,
+    "bases": [],
+    "dataSizeBits": 8,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 0,
+      "bitWidth": 1,
+      "canonicalTypeSpelling": "unsigned char",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": true,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 21,
+       "endCol": 31,
+       "file": "/usr/include/c++/v1/string",
+       "isMainFile": false,
+       "line": 896
+      },
+      "name": "__is_long_",
+      "offsetBits": 0,
+      "recordId": null,
+      "sizeBits": 1,
+      "typeSpelling": "unsigned char"
+     },
+     {
+      "access": "public",
+      "alignBits": 0,
+      "bitWidth": 7,
+      "canonicalTypeSpelling": "unsigned char",
+      "explicitAlignBits": null,
+      "id": 1,
+      "isAnonymousMember": false,
+      "isBitField": true,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 21,
+       "endCol": 28,
+       "file": "/usr/include/c++/v1/string",
+       "isMainFile": false,
+       "line": 897
+      },
+      "name": "__size_",
+      "offsetBits": 1,
+      "recordId": null,
+      "sizeBits": 7,
+      "typeSpelling": "unsigned char"
+     }
+    ],
+    "id": 7,
+    "isAnonymous": true,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": false,
+    "kind": "struct",
+    "location": {
+     "col": 5,
+     "endCol": 11,
+     "file": "/usr/include/c++/v1/string",
+     "isMainFile": false,
+     "line": 895
+    },
+    "name": "",
+    "nonVirtualAlignBits": 8,
+    "nonVirtualSizeBits": 8,
+    "paddingBits": 0,
+    "paddingRuns": [],
+    "parentRecordId": 6,
+    "preferredAlignBits": 8,
+    "printedName": "struct std::basic_string<char>::__short::(anonymous at /usr/include/c++/v1/string:895:5)",
+    "qualifiedName": "std::basic_string<char>::__short::(anonymous struct at /usr/include/c++/v1/string:895:5)",
+    "range": {
+     "col": 5,
+     "endCol": 6,
+     "endLine": 898,
+     "line": 895
+    },
+    "render": {
+     "groups": [],
+     "leaves": [
+      {
+       "alignBits": 0,
+       "kind": "bitfield",
+       "location": {
+        "col": 21,
+        "endCol": 31,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 896
+       },
+       "name": "__is_long_",
+       "offsetBits": 0,
+       "ownerId": 7,
+       "ownerName": "",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 1,
+       "type": "unsigned char"
+      },
+      {
+       "alignBits": 0,
+       "kind": "bitfield",
+       "location": {
+        "col": 21,
+        "endCol": 28,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 897
+       },
+       "name": "__size_",
+       "offsetBits": 1,
+       "ownerId": 7,
+       "ownerName": "",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 7,
+       "type": "unsigned char"
+      }
+     ],
+     "markers": [],
+     "paddingBytes": 0,
+     "paddingRuns": [],
+     "tree": [
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 0
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 1
+      }
+     ]
+    },
+    "sizeBits": 8,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 64,
+    "bases": [],
+    "dataSizeBits": 192,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 8,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "struct std::basic_string<char>::__short",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 13,
+       "endCol": 16,
+       "file": "/usr/include/c++/v1/string",
+       "isMainFile": false,
+       "line": 908
+      },
+      "name": "__s",
+      "offsetBits": 0,
+      "recordId": 6,
+      "sizeBits": 192,
+      "typeSpelling": "__short"
+     },
+     {
+      "access": "public",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "struct std::basic_string<char>::__long",
+      "explicitAlignBits": null,
+      "id": 1,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 12,
+       "endCol": 15,
+       "file": "/usr/include/c++/v1/string",
+       "isMainFile": false,
+       "line": 909
+      },
+      "name": "__l",
+      "offsetBits": 0,
+      "recordId": 4,
+      "sizeBits": 192,
+      "typeSpelling": "__long"
+     }
+    ],
+    "id": 8,
+    "isAnonymous": false,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": false,
+    "kind": "union",
+    "location": {
+     "col": 9,
+     "endCol": 14,
+     "file": "/usr/include/c++/v1/string",
+     "isMainFile": false,
+     "line": 907
+    },
+    "name": "__rep",
+    "nonVirtualAlignBits": 64,
+    "nonVirtualSizeBits": 192,
+    "paddingBits": 0,
+    "paddingRuns": [],
+    "parentRecordId": 3,
+    "preferredAlignBits": 64,
+    "printedName": "union std::basic_string<char>::__rep",
+    "qualifiedName": "std::basic_string<char>::__rep",
+    "range": {
+     "col": 3,
+     "endCol": 4,
+     "endLine": 915,
+     "line": 907
+    },
+    "render": {
+     "groups": [
+      {
+       "alignBits": 8,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        0,
+        1
+       ],
+       "location": {
+        "col": 5,
+        "endCol": 11,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 895
+       },
+       "name": "(anonymous)",
+       "offsetBits": 0,
+       "ownerId": 6,
+       "ownerName": "__short",
+       "path": [
+        "__s"
+       ],
+       "recordId": 7,
+       "sizeBits": 8,
+       "type": "struct (anonymous at /usr/include/c++/v1/string:895:5)",
+       "typeSizeBits": 8
+      },
+      {
+       "alignBits": 8,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        0,
+        1,
+        2,
+        3
+       ],
+       "location": {
+        "col": 13,
+        "endCol": 16,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 908
+       },
+       "name": "__s",
+       "offsetBits": 0,
+       "ownerId": 8,
+       "ownerName": "__rep",
+       "path": [],
+       "recordId": 6,
+       "sizeBits": 192,
+       "type": "__short",
+       "typeSizeBits": 192
+      },
+      {
+       "alignBits": 8,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        4,
+        5
+       ],
+       "location": {
+        "col": 5,
+        "endCol": 11,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 884
+       },
+       "name": "(anonymous)",
+       "offsetBits": 0,
+       "ownerId": 4,
+       "ownerName": "__long",
+       "path": [
+        "__l"
+       ],
+       "recordId": 5,
+       "sizeBits": 64,
+       "type": "struct (anonymous at /usr/include/c++/v1/string:884:5)",
+       "typeSizeBits": 64
+      },
+      {
+       "alignBits": 64,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        4,
+        5,
+        6,
+        7
+       ],
+       "location": {
+        "col": 12,
+        "endCol": 15,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 909
+       },
+       "name": "__l",
+       "offsetBits": 0,
+       "ownerId": 8,
+       "ownerName": "__rep",
+       "path": [],
+       "recordId": 4,
+       "sizeBits": 192,
+       "type": "__long",
+       "typeSizeBits": 192
+      }
+     ],
+     "leaves": [
+      {
+       "alignBits": 0,
+       "kind": "bitfield",
+       "location": {
+        "col": 21,
+        "endCol": 31,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 896
+       },
+       "name": "__is_long_",
+       "offsetBits": 0,
+       "ownerId": 7,
+       "ownerName": "",
+       "path": [
+        "__s",
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 1,
+       "type": "unsigned char"
+      },
+      {
+       "alignBits": 0,
+       "kind": "bitfield",
+       "location": {
+        "col": 21,
+        "endCol": 28,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 897
+       },
+       "name": "__size_",
+       "offsetBits": 1,
+       "ownerId": 7,
+       "ownerName": "",
+       "path": [
+        "__s",
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 7,
+       "type": "unsigned char"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 65,
+        "endCol": 75,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 899
+       },
+       "name": "__padding_",
+       "offsetBits": 0,
+       "ownerId": 6,
+       "ownerName": "__short",
+       "path": [
+        "__s"
+       ],
+       "sharesAddress": true,
+       "sizeBits": 0,
+       "type": "__padding<sizeof(value_type) - 1>"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 16,
+        "endCol": 23,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 900
+       },
+       "name": "__data_",
+       "offsetBits": 8,
+       "ownerId": 6,
+       "ownerName": "__short",
+       "path": [
+        "__s"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 184,
+       "type": "value_type[23]"
+      },
+      {
+       "alignBits": 0,
+       "kind": "bitfield",
+       "location": {
+        "col": 17,
+        "endCol": 27,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 885
+       },
+       "name": "__is_long_",
+       "offsetBits": 0,
+       "ownerId": 5,
+       "ownerName": "",
+       "path": [
+        "__l",
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 1,
+       "type": "size_type"
+      },
+      {
+       "alignBits": 0,
+       "kind": "bitfield",
+       "location": {
+        "col": 17,
+        "endCol": 23,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 886
+       },
+       "name": "__cap_",
+       "offsetBits": 1,
+       "ownerId": 5,
+       "ownerName": "",
+       "path": [
+        "__l",
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 63,
+       "type": "size_type"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 15,
+        "endCol": 22,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 888
+       },
+       "name": "__size_",
+       "offsetBits": 64,
+       "ownerId": 4,
+       "ownerName": "__long",
+       "path": [
+        "__l"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "size_type"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 13,
+        "endCol": 20,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 889
+       },
+       "name": "__data_",
+       "offsetBits": 128,
+       "ownerId": 4,
+       "ownerName": "__long",
+       "path": [
+        "__l"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "pointer"
+      }
+     ],
+     "markers": [],
+     "paddingBytes": 0,
+     "paddingRuns": [],
+     "tree": [
+      {
+       "children": [
+        {
+         "children": [
+          {
+           "children": [],
+           "kind": "leaf",
+           "overlaps": false,
+           "ref": 0
+          },
+          {
+           "children": [],
+           "kind": "leaf",
+           "overlaps": false,
+           "ref": 1
+          }
+         ],
+         "kind": "group",
+         "overlaps": false,
+         "ref": 0
+        },
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 2
+        },
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 3
+        }
+       ],
+       "kind": "group",
+       "overlaps": true,
+       "ref": 1
+      },
+      {
+       "children": [
+        {
+         "children": [
+          {
+           "children": [],
+           "kind": "leaf",
+           "overlaps": false,
+           "ref": 4
+          },
+          {
+           "children": [],
+           "kind": "leaf",
+           "overlaps": false,
+           "ref": 5
+          }
+         ],
+         "kind": "group",
+         "overlaps": false,
+         "ref": 2
+        },
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 6
+        },
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 7
+        }
+       ],
+       "kind": "group",
+       "overlaps": true,
+       "ref": 3
+      }
+     ]
+    },
+    "sizeBits": 192,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 8,
+    "bases": [],
+    "dataSizeBits": 0,
+    "fields": [],
+    "id": 9,
+    "isAnonymous": false,
+    "isEmpty": true,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": false,
+    "kind": "struct",
+    "location": {
+     "col": 8,
+     "endCol": 17,
+     "file": "/usr/include/c++/v1/string",
+     "isMainFile": false,
+     "line": 725
+    },
+    "name": "__padding",
+    "nonVirtualAlignBits": 8,
+    "nonVirtualSizeBits": 0,
+    "paddingBits": 8,
+    "paddingRuns": [
+     {
+      "endBits": 8,
+      "startBits": 0
+     }
+    ],
+    "parentRecordId": null,
+    "preferredAlignBits": 8,
+    "printedName": "struct std::__padding<0>",
+    "qualifiedName": "std::__padding",
+    "range": {
+     "col": 1,
+     "endCol": 23,
+     "endLine": 725,
+     "line": 724
+    },
+    "render": {
+     "groups": [],
+     "leaves": [],
+     "markers": [],
+     "paddingBytes": 1,
+     "paddingRuns": [
+      {
+       "endBits": 8,
+       "startBits": 0
+      }
+     ],
+     "tree": []
+    },
+    "sizeBits": 8,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 64,
+    "bases": [],
+    "dataSizeBits": 192,
+    "fields": [
+     {
+      "access": "private",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "int *",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 11,
+       "endCol": 19,
+       "file": "/usr/include/c++/v1/__vector/vector.h",
+       "isMainFile": false,
+       "line": 581
+      },
+      "name": "__begin_",
+      "offsetBits": 0,
+      "recordId": null,
+      "sizeBits": 64,
+      "typeSpelling": "pointer"
+     },
+     {
+      "access": "private",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "int *",
+      "explicitAlignBits": null,
+      "id": 1,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 11,
+       "endCol": 17,
+       "file": "/usr/include/c++/v1/__vector/vector.h",
+       "isMainFile": false,
+       "line": 582
+      },
+      "name": "__end_",
+      "offsetBits": 64,
+      "recordId": null,
+      "sizeBits": 64,
+      "typeSpelling": "pointer"
+     },
+     {
+      "access": "private",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "int *",
+      "explicitAlignBits": null,
+      "id": 2,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": true,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 36,
+       "endCol": 42,
+       "file": "/usr/include/c++/v1/__vector/vector.h",
+       "isMainFile": false,
+       "line": 583
+      },
+      "name": "__cap_",
+      "offsetBits": 128,
+      "recordId": null,
+      "sizeBits": 64,
+      "typeSpelling": "pointer"
+     },
+     {
+      "access": "private",
+      "alignBits": 8,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "class std::allocator<int>",
+      "explicitAlignBits": null,
+      "id": 3,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": true,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 70,
+       "endCol": 78,
+       "file": "/usr/include/c++/v1/__vector/vector.h",
+       "isMainFile": false,
+       "line": 583
+      },
+      "name": "__alloc_",
+      "offsetBits": 0,
+      "recordId": 1,
+      "sizeBits": 8,
+      "typeSpelling": "allocator_type"
+     }
+    ],
+    "id": 10,
+    "isAnonymous": false,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": false,
+    "kind": "class",
+    "location": {
+     "col": 7,
+     "endCol": 13,
+     "file": "/usr/include/c++/v1/__vector/vector.h",
+     "isMainFile": false,
+     "line": 87
+    },
+    "name": "vector",
+    "nonVirtualAlignBits": 64,
+    "nonVirtualSizeBits": 192,
+    "paddingBits": 0,
+    "paddingRuns": [],
+    "parentRecordId": null,
+    "preferredAlignBits": 64,
+    "printedName": "class std::vector<int>",
+    "qualifiedName": "std::vector",
+    "range": {
+     "col": 1,
+     "endCol": 2,
+     "endLine": 845,
+     "line": 86
+    },
+    "render": {
+     "groups": [],
+     "leaves": [
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 11,
+        "endCol": 19,
+        "file": "/usr/include/c++/v1/__vector/vector.h",
+        "isMainFile": false,
+        "line": 581
+       },
+       "name": "__begin_",
+       "offsetBits": 0,
+       "ownerId": 10,
+       "ownerName": "vector",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "pointer"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 11,
+        "endCol": 17,
+        "file": "/usr/include/c++/v1/__vector/vector.h",
+        "isMainFile": false,
+        "line": 582
+       },
+       "name": "__end_",
+       "offsetBits": 64,
+       "ownerId": 10,
+       "ownerName": "vector",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "pointer"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 36,
+        "endCol": 42,
+        "file": "/usr/include/c++/v1/__vector/vector.h",
+        "isMainFile": false,
+        "line": 583
+       },
+       "name": "__cap_",
+       "offsetBits": 128,
+       "ownerId": 10,
+       "ownerName": "vector",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "pointer"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 70,
+        "endCol": 78,
+        "file": "/usr/include/c++/v1/__vector/vector.h",
+        "isMainFile": false,
+        "line": 583
+       },
+       "name": "__alloc_",
+       "offsetBits": 0,
+       "ownerId": 10,
+       "ownerName": "vector",
+       "path": [],
+       "sharesAddress": true,
+       "sizeBits": 0,
+       "type": "allocator_type"
+      }
+     ],
+     "markers": [],
+     "paddingBytes": 0,
+     "paddingRuns": [],
+     "tree": [
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 0
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 3
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 1
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 2
+      }
+     ]
+    },
+    "sizeBits": 192,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 64,
+    "bases": [],
+    "dataSizeBits": 192,
+    "fields": [
+     {
+      "access": "private",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "unsigned long long *",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 21,
+       "endCol": 29,
+       "file": "/usr/include/c++/v1/__vector/vector_bool.h",
+       "isMainFile": false,
+       "line": 101
+      },
+      "name": "__begin_",
+      "offsetBits": 0,
+      "recordId": null,
+      "sizeBits": 64,
+      "typeSpelling": "__storage_pointer"
+     },
+     {
+      "access": "private",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "unsigned long long",
+      "explicitAlignBits": null,
+      "id": 1,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 13,
+       "endCol": 20,
+       "file": "/usr/include/c++/v1/__vector/vector_bool.h",
+       "isMainFile": false,
+       "line": 102
+      },
+      "name": "__size_",
+      "offsetBits": 64,
+      "recordId": null,
+      "sizeBits": 64,
+      "typeSpelling": "size_type"
+     },
+     {
+      "access": "private",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "unsigned long long",
+      "explicitAlignBits": null,
+      "id": 2,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": true,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 38,
+       "endCol": 44,
+       "file": "/usr/include/c++/v1/__vector/vector_bool.h",
+       "isMainFile": false,
+       "line": 103
+      },
+      "name": "__cap_",
+      "offsetBits": 128,
+      "recordId": null,
+      "sizeBits": 64,
+      "typeSpelling": "size_type"
+     },
+     {
+      "access": "private",
+      "alignBits": 8,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "class std::allocator<unsigned long long>",
+      "explicitAlignBits": null,
+      "id": 3,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": true,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 67,
+       "endCol": 75,
+       "file": "/usr/include/c++/v1/__vector/vector_bool.h",
+       "isMainFile": false,
+       "line": 103
+      },
+      "name": "__alloc_",
+      "offsetBits": 0,
+      "recordId": 2,
+      "sizeBits": 8,
+      "typeSpelling": "__storage_allocator"
+     }
+    ],
+    "id": 11,
+    "isAnonymous": false,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": false,
+    "kind": "class",
+    "location": {
+     "col": 7,
+     "endCol": 13,
+     "file": "/usr/include/c++/v1/__vector/vector_bool.h",
+     "isMainFile": false,
+     "line": 79
+    },
+    "name": "vector",
+    "nonVirtualAlignBits": 64,
+    "nonVirtualSizeBits": 192,
+    "paddingBits": 0,
+    "paddingRuns": [],
+    "parentRecordId": null,
+    "preferredAlignBits": 64,
+    "printedName": "class std::vector<bool>",
+    "qualifiedName": "std::vector",
+    "range": {
+     "col": 1,
+     "endCol": 2,
+     "endLine": 538,
+     "line": 78
+    },
+    "render": {
+     "groups": [],
+     "leaves": [
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 21,
+        "endCol": 29,
+        "file": "/usr/include/c++/v1/__vector/vector_bool.h",
+        "isMainFile": false,
+        "line": 101
+       },
+       "name": "__begin_",
+       "offsetBits": 0,
+       "ownerId": 11,
+       "ownerName": "vector",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "__storage_pointer"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 13,
+        "endCol": 20,
+        "file": "/usr/include/c++/v1/__vector/vector_bool.h",
+        "isMainFile": false,
+        "line": 102
+       },
+       "name": "__size_",
+       "offsetBits": 64,
+       "ownerId": 11,
+       "ownerName": "vector",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "size_type"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 38,
+        "endCol": 44,
+        "file": "/usr/include/c++/v1/__vector/vector_bool.h",
+        "isMainFile": false,
+        "line": 103
+       },
+       "name": "__cap_",
+       "offsetBits": 128,
+       "ownerId": 11,
+       "ownerName": "vector",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "size_type"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 67,
+        "endCol": 75,
+        "file": "/usr/include/c++/v1/__vector/vector_bool.h",
+        "isMainFile": false,
+        "line": 103
+       },
+       "name": "__alloc_",
+       "offsetBits": 0,
+       "ownerId": 11,
+       "ownerName": "vector",
+       "path": [],
+       "sharesAddress": true,
+       "sizeBits": 0,
+       "type": "__storage_allocator"
+      }
+     ],
+     "markers": [],
+     "paddingBytes": 0,
+     "paddingRuns": [],
+     "tree": [
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 0
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 3
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 1
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 2
+      }
+     ]
+    },
+    "sizeBits": 192,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 64,
+    "bases": [],
+    "dataSizeBits": 576,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "std::string",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 15,
+       "endCol": 16,
+       "file": "input.cc",
+       "isMainFile": true,
+       "line": 5
+      },
+      "name": "s",
+      "offsetBits": 0,
+      "recordId": 3,
+      "sizeBits": 192,
+      "typeSpelling": "std::string"
+     },
+     {
+      "access": "public",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "class std::vector<int>",
+      "explicitAlignBits": null,
+      "id": 1,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 20,
+       "endCol": 21,
+       "file": "input.cc",
+       "isMainFile": true,
+       "line": 6
+      },
+      "name": "v",
+      "offsetBits": 192,
+      "recordId": 10,
+      "sizeBits": 192,
+      "typeSpelling": "std::vector<int>"
+     },
+     {
+      "access": "public",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "class std::vector<bool>",
+      "explicitAlignBits": null,
+      "id": 2,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 21,
+       "endCol": 23,
+       "file": "input.cc",
+       "isMainFile": true,
+       "line": 7
+      },
+      "name": "vb",
+      "offsetBits": 384,
+      "recordId": 11,
+      "sizeBits": 192,
+      "typeSpelling": "std::vector<bool>"
+     }
+    ],
+    "id": 12,
+    "isAnonymous": false,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": true,
+    "kind": "struct",
+    "location": {
+     "col": 8,
+     "endCol": 13,
+     "file": "input.cc",
+     "isMainFile": true,
+     "line": 4
+    },
+    "name": "Probe",
+    "nonVirtualAlignBits": 64,
+    "nonVirtualSizeBits": 576,
+    "paddingBits": 0,
+    "paddingRuns": [],
+    "parentRecordId": null,
+    "preferredAlignBits": 64,
+    "printedName": "struct Probe",
+    "qualifiedName": "Probe",
+    "range": {
+     "col": 1,
+     "endCol": 2,
+     "endLine": 8,
+     "line": 4
+    },
+    "render": {
+     "groups": [
+      {
+       "alignBits": 8,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        0,
+        1
+       ],
+       "location": {
+        "col": 5,
+        "endCol": 11,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 895
+       },
+       "name": "(anonymous)",
+       "offsetBits": 0,
+       "ownerId": 6,
+       "ownerName": "__short",
+       "path": [
+        "s",
+        "__rep_",
+        "__s"
+       ],
+       "recordId": 7,
+       "sizeBits": 8,
+       "type": "struct (anonymous at /usr/include/c++/v1/string:895:5)",
+       "typeSizeBits": 8
+      },
+      {
+       "alignBits": 8,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        0,
+        1,
+        2,
+        3
+       ],
+       "location": {
+        "col": 13,
+        "endCol": 16,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 908
+       },
+       "name": "__s",
+       "offsetBits": 0,
+       "ownerId": 8,
+       "ownerName": "__rep",
+       "path": [
+        "s",
+        "__rep_"
+       ],
+       "recordId": 6,
+       "sizeBits": 192,
+       "type": "__short",
+       "typeSizeBits": 192
+      },
+      {
+       "alignBits": 8,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        4,
+        5
+       ],
+       "location": {
+        "col": 5,
+        "endCol": 11,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 884
+       },
+       "name": "(anonymous)",
+       "offsetBits": 0,
+       "ownerId": 4,
+       "ownerName": "__long",
+       "path": [
+        "s",
+        "__rep_",
+        "__l"
+       ],
+       "recordId": 5,
+       "sizeBits": 64,
+       "type": "struct (anonymous at /usr/include/c++/v1/string:884:5)",
+       "typeSizeBits": 64
+      },
+      {
+       "alignBits": 64,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        4,
+        5,
+        6,
+        7
+       ],
+       "location": {
+        "col": 12,
+        "endCol": 15,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 909
+       },
+       "name": "__l",
+       "offsetBits": 0,
+       "ownerId": 8,
+       "ownerName": "__rep",
+       "path": [
+        "s",
+        "__rep_"
+       ],
+       "recordId": 4,
+       "sizeBits": 192,
+       "type": "__long",
+       "typeSizeBits": 192
+      },
+      {
+       "alignBits": 64,
+       "isBase": false,
+       "isUnion": true,
+       "kind": "member",
+       "leafIndexes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+       ],
+       "location": {
+        "col": 34,
+        "endCol": 40,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 917
+       },
+       "name": "__rep_",
+       "offsetBits": 0,
+       "ownerId": 3,
+       "ownerName": "basic_string",
+       "path": [
+        "s"
+       ],
+       "recordId": 8,
+       "sizeBits": 192,
+       "type": "__rep",
+       "typeSizeBits": 192
+      },
+      {
+       "alignBits": 64,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+       ],
+       "location": {
+        "col": 15,
+        "endCol": 16,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 5
+       },
+       "name": "s",
+       "offsetBits": 0,
+       "ownerId": 12,
+       "ownerName": "Probe",
+       "path": [],
+       "recordId": 3,
+       "sizeBits": 192,
+       "type": "std::string",
+       "typeSizeBits": 192
+      },
+      {
+       "alignBits": 64,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        9,
+        10,
+        11,
+        12
+       ],
+       "location": {
+        "col": 20,
+        "endCol": 21,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 6
+       },
+       "name": "v",
+       "offsetBits": 192,
+       "ownerId": 12,
+       "ownerName": "Probe",
+       "path": [],
+       "recordId": 10,
+       "sizeBits": 192,
+       "type": "std::vector<int>",
+       "typeSizeBits": 192
+      },
+      {
+       "alignBits": 64,
+       "isBase": false,
+       "isUnion": false,
+       "kind": "member",
+       "leafIndexes": [
+        13,
+        14,
+        15,
+        16
+       ],
+       "location": {
+        "col": 21,
+        "endCol": 23,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 7
+       },
+       "name": "vb",
+       "offsetBits": 384,
+       "ownerId": 12,
+       "ownerName": "Probe",
+       "path": [],
+       "recordId": 11,
+       "sizeBits": 192,
+       "type": "std::vector<bool>",
+       "typeSizeBits": 192
+      }
+     ],
+     "leaves": [
+      {
+       "alignBits": 0,
+       "kind": "bitfield",
+       "location": {
+        "col": 21,
+        "endCol": 31,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 896
+       },
+       "name": "__is_long_",
+       "offsetBits": 0,
+       "ownerId": 7,
+       "ownerName": "",
+       "path": [
+        "s",
+        "__rep_",
+        "__s",
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 1,
+       "type": "unsigned char"
+      },
+      {
+       "alignBits": 0,
+       "kind": "bitfield",
+       "location": {
+        "col": 21,
+        "endCol": 28,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 897
+       },
+       "name": "__size_",
+       "offsetBits": 1,
+       "ownerId": 7,
+       "ownerName": "",
+       "path": [
+        "s",
+        "__rep_",
+        "__s",
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 7,
+       "type": "unsigned char"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 65,
+        "endCol": 75,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 899
+       },
+       "name": "__padding_",
+       "offsetBits": 0,
+       "ownerId": 6,
+       "ownerName": "__short",
+       "path": [
+        "s",
+        "__rep_",
+        "__s"
+       ],
+       "sharesAddress": true,
+       "sizeBits": 0,
+       "type": "__padding<sizeof(value_type) - 1>"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 16,
+        "endCol": 23,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 900
+       },
+       "name": "__data_",
+       "offsetBits": 8,
+       "ownerId": 6,
+       "ownerName": "__short",
+       "path": [
+        "s",
+        "__rep_",
+        "__s"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 184,
+       "type": "value_type[23]"
+      },
+      {
+       "alignBits": 0,
+       "kind": "bitfield",
+       "location": {
+        "col": 17,
+        "endCol": 27,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 885
+       },
+       "name": "__is_long_",
+       "offsetBits": 0,
+       "ownerId": 5,
+       "ownerName": "",
+       "path": [
+        "s",
+        "__rep_",
+        "__l",
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 1,
+       "type": "size_type"
+      },
+      {
+       "alignBits": 0,
+       "kind": "bitfield",
+       "location": {
+        "col": 17,
+        "endCol": 23,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 886
+       },
+       "name": "__cap_",
+       "offsetBits": 1,
+       "ownerId": 5,
+       "ownerName": "",
+       "path": [
+        "s",
+        "__rep_",
+        "__l",
+        "(anonymous)"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 63,
+       "type": "size_type"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 15,
+        "endCol": 22,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 888
+       },
+       "name": "__size_",
+       "offsetBits": 64,
+       "ownerId": 4,
+       "ownerName": "__long",
+       "path": [
+        "s",
+        "__rep_",
+        "__l"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "size_type"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 13,
+        "endCol": 20,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 889
+       },
+       "name": "__data_",
+       "offsetBits": 128,
+       "ownerId": 4,
+       "ownerName": "__long",
+       "path": [
+        "s",
+        "__rep_",
+        "__l"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "pointer"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 58,
+        "endCol": 66,
+        "file": "/usr/include/c++/v1/string",
+        "isMainFile": false,
+        "line": 917
+       },
+       "name": "__alloc_",
+       "offsetBits": 0,
+       "ownerId": 3,
+       "ownerName": "basic_string",
+       "path": [
+        "s"
+       ],
+       "sharesAddress": true,
+       "sizeBits": 0,
+       "type": "allocator_type"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 11,
+        "endCol": 19,
+        "file": "/usr/include/c++/v1/__vector/vector.h",
+        "isMainFile": false,
+        "line": 581
+       },
+       "name": "__begin_",
+       "offsetBits": 192,
+       "ownerId": 10,
+       "ownerName": "vector",
+       "path": [
+        "v"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "pointer"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 11,
+        "endCol": 17,
+        "file": "/usr/include/c++/v1/__vector/vector.h",
+        "isMainFile": false,
+        "line": 582
+       },
+       "name": "__end_",
+       "offsetBits": 256,
+       "ownerId": 10,
+       "ownerName": "vector",
+       "path": [
+        "v"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "pointer"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 36,
+        "endCol": 42,
+        "file": "/usr/include/c++/v1/__vector/vector.h",
+        "isMainFile": false,
+        "line": 583
+       },
+       "name": "__cap_",
+       "offsetBits": 320,
+       "ownerId": 10,
+       "ownerName": "vector",
+       "path": [
+        "v"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "pointer"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 70,
+        "endCol": 78,
+        "file": "/usr/include/c++/v1/__vector/vector.h",
+        "isMainFile": false,
+        "line": 583
+       },
+       "name": "__alloc_",
+       "offsetBits": 192,
+       "ownerId": 10,
+       "ownerName": "vector",
+       "path": [
+        "v"
+       ],
+       "sharesAddress": true,
+       "sizeBits": 0,
+       "type": "allocator_type"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 21,
+        "endCol": 29,
+        "file": "/usr/include/c++/v1/__vector/vector_bool.h",
+        "isMainFile": false,
+        "line": 101
+       },
+       "name": "__begin_",
+       "offsetBits": 384,
+       "ownerId": 11,
+       "ownerName": "vector",
+       "path": [
+        "vb"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "__storage_pointer"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 13,
+        "endCol": 20,
+        "file": "/usr/include/c++/v1/__vector/vector_bool.h",
+        "isMainFile": false,
+        "line": 102
+       },
+       "name": "__size_",
+       "offsetBits": 448,
+       "ownerId": 11,
+       "ownerName": "vector",
+       "path": [
+        "vb"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "size_type"
+      },
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 38,
+        "endCol": 44,
+        "file": "/usr/include/c++/v1/__vector/vector_bool.h",
+        "isMainFile": false,
+        "line": 103
+       },
+       "name": "__cap_",
+       "offsetBits": 512,
+       "ownerId": 11,
+       "ownerName": "vector",
+       "path": [
+        "vb"
+       ],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "size_type"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 67,
+        "endCol": 75,
+        "file": "/usr/include/c++/v1/__vector/vector_bool.h",
+        "isMainFile": false,
+        "line": 103
+       },
+       "name": "__alloc_",
+       "offsetBits": 384,
+       "ownerId": 11,
+       "ownerName": "vector",
+       "path": [
+        "vb"
+       ],
+       "sharesAddress": true,
+       "sizeBits": 0,
+       "type": "__storage_allocator"
+      }
+     ],
+     "markers": [],
+     "paddingBytes": 0,
+     "paddingRuns": [],
+     "tree": [
+      {
+       "children": [
+        {
+         "children": [
+          {
+           "children": [
+            {
+             "children": [
+              {
+               "children": [],
+               "kind": "leaf",
+               "overlaps": false,
+               "ref": 0
+              },
+              {
+               "children": [],
+               "kind": "leaf",
+               "overlaps": false,
+               "ref": 1
+              }
+             ],
+             "kind": "group",
+             "overlaps": false,
+             "ref": 0
+            },
+            {
+             "children": [],
+             "kind": "leaf",
+             "overlaps": false,
+             "ref": 2
+            },
+            {
+             "children": [],
+             "kind": "leaf",
+             "overlaps": false,
+             "ref": 3
+            }
+           ],
+           "kind": "group",
+           "overlaps": true,
+           "ref": 1
+          },
+          {
+           "children": [
+            {
+             "children": [
+              {
+               "children": [],
+               "kind": "leaf",
+               "overlaps": false,
+               "ref": 4
+              },
+              {
+               "children": [],
+               "kind": "leaf",
+               "overlaps": false,
+               "ref": 5
+              }
+             ],
+             "kind": "group",
+             "overlaps": false,
+             "ref": 2
+            },
+            {
+             "children": [],
+             "kind": "leaf",
+             "overlaps": false,
+             "ref": 6
+            },
+            {
+             "children": [],
+             "kind": "leaf",
+             "overlaps": false,
+             "ref": 7
+            }
+           ],
+           "kind": "group",
+           "overlaps": true,
+           "ref": 3
+          }
+         ],
+         "kind": "group",
+         "overlaps": false,
+         "ref": 4
+        },
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 8
+        }
+       ],
+       "kind": "group",
+       "overlaps": false,
+       "ref": 5
+      },
+      {
+       "children": [
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 9
+        },
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 12
+        },
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 10
+        },
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 11
+        }
+       ],
+       "kind": "group",
+       "overlaps": false,
+       "ref": 6
+      },
+      {
+       "children": [
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 13
+        },
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 16
+        },
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 14
+        },
+        {
+         "children": [],
+         "kind": "leaf",
+         "overlaps": false,
+         "ref": 15
+        }
+       ],
+       "kind": "group",
+       "overlaps": false,
+       "ref": 7
+      }
+     ]
+    },
+    "sizeBits": 576,
+    "vtableSlots": []
+   }
+  ],
+  "target": {
+   "charSizeBits": 8,
+   "cxxAbi": "microsoft",
+   "intSizeBits": 32,
+   "isLittleEndian": true,
+   "longLongSizeBits": 64,
+   "longSizeBits": 32,
+   "normalizedTriple": "x86_64-pc-windows-msvc19.33.0",
+   "pointerAlignBits": 64,
+   "pointerSizeBits": 64,
+   "shortSizeBits": 16,
+   "triple": "x86_64-pc-windows-msvc"
+  },
+  "typedefs": []
+ }
+}

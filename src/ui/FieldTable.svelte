@@ -9,7 +9,7 @@
   const HEAD = {
     offset: 'Bytes from the start of this record to where the member begins.',
     size:
-      'Bytes the member occupies *inside this record*. Not always sizeof(its type): a base ' +
+      'Bytes the member occupies inside this record. Not always sizeof(its type): a base ' +
       'can have its tail padding reused, an empty member sharing an address occupies none, ' +
       'and a bit-field is measured in bits.',
     align: 'The address boundary this member must start on.',

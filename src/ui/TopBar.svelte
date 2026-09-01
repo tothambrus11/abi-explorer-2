@@ -2,10 +2,15 @@
   import ThemeMenu from './ThemeMenu.svelte';
   import { store } from '$state/store.svelte';
   import LayoutTemplate from '@lucide/svelte/icons/layout-template';
+  import Undo from '@lucide/svelte/icons/undo';
+  import Redo from '@lucide/svelte/icons/redo';
   import type { Session } from '$state/session.svelte';
   const { session, onResetLayout }: { session: Session; onResetLayout: () => void } = $props();
   import { tooltip } from './tooltip';
   let copied = $state<'idle' | 'ok' | 'fail'>('idle');
+  /** What to call the platform's modifier in a tooltip. */
+  const mod =
+    typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
   async function share() {
     try {
       // Encode the current state now: the address bar lags behind (debounced).
@@ -22,6 +27,30 @@
   <div class="brand">
     <img class="brand-mark" src="/icons/icon.svg" alt="" width="20" height="20" />
     <h1>ABI Explorer</h1>
+  </div>
+  <!-- Beside the title rather than among the actions on the right: these undo
+       what you just did, so they belong where the eye already is. -->
+  <div class="history">
+    <button
+      id="undo"
+      class="icon-btn"
+      onclick={() => {
+        session.undo();
+      }}
+      disabled={!session.history.canUndo}
+      aria-label="Undo"
+      use:tooltip={`Undo (${mod}Z)`}><Undo size={16} /></button
+    >
+    <button
+      id="redo"
+      class="icon-btn"
+      onclick={() => {
+        session.redo();
+      }}
+      disabled={!session.history.canRedo}
+      aria-label="Redo"
+      use:tooltip={`Redo (${mod}⇧Z)`}><Redo size={16} /></button
+    >
   </div>
   <div class="actions">
     <button
@@ -75,6 +104,21 @@
 </header>
 
 <style>
+  /* Beside the title, not adrift between it and the actions: the bar is
+     `space-between`, so a third child would otherwise be pushed to the middle.
+     `margin-right: auto` gives it the slack instead, keeping it left. */
+  .history {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: 4px;
+    margin-right: auto;
+  }
+  .history button[disabled] {
+    opacity: 0.4;
+    cursor: default;
+  }
+
   .topbar {
     display: flex;
     align-items: center;

@@ -1,6 +1,13 @@
 // Shared domain types.
 
-export type RecordKind = 'struct' | 'union' | 'class' | '__interface' | 'interface';
+/**
+ * What a record is called where it was declared.
+ *
+ * `enum` is Hylo's sum type, not C's: its cases are stored one over another,
+ * which is what a union is here, but calling it one on screen would name a
+ * thing the language does not have.
+ */
+export type RecordKind = 'struct' | 'union' | 'class' | '__interface' | 'interface' | 'enum';
 
 /**
  * What a compound member is. `member` is a record-typed field or an anonymous

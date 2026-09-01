@@ -1,0 +1,253 @@
+{
+ "source": "struct Empty {};\n\nstruct WithEbo : Empty {    /* empty base optimization */\n  char c;\n};\n",
+ "options": {
+  "lang": "c++",
+  "std": "gnu++26",
+  "triple": "x86_64-pc-windows-msvc",
+  "pack": "",
+  "msBitfields": false,
+  "shortEnums": false,
+  "shortWchar": false,
+  "warnPadded": false,
+  "extraFlags": ""
+ },
+ "response": {
+  "clangVersion": "clang version 22.1.8 (https://github.com/llvm/llvm-project.git ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)",
+  "diagnostics": [],
+  "diagnosticsText": "",
+  "error": null,
+  "exitCode": 0,
+  "headers": {
+   "cLibrary": "musl",
+   "cLibraryArch": "generic",
+   "cxxLibrary": "libc++",
+   "localization": false,
+   "threads": true
+  },
+  "ok": true,
+  "records": [
+   {
+    "alignBits": 8,
+    "bases": [],
+    "dataSizeBits": 0,
+    "fields": [],
+    "id": 0,
+    "isAnonymous": false,
+    "isEmpty": true,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": true,
+    "kind": "struct",
+    "location": {
+     "col": 8,
+     "endCol": 13,
+     "file": "input.cc",
+     "isMainFile": true,
+     "line": 1
+    },
+    "name": "Empty",
+    "nonVirtualAlignBits": 8,
+    "nonVirtualSizeBits": 0,
+    "paddingBits": 8,
+    "paddingRuns": [
+     {
+      "endBits": 8,
+      "startBits": 0
+     }
+    ],
+    "parentRecordId": null,
+    "preferredAlignBits": 8,
+    "printedName": "struct Empty",
+    "qualifiedName": "Empty",
+    "range": {
+     "col": 1,
+     "endCol": 16,
+     "endLine": 1,
+     "line": 1
+    },
+    "render": {
+     "groups": [],
+     "leaves": [],
+     "markers": [],
+     "paddingBytes": 1,
+     "paddingRuns": [
+      {
+       "endBits": 8,
+       "startBits": 0
+      }
+     ],
+     "tree": []
+    },
+    "sizeBits": 8,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 8,
+    "bases": [
+     {
+      "access": "public",
+      "isEmpty": true,
+      "isPrimary": false,
+      "isVirtual": false,
+      "location": {
+       "col": 18,
+       "endCol": 23,
+       "endLine": 3,
+       "line": 3
+      },
+      "offsetBits": 0,
+      "recordId": 0,
+      "sizeBits": 0,
+      "typeSizeBits": 8,
+      "typeSpelling": "Empty"
+     }
+    ],
+    "dataSizeBits": 8,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 8,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "char",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 8,
+       "endCol": 9,
+       "file": "input.cc",
+       "isMainFile": true,
+       "line": 4
+      },
+      "name": "c",
+      "offsetBits": 0,
+      "recordId": null,
+      "sizeBits": 8,
+      "typeSpelling": "char"
+     }
+    ],
+    "id": 1,
+    "isAnonymous": false,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": true,
+    "kind": "struct",
+    "location": {
+     "col": 8,
+     "endCol": 15,
+     "file": "input.cc",
+     "isMainFile": true,
+     "line": 3
+    },
+    "name": "WithEbo",
+    "nonVirtualAlignBits": 8,
+    "nonVirtualSizeBits": 8,
+    "paddingBits": 0,
+    "paddingRuns": [],
+    "parentRecordId": null,
+    "preferredAlignBits": 8,
+    "printedName": "struct WithEbo",
+    "qualifiedName": "WithEbo",
+    "range": {
+     "col": 1,
+     "endCol": 2,
+     "endLine": 5,
+     "line": 3
+    },
+    "render": {
+     "groups": [
+      {
+       "alignBits": 8,
+       "isBase": true,
+       "isUnion": false,
+       "kind": "base",
+       "leafIndexes": [],
+       "location": {
+        "col": 18,
+        "endCol": 23,
+        "endLine": 3,
+        "line": 3
+       },
+       "name": "Empty",
+       "offsetBits": 0,
+       "ownerId": 1,
+       "ownerName": "WithEbo",
+       "path": [],
+       "recordId": 0,
+       "sizeBits": 0,
+       "type": "Empty",
+       "typeSizeBits": 8
+      }
+     ],
+     "leaves": [
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 8,
+        "endCol": 9,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 4
+       },
+       "name": "c",
+       "offsetBits": 0,
+       "ownerId": 1,
+       "ownerName": "WithEbo",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 8,
+       "type": "char"
+      }
+     ],
+     "markers": [
+      {
+       "kind": "empty-base",
+       "name": "Empty",
+       "offsetBits": 0,
+       "path": [],
+       "type": "Empty"
+      }
+     ],
+     "paddingBytes": 0,
+     "paddingRuns": [],
+     "tree": [
+      {
+       "children": [],
+       "kind": "group",
+       "overlaps": false,
+       "ref": 0
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 0
+      }
+     ]
+    },
+    "sizeBits": 8,
+    "vtableSlots": []
+   }
+  ],
+  "target": {
+   "charSizeBits": 8,
+   "cxxAbi": "microsoft",
+   "intSizeBits": 32,
+   "isLittleEndian": true,
+   "longLongSizeBits": 64,
+   "longSizeBits": 32,
+   "normalizedTriple": "x86_64-pc-windows-msvc19.33.0",
+   "pointerAlignBits": 64,
+   "pointerSizeBits": 64,
+   "shortSizeBits": 16,
+   "triple": "x86_64-pc-windows-msvc"
+  },
+  "typedefs": []
+ }
+}

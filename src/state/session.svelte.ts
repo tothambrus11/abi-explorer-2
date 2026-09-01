@@ -32,6 +32,7 @@ import { computeAnalysisStatus } from './status';
 import { declLineFor } from './inspected-record';
 import { grantConsent, shouldAskBeforeDownload } from './download-gate';
 import { buildLineIndex, type LineIndex, type LineInfo } from './code-locations';
+import { History, historyIntent } from './history.svelte';
 
 export type { LineInfo };
 
@@ -125,8 +126,36 @@ export class Session {
   /** Record owning the hovered line, for record-follows-cursor in tabs mode. */
   private readonly hoverPrimary: string | null = $derived(hoveredPrimary(this.hoverInputs));
 
+  /**
+   * Undo and redo over the source and the options together. In memory only:
+   * see `history.svelte`.
+   */
+  readonly history = new History({ source: store.source, options: { ...store.options } });
+
   constructor(private readonly backends: Backends) {
     this.analyzer = new AbiAnalyzer(backends);
+  }
+
+  /** Puts back the previous state, if there is one. */
+  undo(): void {
+    this.apply(this.history.undo());
+  }
+
+  /** Puts back the state undone out of most recently, if there is one. */
+  redo(): void {
+    this.apply(this.history.redo());
+  }
+
+  private apply(s: { source: string; options: CompileOptions } | null): void {
+    if (!s) return;
+    // Guarded, so the effect that watches the store does not record putting a
+    // state back as a new state to come back to.
+    this.history.applying = true;
+    store.source = s.source;
+    store.options = { ...s.options };
+    store.selectedRecord = null;
+    // Cleared after the effects that read them have run.
+    queueMicrotask(() => (this.history.applying = false));
   }
 
   /**
@@ -156,7 +185,26 @@ export class Session {
       store.compiler = s;
     });
 
+    // Captured, so it runs before the editor's own undo. Monaco has a stack of
+    // its own and it knows only about text; letting it win would undo the
+    // characters while leaving the option change that came after them.
+    const onKey = (e: KeyboardEvent) => {
+      const intent = historyIntent(e);
+      if (!intent) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (intent === 'undo') this.undo();
+      else this.redo();
+    };
+    window.addEventListener('keydown', onKey, { capture: true });
+
     const stopRoot = $effect.root(() => {
+      // Every state the user arrives at, recorded so they can come back to it.
+      // Reading both halves is what subscribes to both.
+      $effect(() => {
+        const snapshot = { source: store.source, options: { ...store.options } };
+        this.history.record(snapshot);
+      });
       // Drive the query from source/options. This effect also tracks the
       // module's status, which changes on every progress tick during the
       // download. Dedup-by-input is what keeps that from turning into a
@@ -238,6 +286,7 @@ export class Session {
     });
 
     this.cleanup = () => {
+      window.removeEventListener('keydown', onKey, { capture: true });
       offStatus();
       stopRoot();
       this.compile.dispose();
@@ -255,6 +304,7 @@ export class Session {
     // A shared link's view mode applies to this visit only; it must not
     // overwrite the visitor's own persisted preference.
     store.view = s.view;
+    this.history.reset({ source: store.source, options: { ...store.options } });
     return true;
   }
 
@@ -405,17 +455,35 @@ export class Session {
       lines: this.index,
       knownSpellings: this.knownSpellings,
     });
-    if (!subject) return null; // member names, keywords, numbers…: no query for these
-    if (subject.kind === 'records') {
-      return subject.records.map((r) => describeRecord(r)).join('\n\n---\n\n');
+    if (subject?.kind === 'records') {
+      return subject.records
+        .map((r) => describeRecord(r, analysis.options.lang))
+        .join('\n\n---\n\n');
     }
+
+    // Hylo answers about the cursor rather than about a spelling, which is what
+    // lets it describe a type this source does not declare: `Int` belongs to
+    // another module, so it is in no spelling here and no record this query
+    // returned, but the compiler assigned it to the tree under the cursor.
+    if (analysis.options.lang === 'hylo') {
+      const at = await this.analyzer
+        .probeTypeAt(analysis, line - 1, word.startColumn - 1, signal)
+        .catch(() => null);
+      if (!at) return null;
+      // The same card a record declared here gets. There is nothing a Hylo
+      // cursor knows less about than a declaration does, so there is no reason
+      // for two cards.
+      return describeRecord(at, analysis.options.lang);
+    }
+
+    if (!subject) return null; // member names, keywords, numbers…: no query for these
     // A spelling probe is a full re-parse of the user's TU; pass the hover's
     // cancellation on so an abandoned hover does not hold the single wasm clang.
     const measured = await this.analyzer
       .probeSpelling(analysis, subject.spelling, signal)
       .catch(() => null);
     if (!measured || measured.bits <= 0) return null;
-    return describeSpelling(subject.spelling, subject.alias, measured);
+    return describeSpelling(subject.spelling, subject.alias, measured, analysis.options.lang);
   }
 }
 

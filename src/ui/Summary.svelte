@@ -1,7 +1,12 @@
 <script lang="ts">
   import type { RenderModel } from '$core/types';
   import { tooltip } from './tooltip';
+  import { store } from '$state/store.svelte';
+  import { strideOf } from '$state/type-hover';
   const { model }: { model: RenderModel } = $props();
+  // `sizeof` and `alignof` are C operators; a Hylo type has a size and an
+  // alignment, and a stride, which C folds into `sizeof` and Hylo does not.
+  const hylo = $derived(store.options.lang === 'hylo');
   const fmt = new Intl.NumberFormat('en-US');
   const rec = $derived(model.record);
   // Null means the record was too big to scan for padding, which is a
@@ -30,20 +35,36 @@
 <div class="summary">
   <div
     class="tile"
-    use:tooltip={'sizeof: the bytes one object of this type takes, including any trailing padding. An array element is spaced by exactly this much.'}
+    use:tooltip={hylo
+      ? 'size: the bytes one instance of this type needs. Not the spacing in an array, which is the stride.'
+      : 'sizeof: the bytes one object of this type takes, including any trailing padding. An array element is spaced by exactly this much.'}
   >
-    <div class="label">sizeof</div>
+    <div class="label">{hylo ? 'size' : 'sizeof'}</div>
     <div class="value">{fmt.format(rec.sizeBytes)}</div>
     <div class="unit">bytes</div>
   </div>
   <div
     class="tile"
-    use:tooltip={'alignof: the address boundary an object of this type must start on.'}
+    use:tooltip={hylo
+      ? 'align: the address boundary an instance of this type must start on.'
+      : 'alignof: the address boundary an object of this type must start on.'}
   >
-    <div class="label">alignof</div>
+    <div class="label">{hylo ? 'align' : 'alignof'}</div>
     <div class="value">{fmt.format(rec.align)}</div>
     <div class="unit">bytes</div>
   </div>
+  {#if hylo}
+    <!-- The number C has no separate word for: its `sizeof` is already rounded
+         up to the alignment, and Hylo's size is not. -->
+    <div
+      class="tile"
+      use:tooltip={'stride: the bytes from one element to the next in an array, which is the size rounded up to the alignment.'}
+    >
+      <div class="label">stride</div>
+      <div class="value">{fmt.format(strideOf(rec.sizeBytes, rec.align))}</div>
+      <div class="unit">bytes</div>
+    </div>
+  {/if}
   <div
     class="tile"
     class:warn={padding !== null && padding > 0}

@@ -8,6 +8,7 @@
 
 import type { AnalysedRecord, Analysis } from '$compiler/AbiAnalyzer';
 import { directMembers } from '$core/render';
+import type { Language } from '$core/options';
 import type { LineInfo } from './code-locations';
 
 /** What a word at a position turned out to be. */
@@ -125,13 +126,44 @@ function spellingSubject(spelling: string, analysis: Analysis): Subject {
 }
 
 /** Markdown for a record: what it is, and the numbers worth the hover. */
-export function describeRecord(entry: AnalysedRecord): string {
+/**
+ * The bytes from one instance to the next in an array: the size rounded up to
+ * the alignment.
+ *
+ * Worth stating for Hylo and not for C, because Hylo's `size` is the bytes an
+ * instance actually needs and can be less than the step between two of them,
+ * where C's `sizeof` is already rounded up and the two are the same number.
+ */
+export function strideOf(size: number, align: number): number {
+  if (align <= 0) return size;
+  const over = size % align;
+  return over === 0 ? size : size + (align - over);
+}
+
+/**
+ * What to call a type's measurements.
+ *
+ * `sizeof` and `alignof` are C operators; writing them beside a Hylo type names
+ * something the language does not have.
+ */
+function vocabulary(lang: Language): { size: string; align: string; stride: boolean } {
+  return lang === 'hylo'
+    ? { size: 'size', align: 'align', stride: true }
+    : { size: 'sizeof', align: 'alignof', stride: false };
+}
+
+export function describeRecord(entry: AnalysedRecord, lang: Language): string {
   const r = entry.record;
   // Members of the record itself. A compound member counts once, not once per
   // field inside it.
   const n = directMembers(entry.model).filter((u) => !('kind' in u && u.kind === 'special')).length;
   const padding = entry.model.paddingBytes;
-  const rows = [`| sizeof | **${r.sizeBytes}** B |`, `| alignof | **${r.align}** B |`];
+  const word = vocabulary(lang);
+  const rows = [
+    `| ${word.size} | **${r.sizeBytes}** B |`,
+    `| ${word.align} | **${r.align}** B |`,
+  ];
+  if (word.stride) rows.push(`| stride | **${strideOf(r.sizeBytes, r.align)}** B |`);
   if (padding !== null) {
     const pct = r.sizeBytes ? ` (${Math.round((100 * padding) / r.sizeBytes)}%)` : '';
     rows.push(`| padding | ${padding} B${pct} |`);
@@ -147,8 +179,16 @@ export function describeSpelling(
   spelling: string,
   alias: string | null,
   measured: { bits: number; align: number },
+  lang: Language,
 ): string {
+  const word = vocabulary(lang);
   const size = measured.bits % 8 ? `${measured.bits} b` : `**${measured.bits / 8}** B`;
   const canon = alias && alias !== spelling ? `\n\n\`= ${alias}\`` : '';
-  return `**\`${spelling}\`**${canon}\n\n| | |\n|---|---|\n| sizeof | ${size} |\n| alignof | **${measured.align}** B |`;
+  const rows = [`| ${word.size} | ${size} |`, `| ${word.align} | **${measured.align}** B |`];
+  // Always, not only where it differs from the size: a card that drops a row
+  // when the number is unsurprising reads as a card that could not work it out.
+  if (word.stride && measured.bits % 8 === 0) {
+    rows.push(`| stride | **${strideOf(measured.bits / 8, measured.align)}** B |`);
+  }
+  return `**\`${spelling}\`**${canon}\n\n| | |\n|---|---|\n${rows.join('\n')}`;
 }

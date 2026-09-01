@@ -27,6 +27,12 @@ export interface AbiModule {
     lang?: Language;
     std?: string;
     flags?: string[];
+    /**
+     * A cursor, 0-based, whose type is being asked about rather than the whole
+     * source's. Only the Hylo backend answers this; clang's ignores it.
+     */
+    line?: number;
+    character?: number;
   }): Promise<WireResponse>;
   targets(): Promise<string[]>;
   version(): Promise<string>;
@@ -104,6 +110,7 @@ export function recordKey(r: { kind: string; name: string; dup?: number }): stri
 export class AbiAnalyzer {
   private readonly cache = new Map<string, Promise<Analysis>>();
   private readonly spellings = new Map<string, Promise<{ bits: number; align: number } | null>>();
+  private readonly positions = new Map<string, Promise<AnalysedRecord | null>>();
 
   constructor(private readonly module: AbiModule) {}
 
@@ -175,6 +182,52 @@ export class AbiAnalyzer {
     if (this.spellings.size > 512) this.spellings.clear();
     this.spellings.set(key, probe);
     return probe.then((r) => {
+      if (signal?.aborted) throw new DOMException('aborted', 'AbortError');
+      return r;
+    });
+  }
+
+  /**
+   * Size and alignment of the type at a position in the user's source.
+   *
+   * This is how a type the source does not itself declare gets an answer:
+   * `Int` is laid out by the Hylo compiler in a module of its own, so it is in
+   * no spelling this file mentions and no record this query returned. The
+   * compiler already assigned a type to the tree under the cursor, which is
+   * what an editor's hover reads, so the cursor is what gets asked about.
+   *
+   * Only Hylo answers positionally, and that is also why its answer is a whole
+   * record where clang's is a pair of numbers: clang's `probeSpelling` measures
+   * a *field* of a probe struct, from which nothing but a size and an alignment
+   * can be recovered, while a Hylo cursor is answered with the type's layout.
+   */
+  probeTypeAt(
+    analysis: Analysis,
+    line: number,
+    character: number,
+    signal?: AbortSignal,
+  ): Promise<AnalysedRecord | null> {
+    if (analysis.options.lang !== 'hylo') return Promise.resolve(null);
+
+    const key = `${this.key(analysis.source, analysis.options)}\0@${String(line)}:${String(character)}`;
+    const hit = this.positions.get(key);
+    if (hit) return hit;
+
+    const answer = this.module
+      .query({ ...this.request(analysis.source, analysis.options), line, character })
+      .then((response) => {
+        // Through the same mapping a whole query goes through, so that a type
+        // reached by a cursor is the same kind of thing as one declared here,
+        // and one card describes both. `records` holds only what the source
+        // wrote; a standard library type is in `byId` and nowhere else.
+        const at = toAnalysis(response, analysis.source, analysis.options);
+        return [...at.byId.values()][0] ?? null;
+      })
+      .catch(() => null);
+
+    if (this.positions.size > 512) this.positions.clear();
+    this.positions.set(key, answer);
+    return answer.then((r) => {
       if (signal?.aborted) throw new DOMException('aborted', 'AbortError');
       return r;
     });

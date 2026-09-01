@@ -161,6 +161,14 @@ class Store {
     if (!standardsFor(lang).includes(this.options.std)) this.options.std = defaultStdFor(lang);
   }
 
+  /**
+   * Loads an example, and the language it is written in if that is not the one
+   * selected.
+   *
+   * The language is only ever changed *towards* an example, never the other
+   * way: switching language leaves the buffer alone, because the text is the
+   * user's and replacing it is not something a radio button should do.
+   */
   loadExample(index: number): void {
     const ex = EXAMPLES[index];
     if (!ex) return;

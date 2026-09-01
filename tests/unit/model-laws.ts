@@ -21,6 +21,16 @@ export interface Subject {
   /** Where this model came from, so a failure names it. */
   label: string;
   model: RenderModel;
+  /**
+   * Whether the language stores members in the order they are declared.
+   *
+   * C does, so its tables read down the page as memory reads across, and a
+   * sibling out of offset order means the tree was built wrong. Hylo reorders
+   * members by decreasing alignment and the table stays in source order, which
+   * is the fact the table exists to show; the same check there would fail on
+   * every correct answer.
+   */
+  declarationIsStorageOrder?: boolean;
 }
 
 /** How the model labels a member with no name of its own. */
@@ -489,8 +499,9 @@ export function modelLaws(what: string, subjects: () => Subject[]): void {
       });
     });
 
-    it('orders siblings by where they start', () => {
-      forEvery(({ label, model }) => {
+    it('orders siblings by where they start, where the language does', () => {
+      forEvery(({ label, model, declarationIsStorageOrder = true }) => {
+        if (!declarationIsStorageOrder) return;
         const walk = (nodes: TreeNode[]): void => {
           const offsets = nodes.map((n) => n.offsetBits);
           expect(offsets, `${label}: siblings out of order`).toEqual(

@@ -15,6 +15,7 @@
 
 import type {
   WireDiagnostic,
+  WireGroup,
   WireLeaf,
   WireLocation,
   WireNode,
@@ -41,6 +42,15 @@ export interface HyloPart {
   /** Bytes. */
   alignment: number;
   site?: HyloRegion | null;
+  /**
+   * The parts of this part's own type, at offsets from the same instance.
+   *
+   * Absent from a module built before the compiler reported containment, which
+   * is why every read of it is optional: an older module still draws, flat.
+   */
+  parts?: HyloPart[];
+  /** Whether this part's type is an enum, whose own parts overlap. */
+  isEnum?: boolean;
 }
 
 /** One laid-out type. */
@@ -100,42 +110,104 @@ function paddingRuns(parts: HyloPart[], size: number): { startBits: number; endB
   return runs;
 }
 
+/**
+ * The leaves, groups and tree of one laid-out type.
+ *
+ * A part with parts of its own is a group, exactly as a record-typed member is
+ * in clang's answer, and its own parts are leaves beneath it. Expressing the
+ * two backends in one shape is what keeps the views from having to know which
+ * compiler answered: `model-laws` then holds both to the same rules.
+ */
+function build(
+  layout: HyloLayout,
+  id: number,
+): { leaves: WireLeaf[]; groups: WireGroup[]; tree: WireNode[] } {
+  const leaves: WireLeaf[] = [];
+  const groups: WireGroup[] = [];
+
+  // `path` names what *encloses* a member, not the member: a leaf directly in
+  // the record has an empty one, and a leaf inside `hdr` has `['hdr']`. The
+  // table indents by it, so including the member's own name indents it under
+  // itself.
+  const walk = (
+    parts: HyloPart[],
+    owner: string,
+    ancestors: string[],
+    isEnum: boolean,
+  ): WireNode[] => {
+    // An enum's payloads share an offset; the discriminator that follows them
+    // does not. `overlaps` is what tells the grid to stack them.
+    const discriminator = isEnum ? parts.length - 1 : -1;
+
+    return parts.map((p, i) => {
+      const overlaps = isEnum && i !== discriminator && parts.length > 2;
+      const nested = p.parts ?? [];
+
+      if (nested.length === 0) {
+        const ref = leaves.length;
+        leaves.push({
+          kind: 'field',
+          name: p.name,
+          type: p.type,
+          offsetBits: p.offset * 8,
+          sizeBits: p.size * 8,
+          alignBits: p.alignment * 8,
+          path: ancestors,
+          ownerId: id,
+          ownerName: owner,
+          // A zero-sized part occupies nothing, so nothing is drawn for it, but
+          // it still has an offset. `Void` payloads of an enum are the common case.
+          sharesAddress: p.size === 0,
+          location: location(p.site),
+        });
+        return { kind: 'leaf', ref, overlaps, children: [] };
+      }
+
+      // Reserve the group's index before walking into it, so a group is
+      // numbered above the groups it contains rather than below them.
+      const ref = groups.length;
+      groups.push(null as unknown as WireGroup);
+      const before = leaves.length;
+      const children = walk(nested, p.type, [...ancestors, p.name], p.isEnum ?? false);
+      groups[ref] = {
+        kind: 'member',
+        name: p.name,
+        type: p.type,
+        offsetBits: p.offset * 8,
+        sizeBits: p.size * 8,
+        typeSizeBits: p.size * 8,
+        alignBits: p.alignment * 8,
+        path: ancestors,
+        ownerId: id,
+        ownerName: owner,
+        recordId: null,
+        isBase: false,
+        isUnion: p.isEnum ?? false,
+        leafIndexes: Array.from({ length: leaves.length - before }, (_, k) => before + k),
+        location: location(p.site),
+      };
+      return { kind: 'group', ref, overlaps, children };
+    });
+  };
+
+  const tree = walk(layout.parts, layout.type, [], layout.isEnum);
+  return { leaves, groups, tree };
+}
+
+/** Every part, at any depth: what the byte grid and the padding scan read. */
+function flatten(parts: HyloPart[]): HyloPart[] {
+  return parts.flatMap((p) => [p, ...flatten(p.parts ?? [])]);
+}
+
 function toRecord(layout: HyloLayout, id: number): WireRecord {
-  const owner = layout.type;
-  // An enum's payloads share an offset; the discriminator that follows them
-  // does not. `overlaps` is what tells the grid to stack them.
-  const discriminator = layout.isEnum ? layout.parts.length - 1 : -1;
-
-  const leaves: WireLeaf[] = layout.parts.map((p) => ({
-    kind: 'field',
-    name: p.name,
-    type: p.type,
-    offsetBits: p.offset * 8,
-    sizeBits: p.size * 8,
-    alignBits: p.alignment * 8,
-    path: [p.name],
-    ownerId: id,
-    ownerName: owner,
-    // A zero-sized part occupies nothing, so nothing is drawn for it, but it
-    // still has an offset. `Void` payloads of an enum are the common case.
-    sharesAddress: p.size === 0,
-    location: location(p.site),
-  }));
-
-  const tree: WireNode[] = leaves.map((_, i) => ({
-    kind: 'leaf',
-    ref: i,
-    overlaps: layout.isEnum && i !== discriminator && layout.parts.length > 2,
-    children: [],
-  }));
-
-  const runs = paddingRuns(layout.parts, layout.size);
+  const { leaves, groups, tree } = build(layout, id);
+  const runs = paddingRuns(flatten(layout.parts), layout.size);
   return {
     id,
-    // A Hylo enum's cases are stored one over another, which is what this
-    // app's views mean by a union. Hylo's `enum` is a sum type rather than
-    // C's, so "enum" would name the wrong thing to a reader who knows C.
-    kind: layout.isEnum ? 'union' : 'struct',
+    // Drawn like a union, because its cases are stored one over another, but
+    // named what the language names it: the overlap is `WireNode.overlaps` on
+    // the payload leaves below, and the kind is only what a reader is told.
+    kind: layout.isEnum ? 'enum' : 'struct',
     name: layout.type,
     qualifiedName: layout.type,
     printedName: layout.type,
@@ -176,7 +248,7 @@ function toRecord(layout: HyloLayout, id: number): WireRecord {
     })),
     render: {
       leaves,
-      groups: [],
+      groups,
       markers: [],
       tree,
       paddingRuns: runs,

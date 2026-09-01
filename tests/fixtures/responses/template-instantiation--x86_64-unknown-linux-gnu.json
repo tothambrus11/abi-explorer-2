@@ -1,0 +1,351 @@
+{
+ "source": "template <typename T>\nstruct Pair {\n  T first;\n  char second;\n};\n\nPair<double> pd;            /* instantiate to see layout */\nPair<char>   pc;",
+ "options": {
+  "lang": "c++",
+  "std": "gnu++26",
+  "triple": "x86_64-unknown-linux-gnu",
+  "pack": "",
+  "msBitfields": false,
+  "shortEnums": false,
+  "shortWchar": false,
+  "warnPadded": false,
+  "extraFlags": ""
+ },
+ "response": {
+  "clangVersion": "clang version 22.1.8 (https://github.com/llvm/llvm-project.git ca7933e47d3a3451d81e72ac174dcb5aa28b59d1)",
+  "diagnostics": [],
+  "diagnosticsText": "",
+  "error": null,
+  "exitCode": 0,
+  "headers": {
+   "cLibrary": "musl",
+   "cLibraryArch": "x86_64",
+   "cxxLibrary": "libc++",
+   "localization": true,
+   "threads": true
+  },
+  "ok": true,
+  "records": [
+   {
+    "alignBits": 64,
+    "bases": [],
+    "dataSizeBits": 128,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 64,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "double",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 5,
+       "endCol": 10,
+       "file": "input.cc",
+       "isMainFile": true,
+       "line": 3
+      },
+      "name": "first",
+      "offsetBits": 0,
+      "recordId": null,
+      "sizeBits": 64,
+      "typeSpelling": "double"
+     },
+     {
+      "access": "public",
+      "alignBits": 8,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "char",
+      "explicitAlignBits": null,
+      "id": 1,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 8,
+       "endCol": 14,
+       "file": "input.cc",
+       "isMainFile": true,
+       "line": 4
+      },
+      "name": "second",
+      "offsetBits": 64,
+      "recordId": null,
+      "sizeBits": 8,
+      "typeSpelling": "char"
+     }
+    ],
+    "id": 0,
+    "isAnonymous": false,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": true,
+    "kind": "struct",
+    "location": {
+     "col": 8,
+     "endCol": 12,
+     "file": "input.cc",
+     "isMainFile": true,
+     "line": 2
+    },
+    "name": "Pair",
+    "nonVirtualAlignBits": 64,
+    "nonVirtualSizeBits": 128,
+    "paddingBits": 56,
+    "paddingRuns": [
+     {
+      "endBits": 128,
+      "startBits": 72
+     }
+    ],
+    "parentRecordId": null,
+    "preferredAlignBits": 64,
+    "printedName": "struct Pair<double>",
+    "qualifiedName": "Pair",
+    "range": {
+     "col": 1,
+     "endCol": 2,
+     "endLine": 5,
+     "line": 1
+    },
+    "render": {
+     "groups": [],
+     "leaves": [
+      {
+       "alignBits": 64,
+       "kind": "field",
+       "location": {
+        "col": 5,
+        "endCol": 10,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 3
+       },
+       "name": "first",
+       "offsetBits": 0,
+       "ownerId": 0,
+       "ownerName": "Pair",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 64,
+       "type": "double"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 8,
+        "endCol": 14,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 4
+       },
+       "name": "second",
+       "offsetBits": 64,
+       "ownerId": 0,
+       "ownerName": "Pair",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 8,
+       "type": "char"
+      }
+     ],
+     "markers": [],
+     "paddingBytes": 7,
+     "paddingRuns": [
+      {
+       "endBits": 128,
+       "startBits": 72
+      }
+     ],
+     "tree": [
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 0
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 1
+      }
+     ]
+    },
+    "sizeBits": 128,
+    "vtableSlots": []
+   },
+   {
+    "alignBits": 8,
+    "bases": [],
+    "dataSizeBits": 16,
+    "fields": [
+     {
+      "access": "public",
+      "alignBits": 8,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "char",
+      "explicitAlignBits": null,
+      "id": 0,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 5,
+       "endCol": 10,
+       "file": "input.cc",
+       "isMainFile": true,
+       "line": 3
+      },
+      "name": "first",
+      "offsetBits": 0,
+      "recordId": null,
+      "sizeBits": 8,
+      "typeSpelling": "char"
+     },
+     {
+      "access": "public",
+      "alignBits": 8,
+      "bitWidth": null,
+      "canonicalTypeSpelling": "char",
+      "explicitAlignBits": null,
+      "id": 1,
+      "isAnonymousMember": false,
+      "isBitField": false,
+      "isFlexibleArrayMember": false,
+      "isNoUniqueAddress": false,
+      "isZeroWidthBitField": false,
+      "location": {
+       "col": 8,
+       "endCol": 14,
+       "file": "input.cc",
+       "isMainFile": true,
+       "line": 4
+      },
+      "name": "second",
+      "offsetBits": 8,
+      "recordId": null,
+      "sizeBits": 8,
+      "typeSpelling": "char"
+     }
+    ],
+    "id": 1,
+    "isAnonymous": false,
+    "isEmpty": false,
+    "isPolymorphic": false,
+    "isStandardLayout": true,
+    "isUserCode": true,
+    "kind": "struct",
+    "location": {
+     "col": 8,
+     "endCol": 12,
+     "file": "input.cc",
+     "isMainFile": true,
+     "line": 2
+    },
+    "name": "Pair",
+    "nonVirtualAlignBits": 8,
+    "nonVirtualSizeBits": 16,
+    "paddingBits": 0,
+    "paddingRuns": [],
+    "parentRecordId": null,
+    "preferredAlignBits": 8,
+    "printedName": "struct Pair<char>",
+    "qualifiedName": "Pair",
+    "range": {
+     "col": 1,
+     "endCol": 2,
+     "endLine": 5,
+     "line": 1
+    },
+    "render": {
+     "groups": [],
+     "leaves": [
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 5,
+        "endCol": 10,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 3
+       },
+       "name": "first",
+       "offsetBits": 0,
+       "ownerId": 1,
+       "ownerName": "Pair",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 8,
+       "type": "char"
+      },
+      {
+       "alignBits": 8,
+       "kind": "field",
+       "location": {
+        "col": 8,
+        "endCol": 14,
+        "file": "input.cc",
+        "isMainFile": true,
+        "line": 4
+       },
+       "name": "second",
+       "offsetBits": 8,
+       "ownerId": 1,
+       "ownerName": "Pair",
+       "path": [],
+       "sharesAddress": false,
+       "sizeBits": 8,
+       "type": "char"
+      }
+     ],
+     "markers": [],
+     "paddingBytes": 0,
+     "paddingRuns": [],
+     "tree": [
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 0
+      },
+      {
+       "children": [],
+       "kind": "leaf",
+       "overlaps": false,
+       "ref": 1
+      }
+     ]
+    },
+    "sizeBits": 16,
+    "vtableSlots": []
+   }
+  ],
+  "target": {
+   "charSizeBits": 8,
+   "cxxAbi": "itanium",
+   "intSizeBits": 32,
+   "isLittleEndian": true,
+   "longLongSizeBits": 64,
+   "longSizeBits": 64,
+   "normalizedTriple": "x86_64-unknown-linux-gnu",
+   "pointerAlignBits": 64,
+   "pointerSizeBits": 64,
+   "shortSizeBits": 16,
+   "triple": "x86_64-unknown-linux-gnu"
+  },
+  "typedefs": []
+ }
+}

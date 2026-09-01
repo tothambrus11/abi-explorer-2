@@ -46,7 +46,7 @@ const DESCRIPTIONS: Record<BackendId, BackendDescription> = {
   },
   hylo: {
     name: 'the Hylo compiler',
-    home: 'https://hylo-lang.org/',
+    home: 'https://github.com/hylo-lang/hylo-new',
     module: { name: 'hylo-abi-wasm', url: 'https://github.com/tothambrus11/hylo-abi-wasm' },
     declarations: 'struct or enum declarations',
     headers: false,

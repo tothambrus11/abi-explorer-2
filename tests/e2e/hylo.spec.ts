@@ -65,7 +65,7 @@ async function hyloUrl(browser: Browser): Promise<string> {
   // The source travels in the link too, so it has to be one Hylo compiles:
   // a C example under a Hylo compiler is a shared link to an error.
   await type(page, PAIR);
-  await expect.poll(() => statValues(page), { timeout: 240_000 }).toEqual(['9', '8', '0']);
+  await expect.poll(() => statValues(page), { timeout: 240_000 }).toEqual(['9', '8', '16', '0']);
   // The fragment is written on a debounce, after the state it encodes.
   await expect.poll(() => page.url(), { timeout: 30_000 }).toMatch(/#.+/);
   await page.waitForTimeout(1000);
@@ -92,7 +92,7 @@ test.describe('Hylo', () => {
     await page.goto(url);
     // 9 bytes, aligned to 8, with no padding: Hylo puts the i64 first, so the
     // i8 that was declared first ends up last and nothing is padded between.
-    await expect.poll(() => statValues(page), { timeout: 240_000 }).toEqual(['9', '8', '0']);
+    await expect.poll(() => statValues(page), { timeout: 240_000 }).toEqual(['9', '8', '16', '0']);
 
     expect(wanted.filter((p) => p.includes('/vendor/hylo/')).length).toBeGreaterThan(0);
     // The manifest may be read by the download gate; the module must not be.
@@ -131,6 +131,94 @@ test.describe('Hylo', () => {
     await expect(page.locator('#target')).toBeVisible();
   });
 
+  test('calls an enum an enum, and measures a type from another module', async ({ page }) => {
+    await page.goto('/');
+    await ready(page);
+    await selectLanguage(page, 'Hylo');
+    await type(page, 'public enum Choice {\n  case some(wrapped: Int)\n  case none\n');
+    await expect.poll(() => statValues(page), { timeout: 240_000 }).toEqual(['9', '8', '16', '0']);
+
+    // Drawn like a union, because its cases are stored one over another, but
+    // "union" is not a thing Hylo has.
+    await expect(page.locator('.record .title')).toContainText('enum Choice');
+    await expect(page.locator('.record .title')).not.toContainText('union');
+
+    // `Int` is declared in the standard library, so it is in no spelling this
+    // source mentions and no record this query returned. The compiler assigned
+    // it to the tree under the cursor, which is what the hover asks about.
+    // Asked of the session rather than through the pointer. What the pointer
+    // does with a hover is Monaco's, and app.spec covers it; what is Hylo's is
+    // the answer, and it is the answer that was wrong.
+    const card = await page.evaluate(async () => {
+      const w = window as unknown as {
+        __abix: {
+          store: { source: string };
+          session: {
+            describeType: (
+              line: number,
+              word: { word: string; startColumn: number; endColumn: number },
+            ) => Promise<string | null>;
+          };
+        };
+      };
+      const line = w.__abix.store.source.split('\n')[1] ?? '';
+      const col = line.indexOf('Int') + 1;
+      return w.__abix.session.describeType(2, { word: 'Int', startColumn: col, endColumn: col + 3 });
+    });
+
+    // The same card a type declared here gets, not a shorter one: a Hylo cursor
+    // is answered with the type's layout, so there is nothing it knows less
+    // about. Hylo's words, not C's operators.
+    expect(card, 'a type from another module is still described').toContain('struct Int');
+    expect(card).toContain('member');
+    expect(card).toContain('| size | **8** B |');
+    expect(card).toContain('| align | **8** B |');
+    expect(card).toContain('| stride | **8** B |');
+    expect(card).toContain('| padding |');
+    expect(card).not.toContain('sizeof');
+  });
+
+  test('offers the examples the language can compile, and keeps the buffer', async ({ page }) => {
+    await page.goto('/');
+    await ready(page);
+
+    // Grouped by language, every one of them reachable from any of them.
+    const groups = () => page.locator('#example optgroup').evaluateAll((gs) =>
+      gs.map((g) => (g as HTMLOptGroupElement).label),
+    );
+    expect(await groups()).toEqual(['C', 'C++', 'Hylo']);
+
+    await page.locator('.monaco-editor').click();
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.type('struct Mine { char c; };');
+    await expect.poll(() => statValues(page), { timeout: 30_000 }).toEqual(['1', '1', '0']);
+
+    await selectLanguage(page, 'Hylo');
+    // Switching language does not replace what the user wrote. It no longer
+    // compiles, which is a diagnostic, not a reason to throw the text away.
+    await expect(page.locator('.monaco-editor')).toContainText('struct Mine');
+    expect(await groups(), 'still all of them').toEqual(['C', 'C++', 'Hylo']);
+  });
+
+  test('draws a member holding a record the way clang does', async ({ page }) => {
+    await page.goto('/');
+    await ready(page);
+    await selectLanguage(page, 'Hylo');
+    await type(
+      page,
+      'public struct Inner {\n  let a: Builtin.i32\n  let b: Builtin.i32\n}\n\n'
+        + 'public struct Outer {\n  let x: Inner\n  let y: Inner\n',
+    );
+    await expect
+      .poll(() => statValues(page), { timeout: 240_000 })
+      .toEqual(['16', '4', '16', '0']);
+
+    // One member holding two, not two side by side: the table indents `a` and
+    // `b` under each of `x` and `y`, as it does for a nested struct in C.
+    const names = page.locator('.field-table tbody tr .fname');
+    await expect.poll(() => names.allTextContents()).toEqual(['x', 'a', 'b', 'y', 'a', 'b']);
+  });
+
   test('the details popover stays on the screen wherever the row ends', async ({ page }) => {
     await page.goto('/');
     await ready(page);
@@ -165,7 +253,7 @@ test.describe('Hylo', () => {
     await type(page, 'public enum Choice {\n  case some(wrapped: Builtin.i16)\n  case none\n');
 
     // Two cases stored one over another, and a discriminator after them.
-    await expect.poll(() => statValues(page), { timeout: 240_000 }).toEqual(['3', '2', '0']);
+    await expect.poll(() => statValues(page), { timeout: 240_000 }).toEqual(['3', '2', '4', '0']);
 
     await type(page, 'public struct Broken {\n  let x: Nonexistent\n');
     await expect(page.locator('.diagnostics')).toContainText('Nonexistent', { timeout: 60_000 });

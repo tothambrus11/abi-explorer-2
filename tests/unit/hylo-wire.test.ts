@@ -108,7 +108,7 @@ describe('toWireResponse', () => {
     expect(record.render.paddingBytes).toBe(3);
   });
 
-  it('draws an enum as a union whose payloads overlap and whose tag does not', () => {
+  it('names an enum an enum, and overlaps its payloads but not its tag', () => {
     const answer: HyloAnswer = {
       layouts: [
         {
@@ -126,7 +126,8 @@ describe('toWireResponse', () => {
       ],
     };
     const record = toWireResponse(answer, 'v').records[0]!;
-    expect(record.kind).toBe('union');
+    // Drawn like a union, called what Hylo calls it.
+    expect(record.kind).toBe('enum');
     expect(record.render.tree.map((n) => n.overlaps)).toEqual([true, true, false]);
     // A `Void` payload occupies nothing, so nothing is drawn for it.
     expect(record.render.leaves[1]!.sharesAddress).toBe(true);
@@ -166,6 +167,99 @@ describe('toWireResponse', () => {
     expect(response.ok).toBe(false);
     expect(response.exitCode).toBe(1);
     expect(response.records).toEqual([]);
+  });
+
+  it('draws a record-typed member as one member holding its own', () => {
+    // The divergence this fixes: a flat list of offsets cannot say what
+    // contains what, so a nested member was drawn as members side by side.
+    const answer: HyloAnswer = {
+      layouts: [
+        {
+          type: 'Outer',
+          size: 16,
+          alignment: 4,
+          isEnum: false,
+          site: { line: 1, column: 8, endLine: 4, endColumn: 2 },
+          parts: [
+            {
+              name: 'x',
+              type: 'Inner',
+              offset: 0,
+              size: 8,
+              alignment: 4,
+              parts: [
+                { name: 'a', type: 'i32', offset: 0, size: 4, alignment: 4 },
+                { name: 'b', type: 'i32', offset: 4, size: 4, alignment: 4 },
+              ],
+            },
+            {
+              name: 'y',
+              type: 'Inner',
+              offset: 8,
+              size: 8,
+              alignment: 4,
+              parts: [
+                { name: 'a', type: 'i32', offset: 8, size: 4, alignment: 4 },
+                { name: 'b', type: 'i32', offset: 12, size: 4, alignment: 4 },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const record = toWireResponse(answer, 'v').records[0]!;
+    // Two groups, one per member, each holding the two leaves of its type.
+    expect(record.render.groups.map((g) => [g.name, g.type])).toEqual([
+      ['x', 'Inner'],
+      ['y', 'Inner'],
+    ]);
+    expect(record.render.tree.map((n) => n.kind)).toEqual(['group', 'group']);
+    expect(record.render.tree[0]!.children.map((n) => n.kind)).toEqual(['leaf', 'leaf']);
+    expect(record.render.groups[0]!.leafIndexes).toEqual([0, 1]);
+    expect(record.render.groups[1]!.leafIndexes).toEqual([2, 3]);
+
+    // A leaf's path names what encloses it, not itself: the table indents by
+    // it, and a member listed under its own name is indented under itself.
+    expect(record.render.leaves.map((l) => l.path.join('.'))).toEqual(['x', 'x', 'y', 'y']);
+    expect(record.render.groups.map((g) => g.path)).toEqual([[], []]);
+    expect(record.render.leaves.map((l) => l.offsetBits)).toEqual([0, 32, 64, 96]);
+    // Every byte is covered by a leaf, so nothing reads as padding.
+    expect(record.render.paddingRuns).toEqual([]);
+  });
+
+  it('marks a nested enum as the union it is drawn like', () => {
+    const answer: HyloAnswer = {
+      layouts: [
+        {
+          type: 'Holder',
+          size: 3,
+          alignment: 2,
+          isEnum: false,
+          site: { line: 1, column: 8, endLine: 3, endColumn: 2 },
+          parts: [
+            {
+              name: 'c',
+              type: 'Choice',
+              offset: 0,
+              size: 3,
+              alignment: 2,
+              isEnum: true,
+              parts: [
+                { name: 'some', type: '{i16}', offset: 0, size: 2, alignment: 2 },
+                { name: 'none', type: 'Void', offset: 0, size: 0, alignment: 1 },
+                { name: 'discriminator', type: 'i8', offset: 2, size: 1, alignment: 1 },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const record = toWireResponse(answer, 'v').records[0]!;
+    expect(record.render.groups[0]!.isUnion).toBe(true);
+    // The cases overlap; the discriminator after them does not.
+    expect(record.render.tree[0]!.children.map((n) => n.overlaps)).toEqual([true, true, false]);
   });
 
   it('produces an analysis the views can draw', () => {

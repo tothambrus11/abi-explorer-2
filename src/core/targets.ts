@@ -218,7 +218,7 @@ struct Aligned {
 `,
   },
   {
-    name: 'C++ virtual & bases',
+    name: 'Virtual & bases',
     lang: 'c++',
     source: `struct Base {
   virtual ~Base();
@@ -240,26 +240,29 @@ struct Diamond : virtual Base {
 `,
   },
   {
-    name: 'C++ EBO & templates',
+    name: 'Empty base optimization',
     lang: 'c++',
     source: `struct Empty {};
 
 struct WithEbo : Empty {    /* empty base optimization */
   char c;
 };
-
-template <typename T>
+`,
+  },
+  {
+    name: 'Template instantiation',
+    lang: 'c++',
+    source: `template <typename T>
 struct Pair {
   T first;
   char second;
 };
 
 Pair<double> pd;            /* instantiate to see layout */
-Pair<char>   pc;
-`,
+Pair<char>   pc;`,
   },
   {
-    name: 'C++ virtual inheritance (diamond)',
+    name: 'Virtual inheritance (diamond)',
     lang: 'c++',
     source: `struct A { virtual ~A(); int a; };
 
@@ -284,7 +287,7 @@ struct Derived : Base { char d; };
 `,
   },
   {
-    name: 'C++ no_unique_address',
+    name: 'no_unique_address',
     lang: 'c++',
     source: `struct Empty {};
 
@@ -300,7 +303,7 @@ struct WithPlain {                    /* e needs its own byte: sizeof 8 */
 `,
   },
   {
-    name: 'C++ standard library (libc++)',
+    name: 'Using standard library (libc++)',
     lang: 'c++',
     source: `#include <string>
 #include <vector>
@@ -354,7 +357,7 @@ struct Holder {             /* one member forces Holder to 64 B too */
 `,
   },
   {
-    name: 'Hylo: reordered storage',
+    name: 'Reordered storage',
     lang: 'hylo',
     source: `/// Hylo stores members in order of decreasing alignment, so the order they
 /// are declared in is not the order they are stored in: 'flag' ends up last,

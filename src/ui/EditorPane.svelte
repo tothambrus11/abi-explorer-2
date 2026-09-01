@@ -3,6 +3,7 @@
   import { store } from '$state/store.svelte';
   import type { Session } from '$state/session.svelte';
   import { EXAMPLES } from '$core/targets';
+  import type { Language } from '$core/options';
   import { createEditor, setEditorTheme, type EditorHandle } from './monaco';
   import { theme } from '$state/theme.svelte';
   import { memberDots } from '$state/editor-view';
@@ -80,6 +81,26 @@
     if (req) editor?.setCursor(req.line);
   });
 
+  /**
+   * The examples, grouped by the language they are written in.
+   *
+   * Grouped rather than filtered to the selected language: an example is an
+   * explicit act, and one written in a language you are not in is still one you
+   * might want. Filtering hid every C++ example from someone in C, which is
+   * where most visitors start. Loading one switches to its language, because
+   * that is the language it is an example of.
+   */
+  const LANGUAGE_NAMES: Record<Language, string> = { c: 'C', 'c++': 'C++', hylo: 'Hylo' };
+  const grouped = $derived(
+    (['c', 'c++', 'hylo'] as const)
+      .map((lang) => ({
+        lang,
+        label: LANGUAGE_NAMES[lang],
+        items: EXAMPLES.map((ex, i) => ({ ex, i })).filter((e) => e.ex.lang === lang),
+      }))
+      .filter((g) => g.items.length > 0),
+  );
+
   function loadExample(e: Event) {
     const sel = e.currentTarget as HTMLSelectElement;
     if (sel.value !== '') store.loadExample(Number(sel.value));
@@ -99,7 +120,11 @@
       use:tooltip={'Load an example (replaces the code)'}
     >
       <option value="">Examples…</option>
-      {#each EXAMPLES as ex, i (ex.name)}<option value={i}>{ex.name}</option>{/each}
+      {#each grouped as g (g.lang)}
+        <optgroup label={g.label}>
+          {#each g.items as e (e.ex.name)}<option value={e.i}>{e.ex.name}</option>{/each}
+        </optgroup>
+      {/each}
     </select>
   </div>
   <div
@@ -109,6 +134,14 @@
     role="region"
     aria-label="Source code editor"
   ></div>
+  <!-- What the language actually offers. Hylo has one standard library and no
+       templates to instantiate, so none of the C++ note applies to it. -->
+  {#if store.options.lang !== 'hylo'}
+    <p class="hint">
+      The C library (musl) and libc++ resolve for every target. The details beside the language
+      say which headers answered. Templates must be instantiated to appear.
+    </p>
+  {/if}
 </section>
 
 <style>
