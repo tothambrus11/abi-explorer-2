@@ -161,11 +161,18 @@ class Store {
   private lastClangTriple = DEFAULT_OPTIONS.triple;
 
   /**
-   * Selects a language, and brings the options that depend on it along.
+   * Selects a language, and brings everything that depends on it along.
    *
-   * The buffer is untouched: the text is the user's. A standard the new
-   * language does not have becomes its default, and the target follows the
-   * language, with the last clang triple kept for the way back.
+   * That includes the buffer: it becomes the language's first example. C source
+   * left in front of a Hylo compiler is a screen of diagnostics about a
+   * question nobody asked, and the reader who wanted to see Hylo has to clear
+   * it before anything can be laid out. What they wrote is one undo away, and
+   * the two halves change together, so a single undo puts both back.
+   *
+   * A standard the new language does not have becomes its default, and the
+   * target follows the language, with the last clang triple kept for the way
+   * back. A language with no example keeps the buffer, having nothing to put
+   * in it.
    */
   setLanguage(lang: Language): void {
     if (this.options.lang === lang) return;
@@ -173,15 +180,20 @@ class Store {
     this.options.lang = lang;
     this.options.triple = lang === 'hylo' ? HYLO_TRIPLE : this.lastClangTriple;
     if (!standardsFor(lang).includes(this.options.std)) this.options.std = defaultStdFor(lang);
+    const example = EXAMPLES.find((e) => e.lang === lang);
+    if (example) {
+      this.source = example.source;
+      this.selectedRecord = null;
+    }
   }
 
   /**
    * Loads an example, and the language it is written in if that is not the one
    * selected.
    *
-   * The language is only ever changed *towards* an example, never the other
-   * way: switching language leaves the buffer alone, because the text is the
-   * user's and replacing it is not something a radio button should do.
+   * Written after `setLanguage` rather than instead of it: switching language
+   * loads that language's *first* example, and this one is whichever was asked
+   * for.
    */
   loadExample(index: number): void {
     const ex = EXAMPLES[index];

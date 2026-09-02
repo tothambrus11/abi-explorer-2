@@ -1008,6 +1008,26 @@ test.describe('ABI Explorer', () => {
     await expect.poll(() => statValues(page)).toEqual(['21', '1', '0']);
   });
 
+  test('choosing a language puts that language in the buffer', async ({ page }) => {
+    await waitReady(page);
+    const editor = page.locator('.monaco-editor .view-lines');
+    await expect(editor).toContainText('struct Example');
+
+    // C source in front of a C++ compile is a question nobody asked; the
+    // language's own first example is what a reader who switched wants to see.
+    await page
+      .locator('.segmented label', { hasText: /^C\+\+$/ })
+      .locator('span')
+      .click();
+    await expect(editor).toContainText('virtual ~Base');
+    await expect(editor).not.toContainText('struct Example');
+
+    // And their own text is one step away, since the language and the buffer
+    // changed together.
+    await page.locator('#undo').click();
+    await expect(editor).toContainText('struct Example');
+  });
+
   test('undo puts back the text, one step per pause', async ({ page }) => {
     await waitReady(page);
     await page.locator('.monaco-editor').click();

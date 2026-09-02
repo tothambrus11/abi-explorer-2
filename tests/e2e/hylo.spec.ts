@@ -182,7 +182,7 @@ test.describe('Hylo', () => {
     expect(card).not.toContain('sizeof');
   });
 
-  test('offers the examples the language can compile, and keeps the buffer', async ({ page }) => {
+  test('offers every example, and opens the language on its own', async ({ page }) => {
     await page.goto('/');
     await ready(page);
 
@@ -199,10 +199,16 @@ test.describe('Hylo', () => {
     await expect.poll(() => statValues(page), { timeout: 30_000 }).toEqual(['1', '1', '0']);
 
     await selectLanguage(page, 'Hylo');
-    // Switching language does not replace what the user wrote. It no longer
-    // compiles, which is a diagnostic, not a reason to throw the text away.
-    await expect(page.locator('.monaco-editor')).toContainText('struct Mine');
+    // Switching language loads that language's first example: C source in
+    // front of hc is a screen of diagnostics about a question nobody asked.
+    await expect(page.locator('.monaco-editor')).toContainText('public struct Header');
+    await expect(page.locator('.monaco-editor')).not.toContainText('struct Mine');
     expect(await groups(), 'still all of them').toEqual(['C', 'C++', 'Hylo']);
+
+    // And what they wrote is one step back, since the language and the buffer
+    // changed together.
+    await page.locator('#undo').click();
+    await expect(page.locator('.monaco-editor')).toContainText('struct Mine');
   });
 
   test('draws a member holding a record the way clang does', async ({ page }) => {

@@ -377,7 +377,7 @@ public struct Header {
 /// discriminator that says which one is live goes after the payload.
 public enum Message {
   case ping
-  case data(bytes: Int64)
+  case data(bytes: Header)
   case code(value: Int16)
 }
 `,
