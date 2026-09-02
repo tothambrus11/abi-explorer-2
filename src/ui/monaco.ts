@@ -44,7 +44,14 @@ export type { MemberDot } from '$state/editor-view';
  */
 export interface EditorHandle {
   getValue(): string;
-  /** Replaces the buffer. Leaves the caret where it can, and records no undo step of its own. */
+  /**
+   * Replaces the buffer, unless it already holds `text`.
+   *
+   * Applied as an edit rather than a reset, so the editor's own undo still
+   * reaches back past it, and reported to no `onChange` listener: the text came
+   * from the state those listeners write to, and echoing it back would be a
+   * loop.
+   */
   setValue(text: string): void;
   /** Switches syntax highlighting; keeps the text. */
   setLanguage(lang: Language): void;
@@ -66,7 +73,7 @@ export interface EditorHandle {
   onMouseActivity(cb: () => void): void;
   /** Re-emit the current hover (after the line map changed). */
   refreshHover(): void;
-  /** cb() after every edit to the buffer, including undo and `setValue`. */
+  /** cb() after every edit the user makes, undo included, but not after `setValue`. */
   onChange(cb: () => void): void;
   /** cb() on the explicit "compile now" key. */
   onSubmit(cb: () => void): void;

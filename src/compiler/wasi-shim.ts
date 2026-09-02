@@ -70,7 +70,14 @@ export function wasiImports(
     },
 
     random_get: (p: number, n: number) => {
-      crypto.getRandomValues(bytes().subarray(p, p + n));
+      // `getRandomValues` refuses more than 65536 bytes at a time, and refuses
+      // by throwing, which crosses back into the guest as a trap. Asking in
+      // chunks is the whole of the fix: what the caller wanted is n random
+      // bytes, not one call.
+      const all = bytes();
+      for (let at = 0; at < n; at += 0x10000) {
+        crypto.getRandomValues(all.subarray(p + at, p + Math.min(at + 0x10000, n)));
+      }
       return 0;
     },
 

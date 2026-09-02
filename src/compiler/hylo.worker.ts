@@ -87,7 +87,10 @@ function call(m: Reactor, fn: (p: number, n: number) => number, value: unknown):
   try {
     answer = fn(argument, bytes.length);
   } finally {
-    m.hylo_free(argument);
+    // Freeing may itself trap when the call did, and the trap worth reporting
+    // is the first one: a leaked buffer in an instance about to be thrown away
+    // costs nothing, while losing what went wrong costs the diagnosis.
+    release(m, argument);
   }
 
   try {
@@ -97,7 +100,16 @@ function call(m: Reactor, fn: (p: number, n: number) => number, value: unknown):
     );
     return JSON.parse(text);
   } finally {
-    m.hylo_free(answer);
+    release(m, answer);
+  }
+}
+
+/** Frees a buffer, ignoring a failure to: see the call sites. */
+function release(m: Reactor, p: number): void {
+  try {
+    m.hylo_free(p);
+  } catch {
+    /* the instance is already lost; `discard` below is what answers for it */
   }
 }
 
@@ -110,6 +122,28 @@ function call(m: Reactor, fn: (p: number, n: number) => number, value: unknown):
  */
 let booting: Promise<HyloModule> | null = null;
 const boot = (): Promise<HyloModule> => (booting ??= instantiate());
+
+/** The instance `booting` resolved to, while it is still fit to be asked. */
+let live: HyloModule | null = null;
+
+/**
+ * Throws `m` away, so that the next question builds a fresh instance.
+ *
+ * Called when a call into the guest trapped. The module reports its own
+ * failures as an `error` field in the answer, so anything that reaches the host
+ * as a thrown value is the instance dying: its heap, and the type checked
+ * standard library sitting in it, are no longer worth trusting. Rebuilding
+ * costs the five seconds `hylo_init` takes, which is the right price for not
+ * answering the next query out of a corrupt program.
+ *
+ * Does nothing if `m` is not the current instance, so two queries failing
+ * together discard one instance rather than two.
+ */
+function discard(m: HyloModule): void {
+  if (live !== m) return;
+  live = null;
+  booting = null;
+}
 
 /**
  * Downloads, caches and instantiates the reactor, then loads the standard
@@ -159,14 +193,23 @@ async function instantiate(): Promise<HyloModule> {
     throw new Error(why === '' ? 'the standard library could not be loaded' : why);
   }
 
-  return {
-    query: (request) => toWireResponse(call(m, m.hylo_query, request) as HyloAnswer, version()),
+  const module: HyloModule = {
+    query: (request) => {
+      try {
+        return toWireResponse(call(m, m.hylo_query, request) as HyloAnswer, version());
+      } catch (e) {
+        discard(module);
+        throw e;
+      }
+    },
     // Hylo describes one ABI so far. It is still reported as a target so that
     // the selector has something true to show rather than clang's list, which
     // this module cannot lay anything out for.
     targets: () => [HYLO_TRIPLE],
     version,
   };
+  live = module;
+  return module;
 }
 
 /**

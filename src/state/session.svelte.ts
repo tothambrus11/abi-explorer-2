@@ -32,7 +32,7 @@ import { computeAnalysisStatus } from './status';
 import { declLineFor } from './inspected-record';
 import { grantConsent, shouldAskBeforeDownload } from './download-gate';
 import { buildLineIndex, type LineIndex, type LineInfo } from './code-locations';
-import { History, historyIntent } from './history.svelte';
+import { History, historyIntent, ownsUndo, type EditableTarget } from './history.svelte';
 
 export type { LineInfo };
 
@@ -214,6 +214,9 @@ export class Session {
     const onKey = (e: KeyboardEvent) => {
       const intent = historyIntent(e);
       if (!intent) return;
+      // Except where the keystroke is already about something: a text field's
+      // undo is the text field's.
+      if (ownsUndo(e.target as EditableTarget | null)) return;
       e.preventDefault();
       e.stopPropagation();
       if (intent === 'undo') this.undo();
@@ -305,6 +308,11 @@ export class Session {
             })
             .catch(() => {});
         }, HASH_DEBOUNCE_MS);
+        // Also on teardown, so a session that is disposed mid-debounce does
+        // not write its address bar afterwards.
+        return () => {
+          if (hashTimer) clearTimeout(hashTimer);
+        };
       });
     });
 

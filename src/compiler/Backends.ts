@@ -54,7 +54,6 @@ const DESCRIPTIONS: Record<BackendId, BackendDescription> = {
   },
 };
 
-/** How to describe whichever compiler answers for `lang`. */
 /**
  * How to describe whichever compiler answers for `lang`.
  *
@@ -175,11 +174,19 @@ export class Backends implements AbiModule {
     return this.client(this.active).version();
   }
 
-  /** Disposes every backend that was started, and forgets them all. */
+  /**
+   * Disposes every backend that was started, and forgets them all.
+   *
+   * The remembered statuses go too: they describe workers that no longer
+   * exist, and leaving them would have `status` report a module ready to
+   * answer when there is nothing left to ask.
+   */
   dispose(): void {
     for (const off of this.unsubscribes.values()) off();
     this.unsubscribes.clear();
     for (const client of this.clients.values()) client.dispose();
     this.clients.clear();
+    this.statuses.clear();
+    this.announce();
   }
 }

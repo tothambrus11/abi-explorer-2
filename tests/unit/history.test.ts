@@ -6,7 +6,7 @@
 // was undone.
 
 import { describe, it, expect } from 'vitest';
-import { History, historyIntent, type Snapshot } from '$state/history.svelte';
+import { History, historyIntent, ownsUndo, type Snapshot } from '$state/history.svelte';
 import { DEFAULT_OPTIONS } from '$core/options';
 
 const at = (source: string, over: Partial<typeof DEFAULT_OPTIONS> = {}): Snapshot => ({
@@ -123,5 +123,41 @@ describe('historyIntent', () => {
     expect(historyIntent(key('z', {}))).toBeNull();
     expect(historyIntent(key('a', { ctrlKey: true }))).toBeNull();
     expect(historyIntent(key('s', { metaKey: true }))).toBeNull();
+  });
+});
+
+describe('ownsUndo', () => {
+  const el = (
+    tagName: string,
+    extra: { type?: string; isContentEditable?: boolean; monaco?: boolean } = {},
+  ) => ({
+    tagName,
+    ...(extra.type === undefined ? {} : { type: extra.type }),
+    ...(extra.isContentEditable === undefined
+      ? {}
+      : { isContentEditable: extra.isContentEditable }),
+    closest: (s: string) => (extra.monaco && s === '.monaco-editor' ? {} : null),
+  });
+
+  it('leaves a text field its own undo', () => {
+    expect(ownsUndo(el('INPUT', { type: 'text' }))).toBe(true);
+    expect(ownsUndo(el('INPUT'))).toBe(true);
+    expect(ownsUndo(el('textarea'))).toBe(true);
+    expect(ownsUndo(el('DIV', { isContentEditable: true }))).toBe(true);
+  });
+
+  it('takes the keystroke from a control with no text to undo', () => {
+    expect(ownsUndo(el('INPUT', { type: 'color' }))).toBe(false);
+    expect(ownsUndo(el('INPUT', { type: 'range' }))).toBe(false);
+    expect(ownsUndo(el('BUTTON'))).toBe(false);
+    expect(ownsUndo(el('DIV'))).toBe(false);
+  });
+
+  it("takes it from Monaco, whose stack is the one this history exists to beat", () => {
+    expect(ownsUndo(el('TEXTAREA', { monaco: true }))).toBe(false);
+  });
+
+  it('is false for an event that reached the document', () => {
+    expect(ownsUndo(null)).toBe(false);
   });
 });

@@ -130,6 +130,44 @@ export class History {
 }
 
 /**
+ * The part of an event target this decision needs, so it can be made without a
+ * DOM.
+ */
+export interface EditableTarget {
+  tagName?: string;
+  type?: string;
+  isContentEditable?: boolean;
+  closest(selector: string): unknown;
+}
+
+/** Input types that hold text a user can undo their way through. */
+const TEXTUAL = new Set(['', 'text', 'search', 'url', 'tel', 'email', 'password', 'number']);
+
+/**
+ * Does `target` keep an undo history of its own that the user means?
+ *
+ * Ctrl+Z in the custom-triple box or a theme's name is about the characters in
+ * that box, and taking the event from it to put back the last thing compiled
+ * would be a startling amount of undo for a field the user is still typing in.
+ *
+ * Monaco is the exception this history exists for: its own stack knows only
+ * about text, so an option change made after an edit is invisible to it, and
+ * its textarea is deliberately not treated as owning anything. A control with
+ * no text to undo — a colour swatch, a slider — is not either.
+ *
+ * `false` for a null target, which is what an event dispatched at the document
+ * carries.
+ */
+export function ownsUndo(target: EditableTarget | null): boolean {
+  if (!target) return false;
+  if (target.closest('.monaco-editor')) return false;
+  const tag = target.tagName?.toUpperCase();
+  if (tag === 'TEXTAREA') return true;
+  if (tag === 'INPUT') return TEXTUAL.has((target.type ?? '').toLowerCase());
+  return target.isContentEditable === true;
+}
+
+/**
  * What this key event asks for, if anything.
  *
  * Reads only the fields named, so it can be tested without a DOM. Returns
