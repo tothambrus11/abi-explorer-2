@@ -163,7 +163,11 @@ test.describe('Hylo', () => {
       };
       const line = w.__abix.store.source.split('\n')[1] ?? '';
       const col = line.indexOf('Int') + 1;
-      return w.__abix.session.describeType(2, { word: 'Int', startColumn: col, endColumn: col + 3 });
+      return w.__abix.session.describeType(2, {
+        word: 'Int',
+        startColumn: col,
+        endColumn: col + 3,
+      });
     });
 
     // The same card a type declared here gets, not a shorter one: a Hylo cursor
@@ -183,9 +187,10 @@ test.describe('Hylo', () => {
     await ready(page);
 
     // Grouped by language, every one of them reachable from any of them.
-    const groups = () => page.locator('#example optgroup').evaluateAll((gs) =>
-      gs.map((g) => (g as HTMLOptGroupElement).label),
-    );
+    const groups = () =>
+      page
+        .locator('#example optgroup')
+        .evaluateAll((gs) => gs.map((g) => (g as HTMLOptGroupElement).label));
     expect(await groups()).toEqual(['C', 'C++', 'Hylo']);
 
     await page.locator('.monaco-editor').click();
@@ -206,12 +211,10 @@ test.describe('Hylo', () => {
     await selectLanguage(page, 'Hylo');
     await type(
       page,
-      'public struct Inner {\n  let a: Builtin.i32\n  let b: Builtin.i32\n}\n\n'
-        + 'public struct Outer {\n  let x: Inner\n  let y: Inner\n',
+      'public struct Inner {\n  let a: Builtin.i32\n  let b: Builtin.i32\n}\n\n' +
+        'public struct Outer {\n  let x: Inner\n  let y: Inner\n',
     );
-    await expect
-      .poll(() => statValues(page), { timeout: 240_000 })
-      .toEqual(['16', '4', '16', '0']);
+    await expect.poll(() => statValues(page), { timeout: 240_000 }).toEqual(['16', '4', '16', '0']);
 
     const names = page.locator('.field-table tbody tr .fname');
     // Collapsed to begin with: the record's own members are what it is.
@@ -233,10 +236,7 @@ test.describe('Hylo', () => {
     // And its type can be opened as a record of its own, which needs the group
     // to name the record this answer laid out for it.
     // The name is the button that drills; the row itself only hovers.
-    await page
-      .locator('.field-table tr.group .gname', { hasText: /^x$/ })
-      .first()
-      .click();
+    await page.locator('.field-table tr.group .gname', { hasText: /^x$/ }).first().click();
     await expect(page.locator('.record .title')).toContainText('struct Inner');
   });
 
@@ -248,8 +248,8 @@ test.describe('Hylo', () => {
     // for it and there is nothing for "inspect" to open. `Inner` is right here.
     await type(
       page,
-      'public struct Inner {\n  let a: Builtin.i32\n}\n\n'
-        + 'public struct Outer {\n  let here: Inner\n  let away: Int\n',
+      'public struct Inner {\n  let a: Builtin.i32\n}\n\n' +
+        'public struct Outer {\n  let here: Inner\n  let away: Int\n',
     );
     // `away` is 8-aligned so it is stored first; `here` follows at 8, and the
     // record's 12 bytes step by 16.
@@ -287,6 +287,46 @@ test.describe('Hylo', () => {
     await page.hover('#info-button');
     await expect(panel).toBeVisible();
     expect(await seen()).toEqual({ left: true, right: true });
+  });
+
+  test("is highlighted by its own grammar, not by C's", async ({ page }) => {
+    await page.goto('/');
+    await ready(page);
+    await selectLanguage(page, 'Hylo');
+    await type(page, 'public struct Pair {\n  let x: Int\n');
+
+    // Monaco paints each token class as `.mtkN`. What is asserted is the
+    // classification, not the colour: `let` is a keyword to Hylo's grammar and
+    // to no C one, and `Pair` is a type because of the word in front of it,
+    // which is the whole of what a C tokenizer could not have said.
+    const painted = async (): Promise<Record<string, string>> => {
+      const spans = await page
+        .locator('.view-lines .view-line')
+        .locator('span span')
+        .evaluateAll((ss) =>
+          ss.map((s) => [s.textContent, s.getAttribute('class')] as [string, string | null]),
+        );
+      // The first class is the token's; a decoration adds its own after it.
+      return Object.fromEntries(
+        spans.map(([text, cls]) => [text.trim(), (cls ?? '').split(' ')[0]!]),
+      );
+    };
+    // Polled: Monaco renders the lines it has, and the second one arrives a
+    // frame after the first.
+    await expect.poll(async () => Object.keys(await painted())).toContain('let');
+
+    const cls = await painted();
+    expect(cls['public']).toBeDefined();
+    expect(cls['struct']).toBe(cls['public']);
+    expect(cls['let']).toBe(cls['public']);
+    expect(cls['Pair']).not.toBe(cls['public']);
+    expect(cls['x']).not.toBe(cls['public']);
+
+    // And the comment marker, which is the language configuration rather than
+    // the grammar, and is what Ctrl+/ reads.
+    await page.locator('.monaco-editor').click();
+    await page.keyboard.press('ControlOrMeta+/');
+    await expect(page.locator('.view-lines .view-line').last()).toContainText('//');
   });
 
   test('lays an enum out as a union, and reports an error against its line', async ({ page }) => {

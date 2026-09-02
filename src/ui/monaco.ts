@@ -8,12 +8,28 @@ import type { Language } from '$core/options';
 import { THEMES, type Theme } from '$core/themes';
 import type { MemberDot } from '$state/editor-view';
 import { widenToTemplateArgs } from '$state/type-hover';
+import { HYLO_LANGUAGE_ID, HYLO_TOKENS, HYLO_CONFIGURATION } from './hylo-language';
 
 (self as unknown as { MonacoEnvironment: unknown }).MonacoEnvironment = {
   getWorker: () => new EditorWorker(),
 };
 
 const FONT = '"JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace';
+
+// C and C++ come with the slim build; Hylo is ours, from the grammar Hylo's
+// own editor support uses. Registered once, at module scope, because a language
+// belongs to Monaco rather than to an editor: registering it per editor would
+// stack a second tokenizer on the second one.
+monaco.languages.register({ id: HYLO_LANGUAGE_ID, extensions: ['.hylo'], aliases: ['Hylo'] });
+monaco.languages.setLanguageConfiguration(HYLO_LANGUAGE_ID, HYLO_CONFIGURATION);
+monaco.languages.setMonarchTokensProvider(HYLO_LANGUAGE_ID, HYLO_TOKENS);
+
+/** Monaco's name for a language of ours, and the extension a model is named for. */
+const MONACO_LANGUAGE: Record<Language, { id: string; extension: string }> = {
+  c: { id: 'c', extension: 'c' },
+  'c++': { id: 'cpp', extension: 'cc' },
+  hylo: { id: HYLO_LANGUAGE_ID, extension: 'hylo' },
+};
 
 for (const t of THEMES) monaco.editor.defineTheme(t.id, t.monaco);
 
@@ -117,8 +133,8 @@ function signalFor(token: monaco.CancellationToken): AbortSignal {
 export function createEditor(container: HTMLElement, opts: CreateEditorOptions): EditorHandle {
   const model = monaco.editor.createModel(
     opts.value,
-    opts.language === 'c++' ? 'cpp' : 'c',
-    monaco.Uri.parse('inmemory://input.' + (opts.language === 'c++' ? 'cc' : 'c')),
+    MONACO_LANGUAGE[opts.language].id,
+    monaco.Uri.parse('inmemory://input.' + MONACO_LANGUAGE[opts.language].extension),
   );
   const editor = monaco.editor.create(container, {
     model,
@@ -187,27 +203,33 @@ export function createEditor(container: HTMLElement, opts: CreateEditorOptions):
     for (const cb of submitCbs) cb();
   });
 
-  const hoverDisposable = monaco.languages.registerHoverProvider(['c', 'cpp'], {
-    async provideHover(m, position, token) {
-      if (m !== model) return null;
-      const at = m.getWordAtPosition(position);
-      if (!at) return null;
-      // `Pair<char>`, not `Pair`: the two instantiations are different records
-      // and a word that stops at `<` cannot say which one the pointer is on.
-      const w = widenToTemplateArgs(m.getLineContent(position.lineNumber), at);
-      const md = await opts.typeHover(position.lineNumber, w, signalFor(token));
-      if (!md || token.isCancellationRequested) return null;
-      return {
-        range: new monaco.Range(
-          position.lineNumber,
-          w.startColumn,
-          position.lineNumber,
-          w.endColumn,
-        ),
-        contents: [{ value: md, supportHtml: false }],
-      };
+  // Every language this editor is ever set to. A hover provider is registered
+  // per language, and a model switched to one this list forgets would silently
+  // stop answering hovers.
+  const hoverDisposable = monaco.languages.registerHoverProvider(
+    Object.values(MONACO_LANGUAGE).map((l) => l.id),
+    {
+      async provideHover(m, position, token) {
+        if (m !== model) return null;
+        const at = m.getWordAtPosition(position);
+        if (!at) return null;
+        // `Pair<char>`, not `Pair`: the two instantiations are different records
+        // and a word that stops at `<` cannot say which one the pointer is on.
+        const w = widenToTemplateArgs(m.getLineContent(position.lineNumber), at);
+        const md = await opts.typeHover(position.lineNumber, w, signalFor(token));
+        if (!md || token.isCancellationRequested) return null;
+        return {
+          range: new monaco.Range(
+            position.lineNumber,
+            w.startColumn,
+            position.lineNumber,
+            w.endColumn,
+          ),
+          contents: [{ value: md, supportHtml: false }],
+        };
+      },
     },
-  });
+  );
 
   let hoverAt: { line: number; col: number } | null = null;
   let hoverPos: string | null = null;
@@ -247,7 +269,7 @@ export function createEditor(container: HTMLElement, opts: CreateEditorOptions):
       suppress = false;
     },
     setLanguage(lang) {
-      monaco.editor.setModelLanguage(model, lang === 'c++' ? 'cpp' : 'c');
+      monaco.editor.setModelLanguage(model, MONACO_LANGUAGE[lang].id);
     },
     setDiagnostics(diags) {
       const lineCount = model.getLineCount();
