@@ -74,9 +74,6 @@ function cacheKey(asset: Asset): string {
  * same policy, but cannot be relied on for it: a dedicated worker starts
  * alongside the registration, so its fetches on a first visit may go out
  * before anything is controlling them.
- */
-/**
- * Resolves each of `specs` against the manifest at `base`.
  *
  * - Requires `base` to end in a slash: every file is resolved relative to it.
  * - Returns one asset per spec the manifest names, in the order given. A spec
@@ -189,9 +186,6 @@ const isGzip = (head: Uint8Array | undefined): boolean =>
  * The cache is best-effort (an insecure origin has no Cache API, a full disk
  * fails the write) but the download is not, so caching failures cost the next
  * visit, not this one.
- */
-/**
- * Fetches every asset, decompressing what the build gzipped.
  *
  * - Returns a blob per asset, keyed by `Asset.name`, with one entry per input.
  * - Calls `onProgress(done, total)` in bytes across the assets `counted`

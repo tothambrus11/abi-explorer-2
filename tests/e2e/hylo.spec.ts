@@ -219,8 +219,15 @@ test.describe('Hylo', () => {
 
     // One member holding two, not two side by side: opened, the table indents
     // `a` and `b` under each of `x` and `y`, as it does for a nested struct in C.
+    // Bounded: a click that stops reducing the count would otherwise hang until
+    // the suite times out rather than saying what went wrong.
     const collapsed = page.locator('.field-table [aria-expanded="false"]');
-    while ((await collapsed.count()) > 0) await collapsed.first().click();
+    for (let pass = 0; ; pass++) {
+      const n = await collapsed.count();
+      if (n === 0) break;
+      expect(pass, 'the table never finished expanding').toBeLessThan(20);
+      for (let i = 0; i < n; i++) await collapsed.first().click();
+    }
     await expect.poll(() => names.allTextContents()).toEqual(['x', 'a', 'b', 'y', 'a', 'b']);
 
     // And its type can be opened as a record of its own, which needs the group
@@ -231,6 +238,28 @@ test.describe('Hylo', () => {
       .first()
       .click();
     await expect(page.locator('.record .title')).toContainText('struct Inner');
+  });
+
+  test('offers to open only what it laid a record out for', async ({ page }) => {
+    await page.goto('/');
+    await ready(page);
+    await selectLanguage(page, 'Hylo');
+    // `Int` belongs to the standard library, so this answer laid no record out
+    // for it and there is nothing for "inspect" to open. `Inner` is right here.
+    await type(
+      page,
+      'public struct Inner {\n  let a: Builtin.i32\n}\n\n'
+        + 'public struct Outer {\n  let here: Inner\n  let away: Int\n',
+    );
+    // `away` is 8-aligned so it is stored first; `here` follows at 8, and the
+    // record's 12 bytes step by 16.
+    await expect.poll(() => statValues(page), { timeout: 240_000 }).toEqual(['12', '8', '16', '0']);
+
+    const openable = page.locator('.field-table tr.group button.gname');
+    await expect.poll(() => openable.allTextContents()).toEqual(['here']);
+    // `away` is still a row, and still says what it holds; it just does not
+    // offer a button that would do nothing when pressed.
+    await expect(page.locator('.field-table tr.group .gname')).toHaveText(['here', 'away']);
   });
 
   test('the details popover stays on the screen wherever the row ends', async ({ page }) => {

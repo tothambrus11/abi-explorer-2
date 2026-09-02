@@ -102,12 +102,18 @@ async function readBundle(id: BackendId): Promise<Bundle | null> {
         { path?: string; sha256?: string; bytes: number; transferBytes?: number }
       >;
     };
-    const big = keys.map((key) => manifest.files?.[key]).filter((file) => file !== undefined);
+    // A file the manifest gives no path is one nothing can be looked for: the
+    // worker resolves its own name for it, and probing a guess here would ask
+    // about a URL that was never cached and re-prompt a visitor who already
+    // has the module.
+    const big = keys
+      .map((key) => manifest.files?.[key])
+      .flatMap((file) => (file?.path === undefined ? [] : [{ ...file, path: file.path }]));
     if (big.length === 0) return null;
     return {
       bytes: big.reduce((n, file) => n + (file.transferBytes ?? file.bytes), 0),
       urls: big.map((file) => {
-        const url = new URL(file.path ?? '', base).href;
+        const url = new URL(file.path, base).href;
         return file.sha256 === undefined ? url : `${url}?sha256=${file.sha256}`;
       }),
     };

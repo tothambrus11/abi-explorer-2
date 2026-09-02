@@ -125,6 +125,22 @@ describe('fetchAssets', () => {
     expect([...cache.entries.keys()]).toEqual([`${BASE}abi_query.wasm?sha256=new-digest`]);
   });
 
+  it('keys on the URL the manifest gives, not on a guess', async () => {
+    // The download gate probes this key to decide whether to ask for consent.
+    // A key either side invents on its own is one the other never wrote, and a
+    // visitor who already has the module is asked again on every visit.
+    const cache = new FakeCache();
+    vi.stubGlobal('fetch', serve({ [`${BASE}abi_query-abc.wasm`]: 'bytes' }, []));
+    await fetchAssets(
+      BASE,
+      [{ name: 'abi_query.wasm', url: `${BASE}abi_query-abc.wasm`, sha256: 'd', bytes: 5, transferBytes: 5 }],
+      () => true,
+      cacheOf(cache),
+      () => {},
+    );
+    expect([...cache.entries.keys()]).toEqual([`${BASE}abi_query-abc.wasm?sha256=d`]);
+  });
+
   it('still works for a manifest that records no digest', async () => {
     const cache = new FakeCache();
     const seen: string[] = [];

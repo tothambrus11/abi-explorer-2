@@ -31,16 +31,19 @@
   // of structs otherwise opens as a wall of rows in which the members
   // themselves are the hard part to find.
   //
-  // What is held is therefore what the reader *opened*, stamped with the model
+  // What is held is therefore what the reader *opened*, stamped with the record
   // it belongs to. Node ids are positions (`g0`, `l3`), so carrying them onto
-  // another record would open unrelated rows; recording the model means a
-  // different one starts shut without an effect that watches for the change and
-  // writes back, which is a loop waiting to happen — and did happen: the table
-  // stopped responding to clicks entirely.
-  let opened: { model: RenderModel; ids: ReadonlySet<string> } | null = $state.raw(null);
+  // another record would open unrelated rows.
+  //
+  // The record, not the model: every compile builds fresh models, so stamping
+  // with the model shut every row the reader had opened on the next keystroke.
+  // And derived rather than written from an effect that watches for the change,
+  // which is a loop waiting to happen — and did happen: the table stopped
+  // responding to clicks at all.
+  let opened: { record: string; ids: ReadonlySet<string> } | null = $state.raw(null);
   const open = $derived.by(() => {
     const o = opened;
-    return o !== null && o.model === model ? o.ids : EMPTY;
+    return o !== null && o.record === record ? o.ids : EMPTY;
   });
   const collapsed = $derived(new Set(collapsibleIds(model.tree).filter((id) => !open.has(id))));
   const rows = $derived(flattenVisible(model.tree, collapsed));
@@ -53,9 +56,18 @@
   const hovered = $derived(
     new Set(store.hover.members.filter((m) => m.record === record).map((m) => m.leaf)),
   );
-  /** A node is highlighted when all the leaves it covers are hovered. */
-  function isHovered(indexes: number[]): boolean {
-    return indexes.length > 0 && indexes.every((li) => hovered.has(li));
+  /**
+   * Is this row highlighted for the current hover?
+   *
+   * A row covering several leaves lights when *all* of them are hovered, so
+   * that pointing at one member of a nested record does not light the whole
+   * record. The exception is a row that is shut: what is hovered inside it is
+   * not drawn, and the alternative is that hovering a member in the editor
+   * lights nothing in the table at all.
+   */
+  function isHovered(indexes: number[], shut = false): boolean {
+    if (indexes.length === 0) return false;
+    return shut ? indexes.some((li) => hovered.has(li)) : indexes.every((li) => hovered.has(li));
   }
 
   /** Padding run attributed to the leaf ending closest before it. */
@@ -80,7 +92,7 @@
   function toggle(id: string) {
     const next = new Set<string>(open);
     if (!next.delete(id)) next.add(id);
-    opened = { model, ids: next };
+    opened = { record, ids: next };
   }
 
   function anchor(e: Event): { x: number; y: number } {
@@ -163,7 +175,7 @@
             : null}
           <tr
             class="group"
-            class:hovered={isHovered(node.leafIndexes)}
+            class:hovered={isHovered(node.leafIndexes, collapsed.has(node.id))}
             onmouseenter={(e) => {
               enterGroup(node.ref, e);
             }}
@@ -189,15 +201,23 @@
                 {:else}
                   <span class="twist-gap"></span>
                 {/if}
-                <button
-                  type="button"
-                  class="fname gname open"
-                  title="Inspect {group.type || group.name}"
-                  onclick={(e) => {
-                    e.stopPropagation();
-                    openGroup(node.ref);
-                  }}>{group.name}</button
-                >
+                {#if group.recordId !== null}
+                  <button
+                    type="button"
+                    class="fname gname open"
+                    title="Inspect {group.type || group.name}"
+                    onclick={(e) => {
+                      e.stopPropagation();
+                      openGroup(node.ref);
+                    }}>{group.name}</button
+                  >
+                {:else}
+                  <!-- Nothing to open: this answer laid out no record for the
+                       member's type, which is what a type from another module
+                       looks like. Offering it would be a button that does
+                       nothing when pressed. -->
+                  <span class="fname gname">{group.name}</span>
+                {/if}
                 {#if group.isBase}<span class="tag">base</span>{/if}
                 {#if group.isUnion}<span class="tag union">union</span>{/if}
                 {#if node.overlaps}<span class="tag overlap" title="shares bytes with a sibling"

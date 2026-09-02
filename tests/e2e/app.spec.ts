@@ -277,6 +277,33 @@ test.describe('ABI Explorer', () => {
     expect(after.filter((f) => !f.startsWith('next-') && f !== 'manifest.json')).toEqual([]);
   });
 
+  test('what the reader opened stays open while they type', async ({ page }) => {
+    await waitReady(page);
+    await page.selectOption('#example', { label: 'Union + nested' });
+    await expandAll(page);
+    const kind = page.locator('.field-table .fname', { hasText: 'kind' });
+    await expect(kind).toHaveCount(1);
+
+    // Every compile builds fresh models. Holding the opened rows against the
+    // model object shut all of them on the next keystroke, which is most of
+    // them, most of the time.
+    await page.locator('.monaco-editor').click();
+    await page.keyboard.press('End');
+    await page.keyboard.type('\n');
+    await expect.poll(() => kind.count(), { timeout: 30_000 }).toBe(1);
+  });
+
+  test('a member hovered inside a shut row still lights it', async ({ page }) => {
+    await waitReady(page);
+    await page.selectOption('#example', { label: 'Union + nested' });
+    // Shut to begin with, so the row that would carry the highlight is the
+    // group, not the member: hovering the member in the editor must light
+    // something, or the table looks broken.
+    await expect(page.locator('.field-table .fname', { hasText: 'kind' })).toHaveCount(0);
+    await hoverWord(page, 'uint16_t kind;', 'kind');
+    await expect(page.locator('.field-table tr.hovered .gname')).toHaveText(['hdr']);
+  });
+
   test('metered connection: the download waits for an explicit opt-in', async ({ page }) => {
     // Pretend the browser reports Data Saver before any app code runs.
     await page.addInitScript(() => {
