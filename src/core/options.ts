@@ -65,6 +65,7 @@ export function standardsFor(lang: Language): readonly string[] {
   return lang === 'c++' ? CXX_STANDARDS : lang === 'hylo' ? [] : C_STANDARDS;
 }
 
+/** The standard a language starts on: the newest of each, and none for Hylo. */
 export function defaultStdFor(lang: Language): string {
   return lang === 'c++' ? DEFAULT_CXX_STD : lang === 'hylo' ? '' : DEFAULT_C_STD;
 }
@@ -100,11 +101,28 @@ const TAKES_ARG = new Set(['-Xclang', '-include', '-D', '-U', '-I', '-isystem'])
 const XCLANG_ARG_RE = /^-f[A-Za-z0-9=+_.-]*$/;
 const PATH_ARG_RE = /^[A-Za-z0-9_./+][A-Za-z0-9_.+/-]*$/;
 
+/**
+ * May this flag be passed to the compiler?
+ *
+ * An allowlist, not a denylist: a shared link can put anything in the flag box,
+ * and the ones worth refusing are the ones nobody thought to list. A flag that
+ * takes its value as a separate token is not decided here — see
+ * `splitExtraFlags`, which is the only thing that can see the pair.
+ */
 export function isAllowedFlag(flag: string): boolean {
   return ALLOWED_FLAG_RE.test(flag);
 }
 
-/** Split and filter free-form extra flags. Returns [accepted, rejected]. */
+/**
+ * Splits free-form flag text into the accepted tokens and the refused ones.
+ *
+ * - Total: any text splits, including the empty string (two empty lists).
+ * - Every token appears in exactly one of the two lists, in the order written,
+ *   so the caller can show a reader precisely what was dropped.
+ * - A flag whose value is the next token is judged as a pair and lands whole in
+ *   one list or the other: a value that itself looks like a flag is refused
+ *   with it, since `-include -o` would otherwise put a bare `-o` through.
+ */
 export function splitExtraFlags(text: string): [string[], string[]] {
   const accepted: string[] = [];
   const rejected: string[] = [];

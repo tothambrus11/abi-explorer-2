@@ -5,6 +5,14 @@ import { fmtOffset } from '$state/session.svelte';
 
 const fmt = new Intl.NumberFormat('en-US');
 
+/**
+ * `s` as HTML text.
+ *
+ * Escapes the four characters that matter inside an element or a double-quoted
+ * attribute. Everything below builds markup by concatenation, and every piece
+ * of it that came from the source — a type name, a member name — goes through
+ * here first.
+ */
 export function escapeHtml(s: string): string {
   return s.replace(
     /[&<>"]/g,

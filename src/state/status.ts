@@ -35,6 +35,7 @@ export function computeAnalysisStatus(
   return { kind: 'ok', warnings: analysis.diagnostics.length > 0 };
 }
 
+/** Something showable for any thrown value, including one that is not an Error. */
 function errorMessage(error: unknown): string {
   if (error instanceof Error) return error.message || String(error);
   return String(error);

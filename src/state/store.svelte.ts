@@ -67,6 +67,13 @@ const VIEW_KEY = 'abix-view';
 /** Shared media query for the narrow (phone) layout; one object, reused for the listener. */
 const NARROW_MQ = typeof matchMedia === 'function' ? matchMedia('(max-width: 760px)') : null;
 
+/**
+ * The one place the app's state lives: the query, the answer, and what the
+ * reader is pointing at.
+ *
+ * A singleton, exported as `store` below. Fields are written directly; the
+ * methods exist where a change has consequences beyond the field it names.
+ */
 class Store {
   options: CompileOptions = $state({ ...DEFAULT_OPTIONS });
   source: string = $state(EXAMPLES[0]?.source ?? '');
@@ -153,6 +160,13 @@ class Store {
    */
   private lastClangTriple = DEFAULT_OPTIONS.triple;
 
+  /**
+   * Selects a language, and brings the options that depend on it along.
+   *
+   * The buffer is untouched: the text is the user's. A standard the new
+   * language does not have becomes its default, and the target follows the
+   * language, with the last clang triple kept for the way back.
+   */
   setLanguage(lang: Language): void {
     if (this.options.lang === lang) return;
     if (this.options.lang !== 'hylo') this.lastClangTriple = this.options.triple;
@@ -177,6 +191,12 @@ class Store {
     this.selectedRecord = null;
   }
 
+  /**
+   * Switches between the stacked and tabbed layouts, and remembers the choice.
+   *
+   * Persisted per visitor rather than per link: a shared link's view applies to
+   * that visit only, and must not overwrite what the reader prefers.
+   */
   setView(view: ViewMode): void {
     this.view = view;
     try {
@@ -186,11 +206,13 @@ class Store {
     }
   }
 
+  /** Switches to whichever layout is not showing, and remembers it. */
   toggleView(): void {
     this.setView(this.view === 'stack' ? 'tabs' : 'stack');
   }
 }
 
+/** The remembered layout, defaulting to tabs where storage cannot be read. */
 function readView(): ViewMode {
   try {
     return localStorage.getItem(VIEW_KEY) === 'stack' ? 'stack' : 'tabs';

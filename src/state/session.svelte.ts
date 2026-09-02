@@ -47,7 +47,19 @@ interface CompileInput {
 const SOURCE_DEBOUNCE_MS = 500;
 const HASH_DEBOUNCE_MS = 400;
 
+/**
+ * What the app does, as opposed to what it shows.
+ *
+ * Owns the query, the history, and every hover input, and is the only thing
+ * that writes the store's derived state. Nothing here touches the DOM: a view
+ * calls a method and reads the store, so the orchestration can be driven from
+ * a test without a browser.
+ *
+ * `start` wires the reactive effects and returns their disposer; nothing runs
+ * until it is called, which is what lets `restoreFromUrl` finish first.
+ */
 export class Session {
+  /** The analyzer these queries go through; exposed for tests and hovers. */
   readonly analyzer: AbiAnalyzer;
   private cleanup: (() => void) | null = null;
 
@@ -132,6 +144,10 @@ export class Session {
    */
   readonly history = new History({ source: store.source, options: { ...store.options } });
 
+  /**
+   * A session answering through `backends`, which routes each query to the
+   * compiler for its language and downloads only what is asked for.
+   */
   constructor(private readonly backends: Backends) {
     this.analyzer = new AbiAnalyzer(backends);
   }
@@ -146,6 +162,13 @@ export class Session {
     this.apply(this.history.redo());
   }
 
+  /**
+   * Puts a snapshot back into the store, or does nothing for `null`, which is
+   * what `undo`/`redo` return at the ends of the history.
+   *
+   * Clears the selected record: it names a record of the layout being replaced,
+   * and may not exist in the one that is coming.
+   */
   private apply(s: { source: string; options: CompileOptions } | null): void {
     if (!s) return;
     // Guarded, so the effect that watches the store does not record putting a
@@ -294,7 +317,16 @@ export class Session {
     return this.cleanup;
   }
 
-  /** Restore state from the URL fragment (call before start()). */
+  /**
+   * Restores the state a shared link carries, and reports whether there was one.
+   *
+   * - Call before `start`, and before the module is booted: the link says which
+   *   language is wanted, and booting first starts the wrong compiler.
+   * - Leaves the store untouched when the fragment is absent or unreadable, so
+   *   a corrupt link opens the app rather than half of someone else's session.
+   * - Clears the history: a link is where a visit begins, not a state to undo
+   *   back out of.
+   */
   async restoreFromUrl(): Promise<boolean> {
     const s = await decodeShareState(location.hash);
     if (!s) return false;
@@ -308,6 +340,7 @@ export class Session {
     return true;
   }
 
+  /** Everything a link carries: what to compile, how, and what to be looking at. */
   private shareState(): ShareState {
     return {
       source: store.source,
@@ -317,19 +350,35 @@ export class Session {
     };
   }
 
-  /** A link encoding the *current* state (not the debounced fragment in the address bar). */
+  /**
+   * A link to exactly what is on screen now.
+   *
+   * Encodes the current state rather than reading the address bar, which lags
+   * behind by a debounce: a reader who edits and immediately presses Share
+   * would otherwise copy the state before their edit. Also updates the address
+   * bar, so the two agree afterwards.
+   */
   async shareUrl(): Promise<string> {
     const frag = await encodeShareState(this.shareState());
     history.replaceState(null, '', '#' + frag);
     return location.href;
   }
 
+  /**
+   * Takes down the prompt and starts the download.
+   *
+   * Failures are left to the module status rather than thrown from here: this
+   * is called from event handlers, and the banner already says what happened.
+   */
   private startModule(): void {
     store.awaitingDownloadConsent = false;
     void this.backends.start().catch(() => {});
   }
 
-  /** The user opted into the download on a metered connection; remember and go. */
+  /**
+   * The user accepted the download. Remembers the consent for later visits and
+   * starts the module at once; the prompt does not reappear this session.
+   */
   allowDownload(): void {
     grantConsent();
     this.startModule();
@@ -365,7 +414,12 @@ export class Session {
     return true;
   }
 
-  /** Force a query now (e.g. Ctrl+Enter), even if the input is unchanged. */
+  /**
+   * Runs the query now, unchanged input and pending debounce notwithstanding.
+   *
+   * What Ctrl+Enter is for: the answer to an unchanged question is already on
+   * screen, so this exists for the reader who wants to see it recomputed.
+   */
   compileNow(): void {
     this.compile.trigger({ source: store.source, options: { ...store.options } }, { force: true });
   }

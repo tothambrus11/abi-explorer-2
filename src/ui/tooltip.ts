@@ -8,6 +8,18 @@ export interface TooltipOptions {
   placement?: 'top' | 'bottom';
 }
 
+/**
+ * Attaches a tooltip to `node`, shown on hover and on keyboard focus.
+ *
+ * A null, empty or absent `param` attaches nothing and removes whatever was
+ * there, so a hint can be made conditional without conditionally applying the
+ * action. The bubble appears after `DELAY_MS`, is clamped to the viewport, and
+ * flips to the other side when the preferred one has no room. Text only, set
+ * through `textContent`: nothing here interpolates markup.
+ *
+ * Cleans up after itself on `destroy`, including a bubble still on screen and a
+ * timer still pending, so a node removed mid-hover leaves nothing behind.
+ */
 export function tooltip(node: HTMLElement, param: string | TooltipOptions | null | undefined) {
   let opts = normalize(param);
   let el: HTMLDivElement | null = null;

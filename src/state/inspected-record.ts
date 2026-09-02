@@ -36,7 +36,13 @@ export function recordsAtLine(line: number, records: Iterable<AnalysedRecord>): 
   return out;
 }
 
-/** The line a record's name is written on, for navigating to it. */
+/**
+ * The line a record's name is written on, or `null` when it has no location.
+ *
+ * Falls back to the start of its declaration range, since a record clang could
+ * not point at precisely can still be navigated to. `null` for a record from a
+ * header, which the editor does not have.
+ */
 export function declLineFor(key: string, records: Iterable<AnalysedRecord>): number | null {
   for (const r of records) {
     if (r.key === key) return r.record.location?.line ?? r.record.range?.line ?? null;

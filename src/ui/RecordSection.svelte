@@ -1,4 +1,9 @@
 <script lang="ts">
+  // One record: its byte map above, its members below.
+  //
+  // `section` is what to show and `session` is the state the two halves share,
+  // which is the whole reason they are mounted together — pointing at a byte
+  // lights the row that owns it, and the reverse.
   import type { Section } from '$state/store.svelte';
   import type { Session } from '$state/session.svelte';
   import Summary from './Summary.svelte';

@@ -1,4 +1,9 @@
 <script lang="ts">
+  // The shell: header, controls, and the dock the panels live in.
+  //
+  // `session` is the tab's state, threaded down rather than reached for, so a
+  // second session would be a second `App` and nothing else. Everything here is
+  // arrangement; the panels themselves are mounted by the dock.
   import { onMount } from 'svelte';
   import type { Session } from '$state/session.svelte';
   import { theme, applyThemeTokens } from '$state/theme.svelte';

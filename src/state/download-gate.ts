@@ -39,6 +39,12 @@ function connection(): ConnectionHint | undefined {
   return (navigator as Navigator & { connection?: ConnectionHint }).connection;
 }
 
+/**
+ * Has the user already agreed to a large download on this connection?
+ *
+ * False when storage is unreadable (a private window), which asks again rather
+ * than assuming consent that was never given.
+ */
 export function hasConsent(): boolean {
   try {
     return localStorage.getItem(CONSENT_KEY) === '1';
@@ -47,6 +53,12 @@ export function hasConsent(): boolean {
   }
 }
 
+/**
+ * Records that the user agreed, for later visits.
+ *
+ * Never throws: where storage cannot be written the consent still holds for
+ * this page, it just is not remembered for the next one.
+ */
 export function grantConsent(): void {
   try {
     localStorage.setItem(CONSENT_KEY, '1');
@@ -124,7 +136,15 @@ async function readBundle(id: BackendId): Promise<Bundle | null> {
 
 const pending = new Map<BackendId, Promise<Bundle | null>>();
 
-/** Memoised per backend: each manifest is read once per page, by whoever asks first. */
+/**
+ * What `id`'s module costs, from its own manifest, or `null` when that cannot
+ * be read.
+ *
+ * Memoised per backend: the manifest is read once per page by whoever asks
+ * first, so the consent prompt and the progress bar quote one number rather
+ * than two guesses at it. `null` on a first visit means the download would
+ * fail anyway.
+ */
 export function bundle(id: BackendId): Promise<Bundle | null> {
   let p = pending.get(id);
   if (!p) {

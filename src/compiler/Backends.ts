@@ -18,6 +18,7 @@ import type { WireResponse } from '$core/render';
 /** Which compiler a language is answered by. */
 export type BackendId = 'clang' | 'hylo';
 
+/** Which compiler answers for `lang`. Total: every language has exactly one. */
 export function backendFor(lang: Language): BackendId {
   return lang === 'hylo' ? 'hylo' : 'clang';
 }
@@ -54,6 +55,12 @@ const DESCRIPTIONS: Record<BackendId, BackendDescription> = {
 };
 
 /** How to describe whichever compiler answers for `lang`. */
+/**
+ * How to describe whichever compiler answers for `lang`.
+ *
+ * Total, and the single place a view asks: naming a compiler in a view is how
+ * "Downloading clang" came to appear while Hylo was downloading.
+ */
 export function describeBackend(lang: Language): BackendDescription {
   return DESCRIPTIONS[backendFor(lang)];
 }
@@ -82,6 +89,11 @@ export class Backends implements AbiModule {
     return this.statuses.get(this.active) ?? IDLE;
   }
 
+  /**
+   * Subscribes to the *active* backend's status, calling `listener` at once
+   * with it. Fires again when the active backend changes, so a switch reports
+   * the new backend's state rather than leaving the old one's on screen.
+   */
   onStatus(listener: (s: ModuleStatus) => void): () => void {
     this.listeners.add(listener);
     listener(this.status);
@@ -153,14 +165,17 @@ export class Backends implements AbiModule {
     return this.client(backendFor(request.lang ?? 'c')).query(request);
   }
 
+  /** The active backend's targets, starting it if nothing has yet. */
   targets(): Promise<string[]> {
     return this.client(this.active).targets();
   }
 
+  /** The active backend's version, starting it if nothing has yet. */
   version(): Promise<string> {
     return this.client(this.active).version();
   }
 
+  /** Disposes every backend that was started, and forgets them all. */
   dispose(): void {
     for (const off of this.unsubscribes.values()) off();
     this.unsubscribes.clear();

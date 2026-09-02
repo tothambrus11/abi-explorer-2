@@ -18,6 +18,7 @@ export type Subject =
   /** A type spelling to describe, with what it resolves to if that differs. */
   | { kind: 'spelling'; spelling: string; alias: string | null };
 
+/** Everything `subjectAt` needs to say what a word is, without touching the DOM. */
 export interface HoverContext {
   analysis: Analysis;
   /** The editor's per-line index, for the member declared on this line. */
@@ -26,6 +27,7 @@ export interface HoverContext {
   knownSpellings: ReadonlySet<string>;
 }
 
+/** A word and where it starts, which is all a subject lookup needs. */
 export interface HoverWord {
   word: string;
   /** 1-based. */

@@ -1,4 +1,10 @@
 <script lang="ts">
+  // The query: language, standard, target and flags, plus the info icon.
+  //
+  // Everything here writes to `store.options`, and nothing here reads a result
+  // — the compile is downstream of this, driven by whoever watches the options.
+  // Which controls apply depends on the language, since Hylo describes one ABI
+  // and takes none of clang's flags.
   import { store } from '$state/store.svelte';
   import { TARGET_GROUPS } from '$core/targets';
   import { HYLO_AVAILABLE, standardsFor, splitExtraFlags, type Language } from '$core/options';

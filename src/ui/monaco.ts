@@ -35,14 +35,26 @@ export interface WordAt {
 // The dot list is produced by `$state/editor-view`; this facade only applies it.
 export type { MemberDot } from '$state/editor-view';
 
+/**
+ * What the app is allowed to ask of the editor.
+ *
+ * The whole of Monaco is behind this: the setters are idempotent, so a caller
+ * may hand over the current state on every change without checking whether it
+ * differs, and every `on*` registers one callback, replacing any earlier one.
+ */
 export interface EditorHandle {
   getValue(): string;
+  /** Replaces the buffer. Leaves the caret where it can, and records no undo step of its own. */
   setValue(text: string): void;
+  /** Switches syntax highlighting; keeps the text. */
   setLanguage(lang: Language): void;
+  /** Replaces the squiggles. An empty list clears them. */
   setDiagnostics(diags: Diagnostic[]): void;
+  /** Replaces the member circles in the gutter. */
   setMemberDots(dots: MemberDot[]): void;
   /** Subtle whole-line tint plus, when given, a strong highlight on the member's name. */
   highlightLine(line: number | null, name?: { startCol: number; endCol: number } | null): void;
+  /** The ghost text at the end of a line; `null` for either argument removes it. */
   setInlay(line: number | null, text: string | null): void;
   /** cb(line|null) as the pointer moves across lines (gutter or text). */
   onLineHover(cb: (pos: { line: number; col: number } | null) => void): void;
@@ -54,9 +66,12 @@ export interface EditorHandle {
   onMouseActivity(cb: () => void): void;
   /** Re-emit the current hover (after the line map changed). */
   refreshHover(): void;
+  /** cb() after every edit to the buffer, including undo and `setValue`. */
   onChange(cb: () => void): void;
+  /** cb() on the explicit "compile now" key. */
   onSubmit(cb: () => void): void;
   focus(): void;
+  /** Disposes the editor, its model and every listener. The handle is dead afterwards. */
   dispose(): void;
 }
 
@@ -84,6 +99,14 @@ function signalFor(token: monaco.CancellationToken): AbortSignal {
   return ac.signal;
 }
 
+/**
+ * Creates the editor in `container` and returns the handle to it.
+ *
+ * The caller owns the result and must `dispose` it before the container goes
+ * away. One model per editor, named by the language so Monaco applies the right
+ * syntax; `opts.typeHover` answers hovers over type names, and may be slow,
+ * since it is cancelled when the pointer moves on.
+ */
 export function createEditor(container: HTMLElement, opts: CreateEditorOptions): EditorHandle {
   const model = monaco.editor.createModel(
     opts.value,

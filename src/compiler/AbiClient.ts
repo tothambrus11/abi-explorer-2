@@ -25,7 +25,17 @@ export interface AbiClientOptions {
   createWorker: () => Worker;
 }
 
+/**
+ * One module, in a worker, behind the `AbiModule` interface.
+ *
+ * Owns the load: the worker is created on the first `start` and never
+ * recreated, so every caller shares one download and one wasm instance. A
+ * failure is terminal for this client — the status stays `failed` and every
+ * call rejects — because a module that could not be loaded will not load by
+ * being asked again.
+ */
 export class AbiClient implements AbiModule {
+  /** How far along the load is; `idle` until `start`. */
   status: ModuleStatus = { state: 'idle' };
 
   private worker: Worker | null = null;
@@ -36,19 +46,32 @@ export class AbiClient implements AbiModule {
   private readyResolve: (() => void) | null = null;
   private readyReject: ((e: Error) => void) | null = null;
 
+  /** A client for the worker `opts.createWorker` makes; nothing starts until `start`. */
   constructor(private readonly opts: AbiClientOptions) {}
 
+  /**
+   * Subscribes to the load status, calling `listener` at once with the current
+   * one so a caller never has to read it separately. Returns the unsubscribe.
+   */
   onStatus(listener: (s: ModuleStatus) => void): () => void {
     this.listeners.add(listener);
     listener(this.status);
     return () => this.listeners.delete(listener);
   }
 
+  /** Records the status and tells every listener, in subscription order. */
   private setStatus(s: ModuleStatus): void {
     this.status = s;
     for (const l of this.listeners) l(s);
   }
 
+  /**
+   * Begins loading, and resolves when the module can answer.
+   *
+   * Idempotent: repeated calls share one promise and one worker. Rejects if the
+   * worker fails to load, and stays rejected, since the same promise is handed
+   * to everyone who asks afterwards.
+   */
   start(): Promise<void> {
     if (this.readyPromise) return this.readyPromise;
     this.readyPromise = new Promise<void>((resolve, reject) => {
@@ -68,6 +91,14 @@ export class AbiClient implements AbiModule {
     return this.readyPromise;
   }
 
+  /**
+   * Handles one message from the worker.
+   *
+   * Parses defensively: the worker is a separate build, so a message with a
+   * shape this version does not know is ignored rather than trusted. An error
+   * without an id is the module itself failing and fails everything; an error
+   * with one rejects only that request.
+   */
   private onMessage(data: unknown): void {
     const msg = data as {
       type?: string;
@@ -105,6 +136,11 @@ export class AbiClient implements AbiModule {
     else p.resolve(msg.value);
   }
 
+  /**
+   * Declares the module unusable: the status goes to failed, `start` rejects,
+   * and every outstanding request rejects rather than hanging on a worker that
+   * will never answer.
+   */
   private fail(message: string): void {
     this.setStatus({ state: 'failed', message });
     this.readyReject?.(new Error(message));
@@ -114,6 +150,13 @@ export class AbiClient implements AbiModule {
     }
   }
 
+  /**
+   * Sends one request and resolves with its answer.
+   *
+   * Starts the module first, so a caller never has to; rejects if it fails to
+   * load, or if the worker answers this request with an error. The id is added
+   * here and is what pairs the answer with this promise.
+   */
   private send<T>(payload: Record<string, unknown>): Promise<T> {
     return this.start().then(
       () =>
@@ -139,6 +182,13 @@ export class AbiClient implements AbiModule {
     return this.send<string>({ type: 'version' });
   }
 
+  /**
+   * Terminates the worker and rejects everything outstanding.
+   *
+   * A disposed client is not reusable: `start` would hand back the settled
+   * promise it already holds. Nothing rejects silently, so no caller is left
+   * waiting on a worker that no longer exists.
+   */
   dispose(): void {
     this.worker?.terminate();
     this.worker = null;

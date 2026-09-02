@@ -322,7 +322,15 @@ export const SPECIAL_COLOR = 'c-special';
  */
 export const PALETTE_SIZE = 8;
 
-/** The members of a record: its own fields and its compound members, one level deep. */
+/**
+ * The units a reader would count as this record's members, in offset order.
+ *
+ * One level deep, and one entry per member: a compound member counts once
+ * rather than once per field inside it, and a transparent one (a base, an
+ * anonymous aggregate) is skipped in favour of the fields it contributes, which
+ * are members of this record in their own right. Every leaf is covered exactly
+ * once, by itself or by the group holding it.
+ */
 export function directMembers(model: RenderModel): (Leaf | Group)[] {
   const covered = new Set<number>();
   const units: (Leaf | Group)[] = [];
@@ -411,7 +419,14 @@ export function assignColors(model: RenderModel, paletteSize = PALETTE_SIZE): vo
   });
 }
 
-/** Depth-first list of nodes with collapsed subtrees hidden. */
+/**
+ * The rows to draw, depth-first, with the children of collapsed nodes omitted.
+ *
+ * `depth` is the nesting level of each row, counted from zero, and is what the
+ * table indents by. A node in `collapsed` is itself returned; only what it
+ * holds is left out, so collapsing never removes the row you would click to
+ * open it again.
+ */
 export function flattenVisible(
   nodes: TreeNode[],
   collapsed: ReadonlySet<string>,

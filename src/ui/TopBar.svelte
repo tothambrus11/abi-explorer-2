@@ -1,4 +1,10 @@
 <script lang="ts">
+  // The app's header: name, undo/redo, theme, and a way back to the default
+  // layout.
+  //
+  // `session` is what undo and redo act on — the history is per tab and lives
+  // in memory only. `onResetLayout` is the dock's, since the panels are the
+  // app's to arrange and not this bar's.
   import ThemeMenu from './ThemeMenu.svelte';
   import { store } from '$state/store.svelte';
   import LayoutTemplate from '@lucide/svelte/icons/layout-template';

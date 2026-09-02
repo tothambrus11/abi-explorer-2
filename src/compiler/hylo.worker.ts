@@ -111,6 +111,16 @@ function call(m: Reactor, fn: (p: number, n: number) => number, value: unknown):
 let booting: Promise<HyloModule> | null = null;
 const boot = (): Promise<HyloModule> => (booting ??= instantiate());
 
+/**
+ * Downloads, caches and instantiates the reactor, then loads the standard
+ * library into it.
+ *
+ * Call through `boot`, never directly. Rejects if a file is missing or the
+ * standard library does not type check, quoting whatever the module printed on
+ * its way down, since a trap leaves nothing else to go on. Type checking the
+ * library is what makes this expensive and is why the result is kept for the
+ * life of the worker.
+ */
 async function instantiate(): Promise<HyloModule> {
   const cache = await openCache(CACHE);
   const assets = await resolveAssets(BASE, ASSETS, cache);

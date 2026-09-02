@@ -27,6 +27,7 @@ interface Persisted {
   dark?: string;
 }
 
+/** Parsed JSON from storage, or `fallback` when it is absent, unreadable or malformed. */
 function loadJson<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key);
@@ -35,6 +36,7 @@ function loadJson<T>(key: string, fallback: T): T {
     return fallback;
   }
 }
+/** Stores `value` as JSON, or silently does not, where storage refuses. */
 function saveJson(key: string, value: unknown): void {
   try {
     localStorage.setItem(key, JSON.stringify(value));
@@ -43,10 +45,19 @@ function saveJson(key: string, value: unknown): void {
   }
 }
 
+/**
+ * The user's own themes, as this version understands them.
+ *
+ * Anything stored that is not a usable spec is dropped rather than repaired:
+ * these come from an older build or a hand-edited value, and a half-valid
+ * theme paints the app with undefined variables. What survives is migrated to
+ * the current shape.
+ */
 function loadCustomSpecs(): ThemeSpec[] {
   const raw = loadJson<unknown>(CUSTOM_KEY, []);
   return (Array.isArray(raw) ? raw : []).filter(isUsableSpec).map(migrateSpec);
 }
+/** The remembered selection; empty when nothing usable is stored. */
 function loadPersisted(): Persisted {
   const raw = loadJson<unknown>(KEY, {});
   return raw && typeof raw === 'object' ? raw : {};
@@ -54,6 +65,14 @@ function loadPersisted(): Persisted {
 
 const mql = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null;
 
+/**
+ * Which theme is showing, which are available, and which the reader last used
+ * in each mode.
+ *
+ * A singleton, exported as `theme` below. Presets ship and cannot be changed;
+ * everything else is the user's, stored in this browser. Nothing here touches
+ * the document: `applyThemeTokens` does that, from an effect.
+ */
 class ThemeStore {
   private saved = loadPersisted();
   /** User-authored theme specs. */
@@ -91,6 +110,11 @@ class ThemeStore {
   });
   mode: ThemeMode = $derived(this.current.mode);
 
+  /**
+   * Restores the remembered selection, ignoring any part of it that no longer
+   * names a theme of the right mode, and follows the OS's light/dark
+   * preference from here on.
+   */
   constructor() {
     const light = this.saved.light ? this.byId(this.saved.light) : undefined;
     const dark = this.saved.dark ? this.byId(this.saved.dark) : undefined;
@@ -100,10 +124,19 @@ class ThemeStore {
     mql?.addEventListener('change', (e) => (this.osDark = e.matches));
   }
 
+  /** The theme with this id, preset or custom, or `undefined` if there is none. */
   byId(id: string): Theme | undefined {
     return this.all.find((t) => t.id === id);
   }
 
+  /**
+   * Chooses a theme and remembers it, for this mode and across visits.
+   *
+   * An unknown id does nothing rather than clearing the choice. Selecting a
+   * theme also makes it the "last" of its own mode, and releases it from the
+   * other one: a theme edited from dark to light would otherwise still be what
+   * the light/dark toggle flips *to*, so the toggle would flip to itself.
+   */
   select(id: string): void {
     const t = this.byId(id);
     if (!t) return;
@@ -120,14 +153,25 @@ class ThemeStore {
     this.persist();
   }
 
-  /** Flip between the last-used light and dark themes. */
+  /**
+   * Flips to the last theme used in the other mode.
+   *
+   * Not to a fixed pair: a reader who picked one light and one dark theme gets
+   * their own two back, which is what makes the toggle worth pressing twice.
+   */
   toggleMode(): void {
     this.select(this.mode === 'dark' ? this.lastLight : this.lastDark);
   }
 
   // ------------------------------------------------------ custom themes --
 
-  /** Create a new custom theme from an existing one; returns its id. */
+  /**
+   * Copies a theme into a new editable one and selects it, returning its id.
+   *
+   * Copies the current theme when `fromId` names none, since the alternative is
+   * refusing to create anything. Presets are never modified; this is the only
+   * way to base a theme on one.
+   */
   duplicate(fromId: string, name?: string): string {
     const src = this.byId(fromId) ?? this.current;
     const id = 'custom-' + Math.random().toString(36).slice(2, 8);
@@ -146,6 +190,14 @@ class ThemeStore {
     return id;
   }
 
+  /**
+   * Edits a custom theme in place, through `patch`.
+   *
+   * `patch` mutates a private copy, so it may write freely; an unknown or
+   * preset id does nothing. Re-selects when the theme being edited is the one
+   * showing, since an edit can change its mode and with it which theme the
+   * light/dark toggle should flip to.
+   */
   update(id: string, patch: (spec: ThemeSpec) => void): void {
     const i = this.custom.findIndex((s) => s.id === id);
     if (i < 0) return;
@@ -157,6 +209,13 @@ class ThemeStore {
     if (this.chosen === id) this.select(id);
   }
 
+  /**
+   * Deletes a custom theme, and moves anything pointing at it out of the way.
+   *
+   * An unknown or preset id does nothing. Whatever referred to it — the
+   * selection, either mode's last theme, the editor — falls back to a default
+   * of the same mode, so nothing is left naming a theme that no longer exists.
+   */
   remove(id: string): void {
     const spec = this.custom.find((s) => s.id === id);
     if (!spec) return;
@@ -170,10 +229,17 @@ class ThemeStore {
     this.persist();
   }
 
+  /** Does this id name a theme that ships? Presets cannot be edited or deleted. */
   isPresetId(id: string): boolean {
     return PRESET_SPECS.some((s) => s.id === id);
   }
 
+  /**
+   * A theme as JSON to share, or `null` for an unknown id.
+   *
+   * The id is deliberately left out: importing assigns a fresh one, so a shared
+   * theme can never collide with or overwrite one the recipient already has.
+   */
   exportSpec(id: string): string | null {
     const t = this.byId(id);
     if (!t) return null;
@@ -181,6 +247,15 @@ class ThemeStore {
     return JSON.stringify({ name, mode, page, syntax, editor, members }, null, 2);
   }
 
+  /**
+   * Adds a shared theme and selects it, returning its new id.
+   *
+   * Total: `null` for anything that is not a theme this app can compile —
+   * malformed JSON, a missing group, an unparseable colour — and nothing is
+   * stored in that case. Validation is by compiling, because a spec that is
+   * shape-valid but wrong paints the app with undefined CSS variables rather
+   * than failing.
+   */
   importSpec(json: string): string | null {
     try {
       const raw = JSON.parse(json) as Partial<ThemeSpec>;
@@ -197,6 +272,7 @@ class ThemeStore {
     }
   }
 
+  /** Remembers the selection: what is showing, and the last of each mode. */
   private persist(): void {
     saveJson(KEY, {
       current: this.chosen,
@@ -204,6 +280,7 @@ class ThemeStore {
       dark: this.lastDark,
     } satisfies Persisted);
   }
+  /** Stores the user's own themes. Call after every change to `custom`. */
   private persistCustom(): void {
     saveJson(CUSTOM_KEY, $state.snapshot(this.custom));
   }
@@ -211,7 +288,13 @@ class ThemeStore {
 
 export const theme = new ThemeStore();
 
-/** Apply the theme's tokens to :root (call from an effect). */
+/**
+ * Paints a theme onto the document.
+ *
+ * Writes every token, the `data-theme` attribute and `color-scheme`, so the
+ * page and the browser's own widgets agree about the mode. Call from an effect:
+ * it touches the DOM and overwrites whatever was applied before.
+ */
 export function applyThemeTokens(t: Theme): void {
   const root = document.documentElement;
   for (const [k, v] of Object.entries(t.tokens)) root.style.setProperty(k, v);

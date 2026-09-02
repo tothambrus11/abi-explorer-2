@@ -1,4 +1,14 @@
 <script lang="ts">
+  // One record's members, as a table.
+  //
+  // `model` is the analysis to render, `record` names which of its records this
+  // table is for, and `session` carries the hover and inspection state shared
+  // with the byte grid and the editor.
+  //
+  // Rows nest, and every collapsible row starts shut: what is open is held per
+  // record as a set of open ids, so editing the source (a new model object,
+  // same record) does not shut what the reader opened, while inspecting a
+  // different record starts fresh.
   import type { RenderModel, TreeNode } from '$core/types';
   import { flattenVisible, groupColorClass } from '$core/render';
   import { store } from '$state/store.svelte';

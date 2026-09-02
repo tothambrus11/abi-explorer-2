@@ -1,4 +1,8 @@
 <script lang="ts">
+  // The one-line verdict for a record: size, alignment and stride.
+  //
+  // `model` is the analysis it summarises. Stride is computed here rather than
+  // reported by the backends, because only one of them has a word for it.
   import type { RenderModel } from '$core/types';
   import { tooltip } from './tooltip';
   import { store } from '$state/store.svelte';

@@ -1,4 +1,9 @@
 <script lang="ts">
+  // The layout panel: a record per section, or whatever stands in for one.
+  //
+  // Takes the `session` and reads its analysis, so the pane shows the state the
+  // rest of the tab is in — compiling, failed, empty, or laid out — rather than
+  // blanking while a new answer is on its way.
   import { store } from '$state/store.svelte';
   import type { Session } from '$state/session.svelte';
   import { bundle } from '$state/download-gate';

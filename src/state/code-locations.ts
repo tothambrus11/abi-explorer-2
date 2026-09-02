@@ -72,7 +72,14 @@ export interface LineInfo {
   marks: MemberMark[];
 }
 
-/** The mark a column falls in: each mark owns from its own column to the next one. */
+/**
+ * The declarator on this line that `col` falls in, or `null` if the line has
+ * none.
+ *
+ * Each mark owns from its own column up to the next one, so every column of a
+ * line with marks resolves to exactly one; a line whose AST gave no columns is
+ * one forgiving mark covering all of it.
+ */
 export function markAtColumn(info: LineInfo, col: number): MemberMark | null {
   const marks = info.marks;
   if (marks.length === 0) return null;
@@ -106,7 +113,17 @@ function markColour(model: RenderModel, items: (Leaf | Group)[], leaves: Set<num
   return sharedColorClass(model, leaves) ?? COMPOUND;
 }
 
-/** Map the visible render models to a per-line index for the editor. */
+/**
+ * What each line of the editor declares, across every record on screen.
+ *
+ * - One entry per line that declares something; a line that declares nothing
+ *   is absent rather than empty.
+ * - A line shared by several records — a member of a nested type, drawn in the
+ *   record that holds it and in its own — keeps one entry per record, with the
+ *   reader's own record chosen as `primary`.
+ * - A group covering a leaf at the same declarator subsumes it, so
+ *   `struct Header hdr;` is one mark rather than one per field inside Header.
+ */
 export function buildLineIndex(models: Map<string, RenderModel>): LineIndex {
   /** One declarator of one record, keyed by (line, column). */
   interface Cell {

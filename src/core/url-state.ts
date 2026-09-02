@@ -35,6 +35,13 @@ interface Wire {
   vw?: string;
 }
 
+/**
+ * The share state in its compact wire form, at the current version.
+ *
+ * Short keys because the result is compressed and base64'd into a fragment,
+ * where every byte is a character of the link. Reading is version-aware; this
+ * only ever writes the newest.
+ */
 function toWire(state: ShareState): Wire {
   const o = state.options;
   return {
@@ -85,7 +92,9 @@ function fromWire(w: Partial<Wire>): ShareState {
   };
 }
 
+/** base64url: base64 with the URL-safe alphabet and no padding, so a link stays a link. */
 const b64url = {
+  /** Chunked, because spreading a megabyte into `fromCharCode` overflows the stack. */
   encode(bytes: Uint8Array): string {
     let bin = '';
     for (let i = 0; i < bytes.length; i += 0x8000) {
@@ -93,17 +102,20 @@ const b64url = {
     }
     return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
   },
+  /** Throws on text that is not base64url; callers treat that as a link they cannot read. */
   decode(text: string): Uint8Array {
     const b64 = text.replace(/-/g, '+').replace(/_/g, '/');
     return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
   },
 };
 
+/** Raw deflate; the fragment holds the source, which compresses to a fraction of itself. */
 async function deflate(bytes: Uint8Array): Promise<Uint8Array> {
   const cs = new CompressionStream('deflate-raw');
   const stream = new Blob([bytes as BlobPart]).stream().pipeThrough(cs);
   return new Uint8Array(await new Response(stream).arrayBuffer());
 }
+/** The inverse of `deflate`. Rejects on anything that is not a deflate stream. */
 async function inflate(bytes: Uint8Array): Promise<Uint8Array> {
   const ds = new DecompressionStream('deflate-raw');
   const stream = new Blob([bytes as BlobPart]).stream().pipeThrough(ds);
@@ -124,7 +136,17 @@ export async function encodeShareState(state: ShareState): Promise<string> {
   return '2.' + b64url.encode(await deflate(json));
 }
 
-/** Decode a fragment value; returns null when absent or unparseable. */
+/**
+ * Reads a shared link's fragment back into state.
+ *
+ * - Total: never throws. An absent, truncated, foreign or corrupt fragment is
+ *   `null`, which the caller treats as "no link", because a shared URL is
+ *   input from a stranger and half-restoring one is worse than ignoring it.
+ * - Accepts both encodings: `2.`-prefixed deflate, and the earlier plain
+ *   base64, so links shared before compression still open.
+ * - Every field is validated on the way in; see `fromWire`. A restored state is
+ *   one this app could itself have produced.
+ */
 export async function decodeShareState(fragment: string): Promise<ShareState | null> {
   const text = fragment.startsWith('#') ? fragment.slice(1) : fragment;
   if (!text) return null;
@@ -139,7 +161,12 @@ export async function decodeShareState(fragment: string): Promise<ShareState | n
   }
 }
 
-/** Is this triple one of the curated ones? (UI decides whether to show the custom box.) */
+/**
+ * Is this one of the triples the selector lists?
+ *
+ * False does not mean invalid: any triple clang accepts can be typed, and this
+ * only decides whether the selector shows it or shows the custom box.
+ */
 export function isKnownTriple(triple: string): boolean {
   return knownTriples().has(triple);
 }

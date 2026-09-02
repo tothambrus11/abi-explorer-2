@@ -185,24 +185,43 @@ function rgb(hex: string): [number, number, number] {
   const n = parseInt(h.slice(0, 6), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
 }
+/** One channel as two hex digits, rounded and clamped, so arithmetic cannot overflow a colour. */
 const hex2 = (n: number) =>
   Math.round(Math.max(0, Math.min(255, n)))
     .toString(16)
     .padStart(2, '0');
-/** Mix `a` toward `b` by t (0..1). Non-hex inputs (rgba()) fall back to `a`. */
+/**
+ * `a` mixed toward `b`, as `#rrggbb`.
+ *
+ * `t` is clamped by the channel arithmetic rather than rejected, so 0 gives `a`
+ * and 1 gives `b`. Either input not in hex form (an `rgba()` a user typed)
+ * returns `a` unchanged: a theme with one unmixable colour should look
+ * unmixed, not broken.
+ */
 export function mix(a: string, b: string, t: number): string {
   if (!a.startsWith('#') || !b.startsWith('#')) return a;
   const [r1, g1, b1] = rgb(a);
   const [r2, g2, b2] = rgb(b);
   return '#' + hex2(r1 + (r2 - r1) * t) + hex2(g1 + (g2 - g1) * t) + hex2(b1 + (b2 - b1) * t);
 }
-/** Append alpha (0..1) to a hex colour. */
+/**
+ * `hex` with an alpha channel appended, as `#rrggbbaa`.
+ *
+ * A colour not in hex form is returned unchanged, since there is nothing to
+ * append to; `a` is expected in 0..1 and is rounded into a byte.
+ */
 export function alpha(hex: string, a: number): string {
   if (!hex.startsWith('#')) return hex;
   const [r, g, b] = rgb(hex);
   return '#' + hex2(r) + hex2(g) + hex2(b) + hex2(a * 255);
 }
-/** Normalize to #rrggbb for <input type=color> (drops alpha; rgba() → fallback). */
+/**
+ * `c` as the `#rrggbb` an `<input type="color">` will accept.
+ *
+ * Total: shorthand is expanded, alpha is dropped, and anything else — an
+ * `rgba()`, a name, a typo — becomes `fallback`. The element silently shows
+ * black for a value it cannot parse, which reads as a colour the user chose.
+ */
 export function toHex6(c: string, fallback = '#888888'): string {
   if (/^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(c)) return c.slice(0, 7).toLowerCase();
   if (/^#[0-9a-f]{3,4}$/i.test(c)) return '#' + rgb(c).map(hex2).join('');
@@ -211,9 +230,19 @@ export function toHex6(c: string, fallback = '#888888'): string {
 
 // ---------------------------------------------------------------- compile --
 
+/** A colour without its `#`, which is how Monaco wants it. */
 const strip = (c: string) => c.replace(/^#/, '');
 
-/** Compile a spec into tokens + a Monaco theme. */
+/**
+ * Builds the CSS custom properties and the Monaco theme a spec describes.
+ *
+ * - Total over well-formed specs; it does not validate. A spec whose colours
+ *   are unparseable compiles into tokens that are unparseable, which is what
+ *   `isUsableSpec` exists to catch before one is applied.
+ * - `preset` marks a theme as one that ships, which the editor uses to decide
+ *   whether it may be overwritten.
+ * - Pure: the same spec always compiles to the same theme.
+ */
 export function compileTheme(spec: ThemeSpec, preset = false): Theme {
   const { page: p, syntax: sx, editor: e, mode } = spec;
   const m: MemberColors = (spec as Partial<ThemeSpec>).members ?? DEFAULT_MEMBERS[mode];
@@ -300,6 +329,7 @@ export function compileTheme(spec: ThemeSpec, preset = false): Theme {
 
 // ---------------------------------------------------------------- presets --
 
+/** A preset spec, with the accent's foreground defaulted, which is all any preset omits. */
 const spec = (
   id: string,
   name: string,
@@ -651,7 +681,13 @@ export function isThemeSpec(x: unknown): x is ThemeSpec {
   );
 }
 
-/** Fill in groups added after a spec was saved. */
+/**
+ * A saved spec brought up to date with the groups added since.
+ *
+ * Only fills gaps: every value the spec already carries is kept, so a theme a
+ * user tuned is never quietly repainted by an upgrade. Returns a new spec; the
+ * argument is not modified.
+ */
 export function migrateSpec(s: ThemeSpec): ThemeSpec {
   const partial = (s as Partial<ThemeSpec>).members;
   return { ...s, members: { ...DEFAULT_MEMBERS[s.mode], ...(partial ?? {}) } };

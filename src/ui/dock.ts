@@ -78,9 +78,12 @@ const ABIX_THEME: DockviewTheme = {
 
 registerModules([FloatingGroupModule]);
 
+/** A mounted dock: what the app is allowed to ask of its panel layout. */
 export interface Dock {
   api: DockviewApi;
+  /** Throw away the arrangement, stored one included, and rebuild the default. */
   resetLayout(): void;
+  /** Bring up the theme editor, focusing it if it is already open. */
   openThemeEditor(): void;
   /** Show the colour picker in its own floating window (below the theme editor) or close it. */
   setPickerDetached(detached: boolean): void;
@@ -90,6 +93,17 @@ export interface Dock {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyComponent = Component<any>;
 
+/**
+ * Fills `container` with the panels, and returns the handle to them.
+ *
+ * Restores the arrangement stored for this shape of window (wide, narrow or
+ * short) and falls back to the default when there is none, or when what is
+ * stored no longer describes the panels this version has. `session` is threaded
+ * into every panel, so all of them show the same tab's state.
+ *
+ * The caller owns the result: `dispose` unmounts the components and detaches
+ * the listeners, and must be called before the container goes away.
+ */
 export function mountDock(container: HTMLElement, session: Session): Dock {
   const components: Record<string, () => AnyComponent> = {
     [PANEL_EDITOR]: () => EditorPane,

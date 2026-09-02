@@ -34,11 +34,21 @@ export interface AbiModule {
     line?: number;
     character?: number;
   }): Promise<WireResponse>;
+
+  /** Every target this build can lay out. One entry for a single-ABI language. */
   targets(): Promise<string[]>;
+
+  /** What to call the compiler on screen; it is shown, not parsed. */
   version(): Promise<string>;
 }
 
-/** Wrap a synchronous in-process module (tests, Node) as an async one. */
+/**
+ * An `AbiModule` over a module that answers in-process, for tests and Node.
+ *
+ * Only the timing differs: every call resolves with what the wrapped module
+ * returned, and a throw becomes a rejection, so code under test takes the same
+ * path it takes against a worker.
+ */
 export function fromSyncModule(m: {
   query(request: unknown): WireResponse;
   targets(): string[];
@@ -102,19 +112,35 @@ export interface Analysis {
   headers: WireHeaders | null;
 }
 
-/** Stable identity for a record within one analysis. */
+/**
+ * The key a record is known by within one analysis.
+ *
+ * Distinct for records that share a kind and a name — two function-local
+ * `struct S`es are numbered from the second on — so it identifies a record
+ * rather than describing it. Stable only within one analysis: the numbering
+ * follows the order records were reported.
+ */
 export function recordKey(r: { kind: string; name: string; dup?: number }): string {
   return r.kind + ' ' + r.name + (r.dup ? `#${r.dup}` : '');
 }
 
+/**
+ * The question-and-answer layer over a backend.
+ *
+ * Owns three memos, all keyed by everything that changes an answer (source,
+ * language, standard, target, flags), all bounded and cleared wholesale rather
+ * than evicted: an analysis, a probed spelling, and a probed cursor. A failure
+ * is never memoized, so a retry retries.
+ */
 export class AbiAnalyzer {
   private readonly cache = new Map<string, Promise<Analysis>>();
   private readonly spellings = new Map<string, Promise<{ bits: number; align: number } | null>>();
   private readonly positions = new Map<string, Promise<AnalysedRecord | null>>();
 
+  /** Answers using `module`, which is asked at most once per distinct query. */
   constructor(private readonly module: AbiModule) {}
 
-  /** The clang the module was built from, for the status bar. */
+  /** What to call the compiler that would answer, for the status bar. */
   version(): Promise<string> {
     return this.module.version();
   }
@@ -124,6 +150,16 @@ export class AbiAnalyzer {
     return this.module.targets();
   }
 
+  /**
+   * The layout of `source` under `options`.
+   *
+   * - Deduplicated: asking twice for the same question shares one query.
+   * - Rejects with an `AbortError` when `signal` aborts, which happens *after*
+   *   the answer arrives: the query is shared, so cancelling a hover must not
+   *   cancel the compile another caller is waiting on.
+   * - Resolves for a source that does not compile. Diagnostics are part of the
+   *   answer, not a failure; it rejects only when the backend does.
+   */
   analyze(source: string, options: CompileOptions, signal?: AbortSignal): Promise<Analysis> {
     const key = this.key(source, options);
     let pending = this.cache.get(key);
@@ -233,6 +269,7 @@ export class AbiAnalyzer {
     });
   }
 
+  /** The wire request for a compile: the options as the backend expects them. */
   private request(source: string, o: CompileOptions) {
     return {
       source,
@@ -253,6 +290,14 @@ export class AbiAnalyzer {
 
 // ------------------------------------------------------------ the mapping --
 
+/**
+ * One record off the wire as the UI's own layout.
+ *
+ * `dup` is how many records before this one already claimed the same name, and
+ * ends up in the id: two anonymous structs in one file are both "(unnamed
+ * struct at …)" to clang, and a table keyed on that would show one of them
+ * twice.
+ */
 function toRecordLayout(w: WireRecord, dup: number): RecordLayout {
   const out: RecordLayout = {
     kind: w.kind,
@@ -277,6 +322,17 @@ function toRecordLayout(w: WireRecord, dup: number): RecordLayout {
   return out;
 }
 
+/**
+ * The response as the views read it.
+ *
+ * - Total: an unsuccessful response becomes an analysis with no records and
+ *   whatever diagnostics it carried, so a view always has something to draw.
+ * - `records` holds only what the user's own source declared; everything the
+ *   response carried is in `byId`, so a reference from a member always
+ *   resolves even when its type is a library record nothing lists.
+ * - Diagnostics outside the main file are dropped: they belong to headers the
+ *   user cannot edit and would point at lines the editor does not have.
+ */
 export function toAnalysis(
   response: WireResponse,
   source: string,

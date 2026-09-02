@@ -35,6 +35,16 @@ export interface ConsentInputs {
 }
 
 /** Ask before downloading? Only on a metered link, with no consent and no local copy. */
+/**
+ * Should the user be asked before the module is fetched?
+ *
+ * True only when all three hold: the link looks metered, they have not already
+ * opted in, and the bytes are not already here. Anything else is a prompt in
+ * front of a download that costs nothing, which trains people to dismiss it.
+ *
+ * Pure, so the rule can be tested without a browser: everything it reads is an
+ * argument.
+ */
 export function needsDownloadConsent(i: ConsentInputs): boolean {
   if (i.availableLocally) return false;
   if (i.consented) return false;

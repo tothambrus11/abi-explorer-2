@@ -11,6 +11,18 @@ export interface AnsiSpan {
 // eslint-disable-next-line no-control-regex
 const SGR_RE = /\x1b\[([0-9;]*)m/g;
 
+/**
+ * Splits `text` into runs that share bold and colour.
+ *
+ * - Total: any string maps, including one with no escapes (one span) and the
+ *   empty string (no spans). Malformed sequences are consumed, not emitted.
+ * - Adjacent runs with the same attributes are merged, so a span boundary
+ *   always marks a change.
+ * - Concatenating every `text` yields `stripAnsi(text)`: nothing visible is
+ *   dropped and nothing is invented.
+ * - Codes outside bold/reset/the 16 foreground colours are ignored, and a
+ *   256-colour selector resets to the default rather than guessing at it.
+ */
 export function parseAnsi(text: string): AnsiSpan[] {
   const out: AnsiSpan[] = [];
   let bold = false;
@@ -47,7 +59,7 @@ export function parseAnsi(text: string): AnsiSpan[] {
   return out;
 }
 
-/** Remove all SGR sequences. */
+/** Returns `text` with every SGR sequence removed and nothing else changed. */
 export function stripAnsi(text: string): string {
   return text.replace(SGR_RE, '');
 }

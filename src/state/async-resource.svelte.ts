@@ -16,10 +16,20 @@ export interface AsyncRunnerOptions<I> {
   key?: (input: I) => string;
 }
 
+/**
+ * One in-flight asynchronous computation, driven by inputs that keep changing.
+ *
+ * Holds the last successful value across a later failure, so the views keep
+ * showing the last good answer instead of blanking while a broken source is
+ * being typed. At most one run is in flight: a newer input aborts the older,
+ * and identical inputs share the one already running.
+ */
 export class AsyncRunner<I, T> {
   /** Last successful result (kept across a later error). */
   value = $state.raw<T | null>(null);
+  /** Where the latest run got to. `value` may hold an older success meanwhile. */
   status = $state<ResourceStatus>('idle');
+  /** Why the latest run failed, if it did. Cleared by the next success. */
   error = $state.raw<unknown>(null);
 
   private lastKey: string | null = null;
@@ -28,6 +38,13 @@ export class AsyncRunner<I, T> {
   private ac: AbortController | null = null;
   private readonly key: (input: I) => string;
 
+  /**
+   * A resource computed by `run`, which is given an `AbortSignal` and should
+   * stop when it fires.
+   *
+   * `opts.key` decides what counts as the same input, and defaults to its JSON,
+   * so an input carrying anything JSON cannot see needs its own key.
+   */
   constructor(
     private readonly run: (input: I, signal: AbortSignal) => Promise<T>,
     private readonly opts: AsyncRunnerOptions<I> = {},
@@ -55,6 +72,13 @@ export class AsyncRunner<I, T> {
     }, delay);
   }
 
+  /**
+   * Runs for `input`, after aborting whatever was running.
+   *
+   * A run that was aborted writes nothing: the state belongs to the newest run,
+   * so a slow answer overtaken by a fast one cannot land on top of it. Never
+   * throws; a failure becomes `status` and `error`.
+   */
   private async execute(input: I): Promise<void> {
     this.ac?.abort();
     const ac = new AbortController();
@@ -74,6 +98,12 @@ export class AsyncRunner<I, T> {
   }
 
   /** Cancel any pending or in-flight run. */
+  /**
+   * Cancels anything pending or in flight and stops the runner.
+   *
+   * Idempotent, and safe to call from a component teardown: no callback fires
+   * afterwards, so a run cannot write to state a destroyed view still holds.
+   */
   dispose(): void {
     if (this.timer) clearTimeout(this.timer);
     this.timer = null;

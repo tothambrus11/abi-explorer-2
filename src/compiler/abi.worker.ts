@@ -79,6 +79,13 @@ const CACHE = 'abix-abi-module-v1';
 let booting: Promise<AbiWasmModule> | null = null;
 const boot = (): Promise<AbiWasmModule> => (booting ??= instantiate());
 
+/**
+ * Downloads, caches and instantiates the module, reporting progress as it goes.
+ *
+ * Call through `boot`, never directly: this is what must happen exactly once.
+ * Rejects if any file or the glue cannot be loaded, and revokes every blob URL
+ * it made on the way out, success or not.
+ */
 async function instantiate(): Promise<AbiWasmModule> {
   if (module) return module;
 

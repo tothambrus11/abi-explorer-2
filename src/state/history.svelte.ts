@@ -49,13 +49,16 @@ export class History {
    */
   applying = false;
 
+  /** A history whose only state is `initial`, with nothing to undo. */
   constructor(initial: Snapshot) {
     this.present = clone(initial);
   }
 
+  /** Is there a state before the present? Drives whether undo is offered. */
   get canUndo(): boolean {
     return this.past.length > 0;
   }
+  /** Is there a state that was undone out of and not yet abandoned? */
   get canRedo(): boolean {
     return this.future.length > 0;
   }

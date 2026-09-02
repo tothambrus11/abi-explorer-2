@@ -100,7 +100,12 @@ export const TARGET_GROUPS: TargetGroup[] = [
 
 export const DEFAULT_TRIPLE = 'x86_64-unknown-linux-gnu';
 
-/** All known triples (for validating restored state). */
+/**
+ * Every triple the selector lists.
+ *
+ * A fresh set each call, so a caller may keep or mutate it. Membership is not
+ * validity: a triple absent here can still be typed and compiled for.
+ */
 export function knownTriples(): Set<string> {
   return new Set(TARGET_GROUPS.flatMap((g) => g.targets.map((t) => t.triple)));
 }

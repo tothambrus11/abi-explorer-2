@@ -74,7 +74,13 @@ function extentOf(record: string, items: { offsetBits: number; sizeBits: number 
     }));
 }
 
-/** The editor position the hover comes from, honouring the keyboard/mouse preference. */
+/**
+ * Which position the hover should read: the pointer's or the caret's.
+ *
+ * Last input wins — after a keyboard move the caret outranks a pointer that
+ * has not moved since — and each falls back to the other, so a reader who has
+ * only ever used one of them still gets a hover.
+ */
 export function effectivePos(
   i: Pick<HoverInputs, 'mouse' | 'cursor' | 'preferCursor'>,
 ): EditorPos | null {
@@ -100,7 +106,16 @@ export function hoveredPrimary(i: HoverInputs): string | null {
   return i.current !== null && here.includes(i.current) ? i.current : (here[0] ?? null);
 }
 
-/** Resolve the effective hover. */
+/**
+ * What is hovered, from everything that could be pointing at something.
+ *
+ * A grid or table intent wins outright, since it names a member directly;
+ * otherwise the editor position decides. Always returns a hover — the empty
+ * one when nothing is pointed at — so no view has to handle absence.
+ *
+ * An intent naming a member of a superseded analysis resolves to the empty
+ * hover rather than to whatever now sits at that index.
+ */
 export function resolveHover(i: HoverInputs): Hover {
   if (i.intent) return resolveIntent(i.intent, i);
   const pos = effectivePos(i);
@@ -129,6 +144,14 @@ export function resolveHover(i: HoverInputs): Hover {
   };
 }
 
+/**
+ * The whole hover state for one intent: which leaves light up, which line is
+ * tinted, what the inlay says and where the tooltip goes.
+ *
+ * Pure. An intent naming a record that is not on screen resolves to nothing
+ * rather than to a partial hover, since the model it refers to is what every
+ * other field is read out of.
+ */
 function resolveIntent(intent: HoverIntent, i: HoverInputs): Hover {
   if (intent.kind === 'tooltip') return { ...EMPTY_HOVER, tooltip: intent.tooltip };
   const model = i.models.get(intent.record);
@@ -207,12 +230,25 @@ function leafHover(
   };
 }
 
+/**
+ * The range to highlight for an anchor, or `null` for none.
+ *
+ * Always at least one column wide: a zero-width range paints nothing, and a
+ * member whose name the backend gave no extent for would silently fail to
+ * highlight.
+ */
 function nameRangeOf(at: Anchor | null): Hover['nameRange'] {
   if (!at) return null;
   return { line: at.line, startCol: at.col, endCol: Math.max(at.endCol, at.col + 1) };
 }
 
-/** "offset 16 B · 8 B · align 8 B" for the items declared on a line. */
+/**
+ * The inlay for what a line declares: `offset 16 B · 8 B · align 8 B`.
+ *
+ * Empty for no items. Several items on one line are summarised by their span
+ * and counted rather than listed, since the line has room for one phrase; a
+ * bit-field is measured in bits, which is the only unit that describes it.
+ */
 export function describeItems(items: (Leaf | Group)[]): string {
   const one = items.length === 1;
   const it = items[0];
@@ -230,7 +266,10 @@ export function describeItems(items: (Leaf | Group)[]): string {
   return parts.join(' · ');
 }
 
-/** Byte offset with an explicit unit: "12 B", or "12 B + 3 b" inside a bit-field storage unit. */
+/**
+ * A bit offset in the units a reader thinks in: `12 B`, or `12 B + 3 b` when it
+ * falls inside a storage unit. Total over any non-negative offset.
+ */
 export function fmtOffset(bits: number): string {
   return bits % 8 === 0 ? `${bits / 8} B` : `${Math.floor(bits / 8)} B + ${bits % 8} b`;
 }

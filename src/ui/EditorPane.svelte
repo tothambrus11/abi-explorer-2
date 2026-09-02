@@ -1,4 +1,10 @@
 <script lang="ts">
+  // The source editor, and the code half of every cross-highlight.
+  //
+  // Owns the Monaco instance: it writes the buffer back to the store on every
+  // keystroke, paints the decorations for whatever the reader is pointing at on
+  // the right, and answers hovers over type names. `session` is the per-tab
+  // state it highlights against; there is one editor per session.
   import { onMount } from 'svelte';
   import { store } from '$state/store.svelte';
   import type { Session } from '$state/session.svelte';

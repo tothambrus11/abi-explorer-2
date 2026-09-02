@@ -29,6 +29,7 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(Promise.all(LEGACY_CACHES.map((n) => caches.delete(n))));
 });
 
+/** Is this a file of one of the compiler modules, which are cached by their own workers? */
 const inModule = (url: URL, dir: string) =>
   url.origin === self.location.origin &&
   new RegExp(`/vendor/${dir}/[^/]+$`).test(url.pathname);

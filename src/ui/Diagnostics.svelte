@@ -1,4 +1,9 @@
 <script lang="ts">
+  // What the compiler said, ANSI colours and all.
+  //
+  // Reads `store.analysis` directly rather than taking a prop: it is one of the
+  // dock's panels, mounted by name, and there is only ever one analysis to show.
+  // Empty output is a success, so it is worded as one.
   import { store } from '$state/store.svelte';
   import { parseAnsi } from '$core/ansi';
   const ansi = $derived(store.analysis?.diagnosticsText ?? '');

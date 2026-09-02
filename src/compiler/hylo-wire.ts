@@ -80,6 +80,13 @@ export interface HyloAnswer {
 /** The name under which a Hylo layout is reported, since Hylo has one ABI. */
 export const HYLO_TRIPLE = 'hylo';
 
+/**
+ * A source region as the wire's location, or `null` when there is none.
+ *
+ * The file is left empty and `isMainFile` is true: one source is submitted per
+ * query, so everything with a region is in it, and a part declared elsewhere
+ * (a standard-library type) carries no region at all.
+ */
 const location = (r: HyloRegion | null | undefined): WireLocation | null =>
   r === null || r === undefined
     ? null
@@ -208,6 +215,13 @@ function flatten(parts: HyloPart[]): HyloPart[] {
   return parts.flatMap((p) => [p, ...flatten(p.parts ?? [])]);
 }
 
+/**
+ * One Hylo layout as the wire's record, under `id`.
+ *
+ * `idOfType` gives the record id for a part's type when that type is itself
+ * laid out in this answer, and `null` otherwise; it is what makes a member
+ * inspectable, so a type the query did not describe is simply not offered.
+ */
 function toRecord(
   layout: HyloLayout,
   id: number,
