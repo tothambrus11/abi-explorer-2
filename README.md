@@ -4,7 +4,10 @@ See how compilers lay out your types: where each field lands, how big it is,
 what it is aligned to, and where the padding goes. C and C++ for any target
 LLVM supports, computed by clang itself; Hylo, computed by its own compiler.
 Both compiled to WebAssembly and running in your browser. No server, works
-offline. Live at <https://abiexplorer.org>.
+offline.
+
+The project is largely inspired by [Compiler Explorer](https://godbolt.org/).
+Thanks for all the work!
 
 ![screenshot](docs/screenshot.png)
 
