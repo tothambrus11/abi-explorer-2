@@ -3,14 +3,50 @@
 // v1 (legacy): base64url(JSON) with short keys.
 // v2: "2." + base64url(deflate-raw(JSON)), same keys but compressed, so long
 // sources still fit comfortably in a URL.
+//
+// A session with several sources adds `bs` (every buffer, the active one
+// included) and `bi` (which of them is active), while `s` and `l` go on
+// carrying the active buffer's source and language. The repetition is
+// deliberate: a decoder from before `bs` existed reads `s`/`l` and opens on
+// the buffer that was on screen, and deflate reduces the repeated source to a
+// back-reference, so the link pays almost nothing for it.
 
-import { DEFAULT_OPTIONS, type CompileOptions, standardsFor, defaultStdFor } from './options';
+import {
+  DEFAULT_OPTIONS,
+  type CompileOptions,
+  type Language,
+  standardsFor,
+  defaultStdFor,
+} from './options';
 import { knownTriples } from './targets';
 
 export type ViewMode = 'tabs' | 'stack';
 
-export interface ShareState {
+/** One source among several: what an editor tab holds. */
+export interface SourceBuffer {
+  name: string;
+  lang: Language;
   source: string;
+}
+
+/**
+ * As many buffers as a link may carry (and the app may hold): enough for any
+ * session anyone shares, few enough to draw as a row of tabs.
+ */
+export const MAX_BUFFERS = 8;
+/** Buffer names are labels on tabs; longer than this is a paragraph, not a name. */
+const MAX_BUFFER_NAME = 40;
+
+/** What a buffer is called when nobody named it: "Source 1", "Source 2", … */
+export function defaultBufferName(index: number): string {
+  return `Source ${String(index + 1)}`;
+}
+
+export interface ShareState {
+  /** The sources, in tab order; never empty. */
+  buffers: SourceBuffer[];
+  /** Which buffer is on screen and compiled; `options.lang` is its language. */
+  active: number;
   options: CompileOptions;
   selectedRecord: string | null;
   view: ViewMode;
@@ -33,6 +69,10 @@ interface Wire {
   x: string;
   r: string | null;
   vw?: string;
+  /** v2 only, multi-buffer: every buffer, active included; `s`/`l` repeat the active one. */
+  bs?: { n?: string; l?: string; s?: string }[];
+  /** v2 only: which of `bs` is on screen. */
+  bi?: number;
 }
 
 /**
@@ -44,10 +84,11 @@ interface Wire {
  */
 function toWire(state: ShareState): Wire {
   const o = state.options;
-  return {
+  const active = state.buffers[state.active] ?? state.buffers[0];
+  const wire: Wire = {
     v: 2,
-    s: state.source,
-    l: o.lang,
+    s: active?.source ?? '',
+    l: active?.lang ?? o.lang,
     std: o.std,
     t: o.triple,
     p: o.pack,
@@ -59,11 +100,54 @@ function toWire(state: ShareState): Wire {
     r: state.selectedRecord,
     vw: state.view,
   };
+  // A single unnamed buffer is what every link used to carry, and it still
+  // travels as bare `s`/`l`: the fields exist either way, and a link that says
+  // no more than it has to reads the same everywhere.
+  if (state.buffers.length > 1) {
+    wire.bs = state.buffers.map((b) => ({ n: b.name, l: b.lang, s: b.source }));
+    wire.bi = Math.min(Math.max(state.active, 0), state.buffers.length - 1);
+  }
+  return wire;
+}
+
+/** One wire buffer made trustworthy, whatever the link put there. */
+function toBuffer(raw: unknown, index: number): SourceBuffer {
+  const b = typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
+  const name =
+    typeof b['n'] === 'string' ? b['n'].replace(/\s+/g, ' ').trim().slice(0, MAX_BUFFER_NAME) : '';
+  return {
+    name: name || defaultBufferName(index),
+    lang: b['l'] === 'c++' || b['l'] === 'hylo' ? b['l'] : 'c',
+    source: typeof b['s'] === 'string' ? b['s'] : '',
+  };
 }
 
 /** Coerce untrusted wire data into a valid ShareState (unknown values fall back to defaults). */
 function fromWire(w: Partial<Wire>): ShareState {
-  const lang = w.l === 'c++' || w.l === 'hylo' ? w.l : 'c';
+  // The buffers: `bs` where the link carries several, else the single `s`/`l`
+  // pair every link has carried since v1. `bs` wins where both exist — `s`/`l`
+  // are its own active entry repeated for decoders older than it.
+  let buffers: SourceBuffer[];
+  let active: number;
+  if (Array.isArray(w.bs) && w.bs.length > 0) {
+    buffers = w.bs.slice(0, MAX_BUFFERS).map(toBuffer);
+    active =
+      typeof w.bi === 'number' && Number.isInteger(w.bi) && w.bi >= 0 && w.bi < buffers.length
+        ? w.bi
+        : 0;
+  } else {
+    buffers = [
+      {
+        name: defaultBufferName(0),
+        lang: w.l === 'c++' || w.l === 'hylo' ? w.l : 'c',
+        source: typeof w.s === 'string' ? w.s : '',
+      },
+    ];
+    active = 0;
+  }
+  // The active buffer's language is *the* language: the standard is validated
+  // against it, and the restored options must describe the buffer on screen.
+  const lang = buffers[active]!.lang;
   const stds = standardsFor(lang);
   const std = typeof w.std === 'string' && stds.includes(w.std) ? w.std : defaultStdFor(lang);
   // Legacy v1 stored '__custom__' + ct for custom triples; v2 stores the triple itself.
@@ -85,7 +169,8 @@ function fromWire(w: Partial<Wire>): ShareState {
     extraFlags: typeof w.x === 'string' ? w.x.slice(0, 500) : '',
   };
   return {
-    source: typeof w.s === 'string' ? w.s : '',
+    buffers,
+    active,
     options,
     selectedRecord: typeof w.r === 'string' ? w.r : null,
     view: w.vw === 'stack' ? 'stack' : 'tabs',

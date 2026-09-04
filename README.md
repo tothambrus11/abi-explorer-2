@@ -42,6 +42,12 @@ way round), there is an inline `offset · size · align` hint, and any type name
 has a popup with its size and alignment. Clang's diagnostics come through in
 colour, with squiggles where the errors are.
 
+One session can hold several sources. The `+` beside the editor opens another
+tab, each tab keeps its own language, and the one on screen is what gets laid
+out; a shared link carries all of them, and still opens on the right one in a
+build from before tabs existed. That is also how a Compiler Explorer session
+with several editors travels here whole.
+
 Panels (Code, Layout, Diagnostics) dock and resize. Six themes ship, and there
 is an editor if you want your own. Share copies a link with your source and
 options in it, and the whole thing installs as a PWA.

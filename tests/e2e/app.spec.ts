@@ -1067,6 +1067,38 @@ test.describe('ABI Explorer', () => {
     expect(await statValues(page2)).toEqual(await statValues(page));
   });
 
+  test('several sources live in tabs, and a link carries them all', async ({ page, context }) => {
+    await waitReady(page);
+    // One source shows no tab bar; the "+" is the whole affordance.
+    await expect(page.locator('.tabs')).toHaveCount(0);
+    await page.click('button[aria-label="New source"]');
+    await expect(page.locator('.tabs .tab')).toHaveCount(2);
+
+    // The new tab is active and empty; what is typed there is laid out.
+    await page.locator('.monaco-editor').click();
+    await page.keyboard.type('struct B { char c; int i; };');
+    await expect.poll(() => statValues(page), { timeout: 30_000 }).toEqual(['8', '4', '3']);
+
+    // Switching back is switching the question: the first buffer's records return.
+    await page.locator('.tab-name', { hasText: 'Source 1' }).click();
+    await expect.poll(() => statValues(page), { timeout: 30_000 }).toEqual(['40', '8', '13']);
+
+    // The link carries every buffer and opens on the one that was on screen.
+    await page.waitForTimeout(800); // hash sync is debounced
+    const page2 = await context.newPage();
+    await page2.goto(page.url());
+    await expect(page2.locator('#results')).toBeVisible({ timeout: 120_000 });
+    await expect(page2.locator('.tabs .tab')).toHaveCount(2);
+    await expect.poll(() => statValues(page2), { timeout: 30_000 }).toEqual(['40', '8', '13']);
+    await page2.locator('.tab-name', { hasText: 'Source 2' }).click();
+    await expect.poll(() => statValues(page2), { timeout: 30_000 }).toEqual(['8', '4', '3']);
+
+    // Closing the active tab lands on its neighbour, and the bar folds away.
+    await page2.locator('button[aria-label="Close Source 2"]').click();
+    await expect(page2.locator('.tabs')).toHaveCount(0);
+    await expect.poll(() => statValues(page2), { timeout: 30_000 }).toEqual(['40', '8', '13']);
+  });
+
   test('works offline after the first visit (PWA)', async ({ page, context }) => {
     await waitReady(page);
     await expect

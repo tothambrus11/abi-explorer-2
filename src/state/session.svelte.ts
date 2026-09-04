@@ -32,7 +32,13 @@ import { computeAnalysisStatus } from './status';
 import { declLineFor } from './inspected-record';
 import { grantConsent, shouldAskBeforeDownload } from './download-gate';
 import { buildLineIndex, type LineIndex, type LineInfo } from './code-locations';
-import { History, historyIntent, ownsUndo, type EditableTarget } from './history.svelte';
+import {
+  History,
+  historyIntent,
+  ownsUndo,
+  type EditableTarget,
+  type Snapshot,
+} from './history.svelte';
 
 export type { LineInfo };
 
@@ -139,10 +145,10 @@ export class Session {
   private readonly hoverPrimary: string | null = $derived(hoveredPrimary(this.hoverInputs));
 
   /**
-   * Undo and redo over the source and the options together. In memory only:
+   * Undo and redo over the sources and the options together. In memory only:
    * see `history.svelte`.
    */
-  readonly history = new History({ source: store.source, options: { ...store.options } });
+  readonly history = new History(this.snapshot());
 
   /**
    * A session answering through `backends`, which routes each query to the
@@ -163,18 +169,31 @@ export class Session {
   }
 
   /**
+   * The store's undoable half, copied: the buffers, which is active, and the
+   * options. What the history records and what an undo puts back.
+   */
+  private snapshot(): Snapshot {
+    return {
+      buffers: store.buffers.map((b) => ({ ...b })),
+      active: store.activeBuffer,
+      options: { ...store.options },
+    };
+  }
+
+  /**
    * Puts a snapshot back into the store, or does nothing for `null`, which is
    * what `undo`/`redo` return at the ends of the history.
    *
    * Clears the selected record: it names a record of the layout being replaced,
    * and may not exist in the one that is coming.
    */
-  private apply(s: { source: string; options: CompileOptions } | null): void {
+  private apply(s: Snapshot | null): void {
     if (!s) return;
     // Guarded, so the effect that watches the store does not record putting a
     // state back as a new state to come back to.
     this.history.applying = true;
-    store.source = s.source;
+    store.buffers = s.buffers.map((b) => ({ ...b }));
+    store.activeBuffer = s.active;
     store.options = { ...s.options };
     store.selectedRecord = null;
     // Cleared after the effects that read them have run.
@@ -228,8 +247,7 @@ export class Session {
       // Every state the user arrives at, recorded so they can come back to it.
       // Reading both halves is what subscribes to both.
       $effect(() => {
-        const snapshot = { source: store.source, options: { ...store.options } };
-        this.history.record(snapshot);
+        this.history.record(this.snapshot());
       });
       // Drive the query from source/options. This effect also tracks the
       // module's status, which changes on every progress tick during the
@@ -338,20 +356,22 @@ export class Session {
   async restoreFromUrl(): Promise<boolean> {
     const s = await decodeShareState(location.hash);
     if (!s) return false;
-    store.source = s.source;
+    store.buffers = s.buffers.map((b) => ({ ...b }));
+    store.activeBuffer = s.active;
     store.options = { ...s.options };
     store.selectedRecord = s.selectedRecord;
     // A shared link's view mode applies to this visit only; it must not
     // overwrite the visitor's own persisted preference.
     store.view = s.view;
-    this.history.reset({ source: store.source, options: { ...store.options } });
+    this.history.reset(this.snapshot());
     return true;
   }
 
   /** Everything a link carries: what to compile, how, and what to be looking at. */
   private shareState(): ShareState {
     return {
-      source: store.source,
+      buffers: store.buffers.map((b) => ({ ...b })),
+      active: store.activeBuffer,
       options: { ...store.options },
       selectedRecord: store.selectedRecord,
       view: store.view,

@@ -14,7 +14,7 @@ import {
 } from '$core/options';
 import { EXAMPLES } from '$core/targets';
 import type { RenderModel } from '$core/types';
-import type { ViewMode } from '$core/url-state';
+import { defaultBufferName, MAX_BUFFERS, type SourceBuffer, type ViewMode } from '$core/url-state';
 import { EMPTY_HOVER } from './hover';
 
 export type AnalysisStatus =
@@ -76,10 +76,32 @@ const NARROW_MQ = typeof matchMedia === 'function' ? matchMedia('(max-width: 760
  */
 class Store {
   options: CompileOptions = $state({ ...DEFAULT_OPTIONS });
-  source: string = $state(EXAMPLES[0]?.source ?? '');
+  /**
+   * The sources, one per editor tab; never empty. Only the active one is
+   * compiled: the others wait their turn, which is what lets one link carry a
+   * Compiler Explorer session with several editors.
+   */
+  buffers: SourceBuffer[] = $state([
+    { name: defaultBufferName(0), lang: DEFAULT_OPTIONS.lang, source: EXAMPLES[0]?.source ?? '' },
+  ]);
+  /** Which buffer is on screen. `options.lang` always describes this one. */
+  activeBuffer: number = $state(0);
   view: ViewMode = $state(readView());
   selectedRecord: string | null = $state(null);
   showInternal = $state(false);
+
+  /**
+   * The active buffer's text, under the name the rest of the app has always
+   * read it by. An accessor rather than a field so there is one copy: the
+   * editor writes here, and whichever buffer is active is what changes.
+   */
+  get source(): string {
+    return this.buffers[this.activeBuffer]?.source ?? '';
+  }
+  set source(text: string) {
+    const buffer = this.buffers[this.activeBuffer];
+    if (buffer) buffer.source = text;
+  }
 
   compiler: ModuleStatus = $state({ state: 'idle' });
   status: AnalysisStatus = $state({ kind: 'idle' });
@@ -176,13 +198,76 @@ class Store {
    */
   setLanguage(lang: Language): void {
     if (this.options.lang === lang) return;
+    this.retarget(lang);
+    const buffer = this.buffers[this.activeBuffer];
+    if (buffer) buffer.lang = lang;
+    const example = EXAMPLES.find((e) => e.lang === lang);
+    if (example) {
+      this.source = example.source;
+      this.selectedRecord = null;
+    }
+  }
+
+  /**
+   * Points the options at `lang`: the language itself, a standard it has, and
+   * the target — Hylo's single ABI, or the last clang triple on the way back.
+   *
+   * The half of a language change that is about the *question* rather than the
+   * buffer, shared between choosing a language and switching to a buffer that
+   * is already in one.
+   */
+  private retarget(lang: Language): void {
     if (this.options.lang !== 'hylo') this.lastClangTriple = this.options.triple;
     this.options.lang = lang;
     this.options.triple = lang === 'hylo' ? HYLO_TRIPLE : this.lastClangTriple;
     if (!standardsFor(lang).includes(this.options.std)) this.options.std = defaultStdFor(lang);
-    const example = EXAMPLES.find((e) => e.lang === lang);
-    if (example) {
-      this.source = example.source;
+  }
+
+  /**
+   * Puts a buffer on screen. The options follow its language — target and
+   * standard included, exactly as if the language selector had been used — and
+   * the selected record is dropped, since it names a record of the buffer
+   * going off screen.
+   */
+  selectBuffer(index: number): void {
+    const buffer = this.buffers[index];
+    if (!buffer || index === this.activeBuffer) return;
+    this.activeBuffer = index;
+    this.retarget(buffer.lang);
+    this.selectedRecord = null;
+  }
+
+  /**
+   * Opens a fresh buffer beside the others and switches to it.
+   *
+   * Empty, in the language already selected: a new tab is for the reader's own
+   * code, and an example would be something to delete first. Refuses quietly at
+   * the cap, which is also as many as a link can carry.
+   */
+  addBuffer(): void {
+    if (this.buffers.length >= MAX_BUFFERS) return;
+    const taken = new Set(this.buffers.map((b) => b.name));
+    let name = defaultBufferName(this.buffers.length);
+    for (let i = 0; taken.has(name); i++) name = defaultBufferName(i);
+    this.buffers.push({ name, lang: this.options.lang, source: '' });
+    this.selectBuffer(this.buffers.length - 1);
+  }
+
+  /**
+   * Closes a buffer; the last one stays, there being nothing to show without
+   * it. Closing the active one lands on its right-hand neighbour (or the new
+   * last), whose language the options then follow. The closed source remains
+   * one undo away, like everything else.
+   */
+  closeBuffer(index: number): void {
+    if (this.buffers.length <= 1 || !this.buffers[index]) return;
+    const wasActive = index === this.activeBuffer;
+    this.buffers.splice(index, 1);
+    if (this.activeBuffer > index) {
+      this.activeBuffer -= 1;
+    } else if (wasActive) {
+      this.activeBuffer = Math.min(index, this.buffers.length - 1);
+      this.retarget(this.buffers[this.activeBuffer]!.lang);
       this.selectedRecord = null;
     }
   }

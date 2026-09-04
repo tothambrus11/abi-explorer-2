@@ -14,6 +14,9 @@
   import { theme } from '$state/theme.svelte';
   import { memberDots } from '$state/editor-view';
   import { tooltip } from './tooltip';
+  import { MAX_BUFFERS } from '$core/url-state';
+  import Plus from '@lucide/svelte/icons/plus';
+  import X from '@lucide/svelte/icons/x';
 
   const { session }: { session: Session } = $props();
   let host: HTMLDivElement;
@@ -118,6 +121,46 @@
   <!-- Whether it compiled is on the Code tab now: it was one line above the
        editor, where a phone has no line to spare and the tab is already there. -->
   <div class="head">
+    <!-- Tabs only from the second buffer on: one source needs no tab bar, and
+         the lone "+" is the whole affordance for getting a second. -->
+    {#if store.buffers.length > 1}
+      <div class="tabs" role="tablist" aria-label="Sources">
+        {#each store.buffers as buf, i (buf)}
+          <span class="tab" class:active={i === store.activeBuffer}>
+            <button
+              type="button"
+              class="tab-name"
+              role="tab"
+              aria-selected={i === store.activeBuffer}
+              onclick={() => {
+                store.selectBuffer(i);
+              }}
+              use:tooltip={`${buf.name} (${buf.lang === 'c' ? 'C' : buf.lang === 'c++' ? 'C++' : 'Hylo'})`}
+              >{buf.name}</button
+            >
+            <button
+              type="button"
+              class="tab-close"
+              aria-label={`Close ${buf.name}`}
+              onclick={() => {
+                store.closeBuffer(i);
+              }}><X size={12} /></button
+            >
+          </span>
+        {/each}
+      </div>
+    {/if}
+    {#if store.buffers.length < MAX_BUFFERS}
+      <button
+        type="button"
+        class="add"
+        aria-label="New source"
+        onclick={() => {
+          store.addBuffer();
+        }}
+        use:tooltip={'New source (each tab is laid out on its own)'}><Plus size={14} /></button
+      >
+    {/if}
     <select
       id="example"
       class="input small"
@@ -144,8 +187,8 @@
        templates to instantiate, so none of the C++ note applies to it. -->
   {#if store.options.lang !== 'hylo'}
     <p class="hint">
-      The C library (musl) and libc++ resolve for every target. The details beside the language
-      say which headers answered. Templates must be instantiated to appear.
+      The C library (musl) and libc++ resolve for every target. The details beside the language say
+      which headers answered. Templates must be instantiated to appear.
     </p>
   {/if}
 </section>
@@ -166,6 +209,76 @@
     margin-bottom: 8px;
     gap: 8px;
     flex: none;
+  }
+  .tabs {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tab {
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: none;
+    color: var(--text-muted);
+  }
+  .tab.active {
+    background: var(--surface-2);
+    border-color: var(--accent);
+    color: inherit;
+  }
+  .tab-name {
+    max-width: 130px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 2px 2px 2px 8px;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .tab-close,
+  .add {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+  }
+  .tab-close {
+    width: 18px;
+    height: 18px;
+    margin-right: 2px;
+    border-radius: 4px;
+    opacity: 0.55;
+  }
+  .tab-close:hover {
+    opacity: 1;
+    background: var(--surface-2);
+  }
+  .add {
+    flex: none;
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+  }
+  .add:hover {
+    color: inherit;
+    border-color: var(--accent);
   }
   .editor {
     flex: 1;
