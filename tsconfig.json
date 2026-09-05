@@ -26,7 +26,22 @@
     "checkJs": false,
     "skipLibCheck": true,
     "noEmit": true,
-    "paths": { "$core/*": ["./src/core/*"], "$compiler/*": ["./src/compiler/*"], "$state/*": ["./src/state/*"], "$ui/*": ["./src/ui/*"] }
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "@ambrus-toth/abi-explorer-share-link": ["./packages/share-link/src/index.ts"],
+      "$core/*": ["./src/core/*"],
+      "$compiler/*": ["./src/compiler/*"],
+      "$state/*": ["./src/state/*"],
+      "$ui/*": ["./src/ui/*"]
+    }
   },
-  "include": ["src/**/*.ts", "src/**/*.svelte", "tests/**/*.ts", "tools/**/*.mjs", "vite.config.ts", "playwright.config.ts", "vitest.config.ts"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.svelte",
+    "tests/**/*.ts",
+    "tools/**/*.mjs",
+    "vite.config.ts",
+    "playwright.config.ts",
+    "vitest.config.ts"
+  ]
 }

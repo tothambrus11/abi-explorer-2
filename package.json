@@ -2,13 +2,17 @@
   "name": "abi-explorer",
   "version": "1.0.0",
   "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "license": "Apache-2.0",
   "type": "module",
   "description": "Visualize C/C++ struct layouts for any LLVM target \u2014 clang compiled to WebAssembly, running in your browser.",
   "scripts": {
     "dev": "vite",
     "build": "npm run abi:fetch && npm run hylo:fetch && vite build && node tools/stage-module.mjs",
     "preview": "vite preview",
-    "check": "svelte-check --tsconfig ./tsconfig.json && tsc -p tsconfig.node.json --noEmit",
+    "check": "svelte-check --tsconfig ./tsconfig.json && tsc -p tsconfig.node.json --noEmit && npm run check --workspaces",
     "lint": "eslint .",
     "format": "prettier --write .",
     "test": "vitest run",
