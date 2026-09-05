@@ -4,7 +4,7 @@
 // Compression, for two reasons, and the second is the one users feel:
 //
 //  - A ceiling. The wasm is 27.9 MiB and static hosts cap a single asset.
-//    Cloudflare Pages, where this deploys, refuses anything over 25 MiB.
+//    Cloudflare Workers, where this deploys, refuses anything over 25 MiB.
 //  - The download. The header pack is 19.2 MiB of text that gzips 8.4x, and it
 //    was shipping raw: two thirds of a first visit's cost, for nothing.
 //

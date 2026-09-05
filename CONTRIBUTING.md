@@ -118,8 +118,11 @@ The `.real.` suites skip themselves when no module is present.
 
 ## Deployment
 
-Cloudflare Pages via Git integration: build command `npm run build`, output
-directory `dist`. The build fetches the pinned clang module first, because a
+Cloudflare Workers, via Workers Builds on this repository: `wrangler.jsonc`
+names the Worker, and has wrangler run `npm run build` itself and upload
+`dist` as the site's static assets (`public/_headers` travels with it). The
+dashboard needs no build command of its own: `npx wrangler deploy` on the
+production branch, `npx wrangler versions upload` on any other. The build fetches the pinned clang module first, because a
 site built without it loads and then cannot answer anything. It keeps going on
 a network failure only when the module is already there. The Hylo module is
 optional: a build without it is a working site that offers C and C++ and says
