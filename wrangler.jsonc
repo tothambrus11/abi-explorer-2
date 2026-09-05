@@ -4,7 +4,7 @@
 // whole deployment is in the repository. See "Deployment" in CONTRIBUTING.md.
 {
   "$schema": "https://unpkg.com/wrangler/config-schema.json",
-  "name": "abi-explorer-2",
+  "name": "abiexplorer",
   "compatibility_date": "2026-09-05",
   "build": { "command": "npm run build" },
   // A static site: `dist` as Vite and tools/stage-module.mjs leave it, with
