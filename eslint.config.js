@@ -8,6 +8,7 @@ export default ts.config(
   {
     ignores: [
       'dist/',
+      '**/dist/',
       'dev-dist/',
       'node_modules/',
       'vendor/',

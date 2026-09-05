@@ -1,0 +1,13 @@
+// Cloudflare Workers Builds deploys the site from this: `npx wrangler deploy`
+// on the production branch, `npx wrangler versions upload` on any other. The
+// build runs here rather than in the dashboard's build command, so that the
+// whole deployment is in the repository. See "Deployment" in CONTRIBUTING.md.
+{
+  "$schema": "https://unpkg.com/wrangler/config-schema.json",
+  "name": "abiexplorer",
+  "compatibility_date": "2026-09-05",
+  "build": { "command": "npm run build" },
+  // A static site: `dist` as Vite and tools/stage-module.mjs leave it, with
+  // `_headers` from public/ applied by the asset server.
+  "assets": { "directory": "./dist" },
+}

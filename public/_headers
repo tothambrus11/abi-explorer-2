@@ -1,6 +1,6 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
-# Only the content-addressed files, by name. Cloudflare Pages *merges* the
+# Only the content-addressed files, by name. Cloudflare *merges* the
 # rules that match a path. It does not let a later one override an earlier
 # one, so `/vendor/*` plus an exception for the manifest produced
 # `max-age=31536000, immutable, no-cache`, which asks for both and settles

@@ -1,139 +1,92 @@
 // Shareable state <-> URL fragment.
 //
-// v1 (legacy): base64url(JSON) with short keys.
-// v2: "2." + base64url(deflate-raw(JSON)), same keys but compressed, so long
-// sources still fit comfortably in a URL.
+// `packages/share-link` does the work: it knows every version of the wire
+// format and every envelope, and gives what it reads the right *shape*. What
+// the values *mean* is decided here, with the compilers this build has: a
+// standard the language does not have becomes its default, a Hylo buffer is
+// on Hylo's one ABI whatever triple travelled with it, and so on. A restored
+// state is one this app could itself have produced.
 
-import { DEFAULT_OPTIONS, type CompileOptions, standardsFor, defaultStdFor } from './options';
+import {
+  decode,
+  encode,
+  type ShareOptions,
+  type ShareState as WireShareState,
+} from '@ambrus-toth/abi-explorer-share-link';
+import {
+  DEFAULT_OPTIONS,
+  HYLO_TRIPLE,
+  type CompileOptions,
+  type Language,
+  standardsFor,
+  defaultStdFor,
+} from './options';
 import { knownTriples } from './targets';
 
-export type ViewMode = 'tabs' | 'stack';
+export {
+  MAX_BUFFERS,
+  MAX_BUFFER_NAME,
+  defaultBufferName,
+  isDockLayout,
+  type DockLayout,
+  type ViewMode,
+} from '@ambrus-toth/abi-explorer-share-link';
 
-export interface ShareState {
+/** One source among several: what an editor tab holds, and how it is compiled. */
+export interface SourceBuffer {
+  name: string;
   source: string;
   options: CompileOptions;
-  selectedRecord: string | null;
-  view: ViewMode;
 }
 
-interface Wire {
-  v: number;
-  s: string;
-  l: string;
-  std: string;
-  t: string;
-  ct?: string;
-  p: string;
-  mb: number;
-  se: number;
-  sw: number;
-  /** v2 only: the wasi-libc header toggle, which no longer exists. */
-  wl?: number;
-  wp: number;
-  x: string;
-  r: string | null;
-  vw?: string;
+/** A buffer as a link carries it: with the record the reader had picked in it. */
+export interface ShareBuffer extends SourceBuffer {
+  selectedRecord: string | null;
+}
+
+/** What a link carries, with every buffer's options being ones this build can compile for. */
+export interface ShareState extends Omit<WireShareState, 'buffers'> {
+  /** The sources, in tab order, each with its own options; never empty. */
+  buffers: ShareBuffer[];
 }
 
 /**
- * The share state in its compact wire form, at the current version.
+ * One set of options made trustworthy, whatever the link put there.
  *
- * Short keys because the result is compressed and base64'd into a fragment,
- * where every byte is a character of the link. Reading is version-aware; this
- * only ever writes the newest.
+ * The language is decided first and the rest validated against it: a standard
+ * the language does not have becomes its default, and a Hylo buffer is on
+ * Hylo's one ABI whatever triple travelled with it.
  */
-function toWire(state: ShareState): Wire {
-  const o = state.options;
-  return {
-    v: 2,
-    s: state.source,
-    l: o.lang,
-    std: o.std,
-    t: o.triple,
-    p: o.pack,
-    mb: +o.msBitfields,
-    se: +o.shortEnums,
-    sw: +o.shortWchar,
-    wp: +o.warnPadded,
-    x: o.extraFlags,
-    r: state.selectedRecord,
-    vw: state.view,
-  };
-}
-
-/** Coerce untrusted wire data into a valid ShareState (unknown values fall back to defaults). */
-function fromWire(w: Partial<Wire>): ShareState {
-  const lang = w.l === 'c++' || w.l === 'hylo' ? w.l : 'c';
+function toOptions(w: ShareOptions): CompileOptions {
+  const lang: Language = w.lang === 'c++' || w.lang === 'hylo' ? w.lang : 'c';
   const stds = standardsFor(lang);
-  const std = typeof w.std === 'string' && stds.includes(w.std) ? w.std : defaultStdFor(lang);
-  // Legacy v1 stored '__custom__' + ct for custom triples; v2 stores the triple itself.
-  let triple = typeof w.t === 'string' ? w.t : DEFAULT_OPTIONS.triple;
-  if (triple === '__custom__') {
-    triple = typeof w.ct === 'string' && w.ct.trim() ? w.ct.trim() : DEFAULT_OPTIONS.triple;
-  }
-  if (!/^[A-Za-z0-9_.-]{1,64}$/.test(triple)) triple = DEFAULT_OPTIONS.triple;
-  const packs = new Set(['', '1', '2', '4', '8', '16']);
-  const options: CompileOptions = {
+  const std = stds.includes(w.std) ? w.std : defaultStdFor(lang);
+  let triple = w.triple || DEFAULT_OPTIONS.triple;
+  // Hylo's one ABI is a name, not a triple clang takes: a link saved while a
+  // Hylo buffer was active carries it at the top level, and a C buffer
+  // falling back to that top level must not be compiled for it.
+  if (lang === 'hylo') triple = HYLO_TRIPLE;
+  else if (triple === HYLO_TRIPLE) triple = DEFAULT_OPTIONS.triple;
+  return {
     lang,
     std,
     triple,
-    pack: (typeof w.p === 'string' && packs.has(w.p) ? w.p : '') as CompileOptions['pack'],
-    msBitfields: !!w.mb,
-    shortEnums: !!w.se,
-    shortWchar: !!w.sw,
-    warnPadded: !!w.wp,
-    extraFlags: typeof w.x === 'string' ? w.x.slice(0, 500) : '',
+    pack: w.pack,
+    msBitfields: w.msBitfields,
+    shortEnums: w.shortEnums,
+    shortWchar: w.shortWchar,
+    warnPadded: w.warnPadded,
+    extraFlags: w.extraFlags,
   };
-  return {
-    source: typeof w.s === 'string' ? w.s : '',
-    options,
-    selectedRecord: typeof w.r === 'string' ? w.r : null,
-    view: w.vw === 'stack' ? 'stack' : 'tabs',
-  };
-}
-
-/** base64url: base64 with the URL-safe alphabet and no padding, so a link stays a link. */
-const b64url = {
-  /** Chunked, because spreading a megabyte into `fromCharCode` overflows the stack. */
-  encode(bytes: Uint8Array): string {
-    let bin = '';
-    for (let i = 0; i < bytes.length; i += 0x8000) {
-      bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-    }
-    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-  },
-  /** Throws on text that is not base64url; callers treat that as a link they cannot read. */
-  decode(text: string): Uint8Array {
-    const b64 = text.replace(/-/g, '+').replace(/_/g, '/');
-    return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
-  },
-};
-
-/** Raw deflate; the fragment holds the source, which compresses to a fraction of itself. */
-async function deflate(bytes: Uint8Array): Promise<Uint8Array> {
-  const cs = new CompressionStream('deflate-raw');
-  const stream = new Blob([bytes as BlobPart]).stream().pipeThrough(cs);
-  return new Uint8Array(await new Response(stream).arrayBuffer());
-}
-/** The inverse of `deflate`. Rejects on anything that is not a deflate stream. */
-async function inflate(bytes: Uint8Array): Promise<Uint8Array> {
-  const ds = new DecompressionStream('deflate-raw');
-  const stream = new Blob([bytes as BlobPart]).stream().pipeThrough(ds);
-  return new Uint8Array(await new Response(stream).arrayBuffer());
 }
 
 /**
- * Encode state to a fragment value (without the leading '#'). Falls back to
- * the uncompressed v1 wire format where CompressionStream is unavailable
- * (older WebViews). Every decoder understands both.
+ * Encode state to a fragment value (without the leading '#'): the newest wire
+ * in the smallest envelope this runtime can write. Every reader understands
+ * both envelopes.
  */
 export async function encodeShareState(state: ShareState): Promise<string> {
-  const wire = toWire(state);
-  if (typeof CompressionStream === 'undefined') {
-    return b64url.encode(new TextEncoder().encode(JSON.stringify({ ...wire, v: 1 })));
-  }
-  const json = new TextEncoder().encode(JSON.stringify(wire));
-  return '2.' + b64url.encode(await deflate(json));
+  return encode(state);
 }
 
 /**
@@ -142,23 +95,14 @@ export async function encodeShareState(state: ShareState): Promise<string> {
  * - Total: never throws. An absent, truncated, foreign or corrupt fragment is
  *   `null`, which the caller treats as "no link", because a shared URL is
  *   input from a stranger and half-restoring one is worse than ignoring it.
- * - Accepts both encodings: `2.`-prefixed deflate, and the earlier plain
- *   base64, so links shared before compression still open.
- * - Every field is validated on the way in; see `fromWire`. A restored state is
- *   one this app could itself have produced.
+ * - Reads every envelope and every wire there has been; see the package.
+ * - Every buffer's options are ones this build can compile for; see
+ *   `toOptions`. A restored state is one this app could itself have produced.
  */
 export async function decodeShareState(fragment: string): Promise<ShareState | null> {
-  const text = fragment.startsWith('#') ? fragment.slice(1) : fragment;
-  if (!text) return null;
-  try {
-    let jsonBytes: Uint8Array;
-    if (text.startsWith('2.')) jsonBytes = await inflate(b64url.decode(text.slice(2)));
-    else jsonBytes = b64url.decode(text); // v1
-    const data = JSON.parse(new TextDecoder().decode(jsonBytes)) as Partial<Wire>;
-    return fromWire(data);
-  } catch {
-    return null;
-  }
+  const wire = await decode(fragment);
+  if (!wire) return null;
+  return { ...wire, buffers: wire.buffers.map((b) => ({ ...b, options: toOptions(b.options) })) };
 }
 
 /**

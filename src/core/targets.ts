@@ -157,12 +157,12 @@ export const EXAMPLES: Example[] = [
     source: `#include <stdint.h>
 
 struct Example {
-  uint8_t  flag;      /* 1 byte, then padding  */
-  uint32_t count;     /* wants 4-byte alignment */
+  uint8_t  flag;
+  uint32_t count;
   uint8_t  tag;
-  uint64_t id;        /* wants 8-byte alignment */
+  uint64_t id;
   char     name[5];
-  void    *userdata;  /* pointer size varies!   */
+  void*    userdata;
 };
 `,
   },
@@ -173,9 +173,11 @@ struct Example {
   unsigned kind      : 3;
   unsigned visible   : 1;
   unsigned dirty     : 1;
-  unsigned           : 0;  /* force new unit */
+  // force new unit:
+  unsigned           : 0;
   unsigned refcount  : 20;
-  short    balance   : 9;  /* straddles units on some ABIs */
+  // straddles units on some ABIs:
+  short    balance   : 9;
   char     suffix;
 };
 `,
@@ -209,7 +211,7 @@ struct Message {
     source: `#include <stdint.h>
 
 #pragma pack(push, 1)
-struct WireFormat {         /* no padding at all */
+struct WireFormat {
   uint8_t  version;
   uint32_t length;
   uint64_t timestamp;
@@ -235,8 +237,9 @@ struct Mixin {
   char tag;
 };
 
+// May reuse Mixin's tail padding:
 struct Derived : Base, Mixin {
-  char extra;             /* reuses Mixin tail padding? */
+  char extra;
 };
 
 struct Diamond : virtual Base {
@@ -249,7 +252,8 @@ struct Diamond : virtual Base {
     lang: 'c++',
     source: `struct Empty {};
 
-struct WithEbo : Empty {    /* empty base optimization */
+/// Empty base optimization:
+struct WithEbo : Empty {
   char c;
 };
 `,
@@ -331,8 +335,11 @@ struct Probe {
     source: `struct Host;                  /* incomplete: the most general representation */
 
 struct S {
-  int Host::*pm;              /* data member pointer */
-  void (Host::*pmf)();        /* member function pointer */
+  /// Data member pointer.
+  int Host::*pm;
+
+  /// Member function pointer.
+  void (Host::*pmf)();
 };
 
 /* Pick x86_64-pc-windows-msvc: 12 B and 24 B, because MSVC must cover
@@ -364,17 +371,14 @@ struct Holder {             /* one member forces Holder to 64 B too */
   {
     name: 'Reordered storage',
     lang: 'hylo',
-    source: `/// Hylo stores members in order of decreasing alignment, so the order they
-/// are declared in is not the order they are stored in: 'flag' ends up last,
-/// after 'id', and nothing is padded between them.
+    source: `/// Hylo stores members in order of decreasing alignment to save space.
 public struct Header {
   let flag: Bool
   let count: Int32
   let id: Int64
 }
 
-/// An enum is a sum type: its cases are stored one over another, and the
-/// discriminator that says which one is live goes after the payload.
+/// An enum is a set of payloads laid out over each other, and a discriminator (usually 1 byte).
 public enum Message {
   case ping
   case data(bytes: Header)

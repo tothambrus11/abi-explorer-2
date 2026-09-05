@@ -73,6 +73,7 @@ export class Backends implements AbiModule {
   private readonly clients = new Map<BackendId, AbiClient>();
   private readonly unsubscribes = new Map<BackendId, () => void>();
   private readonly listeners = new Set<(s: ModuleStatus) => void>();
+  private readonly anyListeners = new Set<(id: BackendId, s: ModuleStatus) => void>();
   /** The last status each backend reported, so a switch back is instant. */
   private readonly statuses = new Map<BackendId, ModuleStatus>();
 
@@ -104,6 +105,17 @@ export class Backends implements AbiModule {
   }
 
   /**
+   * Subscribes to every backend's status, named, calling `listener` at once
+   * with each one that has reported. For a session holding sources in both
+   * languages, which waits on both modules and shows each source its own.
+   */
+  onAnyStatus(listener: (id: BackendId, s: ModuleStatus) => void): () => void {
+    this.anyListeners.add(listener);
+    for (const [id, s] of this.statuses) listener(id, s);
+    return () => this.anyListeners.delete(listener);
+  }
+
+  /**
    * Route the questions that follow to `lang`'s backend.
    *
    * This does *not* start it. Downloading is the gate's decision (issue #1),
@@ -123,14 +135,15 @@ export class Backends implements AbiModule {
   }
 
   /**
-   * Begins loading the active backend's module.
+   * Begins loading a backend's module, the active one's unless another is
+   * named.
    *
    * Idempotent, and resolves when that module is ready. Starts nothing else:
    * the other language's module stays undownloaded until something asks it a
    * question.
    */
-  start(): Promise<void> {
-    return this.client(this.active).start();
+  start(id: BackendId = this.active): Promise<void> {
+    return this.client(id).start();
   }
 
   private client(id: BackendId): AbiClient {
@@ -144,8 +157,10 @@ export class Backends implements AbiModule {
           this.statuses.set(id, s);
           // A backend that is no longer selected still finishes loading; it
           // just does so quietly, so its progress cannot overwrite the bar of
-          // the one being waited on.
+          // the one being waited on. Whoever asked for every backend by name
+          // hears about it either way.
           if (id === this.active) this.announce();
+          for (const l of this.anyListeners) l(id, s);
         }),
       );
     }

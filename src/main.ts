@@ -7,6 +7,7 @@ import { AbiClient } from '$compiler/AbiClient';
 import { Backends } from '$compiler/Backends';
 import { Session } from '$state/session.svelte';
 import { store } from '$state/store.svelte';
+import type { Dock } from '$ui/dock';
 import { setupPwa } from './pwa';
 
 // One worker per backend, built on demand. `?worker` makes each its own chunk,
@@ -39,7 +40,7 @@ setupPwa();
 // Expose for e2e tests / debugging.
 declare global {
   interface Window {
-    __abix?: { store: typeof store; session: Session };
+    __abix?: { store: typeof store; session: Session; dock?: Dock };
   }
 }
 window.__abix = { store, session };

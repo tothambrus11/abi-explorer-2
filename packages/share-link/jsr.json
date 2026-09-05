@@ -1,0 +1,17 @@
+{
+  "name": "@ambrus-toth/abi-explorer-share-link",
+  "version": "0.1.1",
+  "license": "Apache-2.0",
+  "exports": {
+    ".": "./src/index.ts",
+    "./encode": "./src/encode.ts",
+    "./decode": "./src/decode.ts",
+    "./envelope": "./src/envelope.ts",
+    "./v1": "./src/v1.ts",
+    "./v2": "./src/v2.ts",
+    "./v3": "./src/v3.ts"
+  },
+  "publish": {
+    "include": ["src/**/*.ts", "README.md", "LICENSE", "jsr.json"]
+  }
+}

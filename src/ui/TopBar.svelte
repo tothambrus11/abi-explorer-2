@@ -2,16 +2,17 @@
   // The app's header: name, undo/redo, theme, and a way back to the default
   // layout.
   //
-  // `session` is what undo and redo act on — the history is per tab and lives
-  // in memory only. `onResetLayout` is the dock's, since the panels are the
-  // app's to arrange and not this bar's.
+  // `session` is what undo and redo act on — the history is over every
+  // source and lives in memory only. `dock` is for the sources menu and the
+  // way back to the default arrangement.
   import ThemeMenu from './ThemeMenu.svelte';
+  import ViewMenu from './ViewMenu.svelte';
   import { store } from '$state/store.svelte';
-  import LayoutTemplate from '@lucide/svelte/icons/layout-template';
+  import type { Dock } from './dock';
   import Undo from '@lucide/svelte/icons/undo';
   import Redo from '@lucide/svelte/icons/redo';
   import type { Session } from '$state/session.svelte';
-  const { session, onResetLayout }: { session: Session; onResetLayout: () => void } = $props();
+  const { session, dock }: { session: Session; dock: Dock | null } = $props();
   import { tooltip } from './tooltip';
   let copied = $state<'idle' | 'ok' | 'fail'>('idle');
   /** What to call the platform's modifier in a tooltip. */
@@ -30,10 +31,23 @@
 </script>
 
 <header class="topbar">
-  <div class="brand">
+  <!-- A link, so it can be opened in a tab of its own or copied, and a reset
+       on a plain press: the app is one page, and going to it is starting
+       again. What it replaces is one undo away. -->
+  <a
+    class="brand"
+    href="/"
+    onclick={(e) => {
+      // A modified press is the browser's; a new tab should open the app fresh.
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+      e.preventDefault();
+      session.reset();
+    }}
+    use:tooltip={'New project'}
+  >
     <img class="brand-mark" src="/icons/icon.svg" alt="" width="20" height="20" />
     <h1>ABI Explorer</h1>
-  </div>
+  </a>
   <!-- Beside the title rather than among the actions on the right: these undo
        what you just did, so they belong where the eye already is. -->
   <div class="history">
@@ -59,12 +73,12 @@
     >
   </div>
   <div class="actions">
-    <button
-      class="icon-btn"
-      onclick={onResetLayout}
-      aria-label="Reset panel layout"
-      use:tooltip={'Reset panel layout'}><LayoutTemplate size={16} /></button
+    <!-- First in the cluster, and text rather than an icon: it is the one
+         thing here that is not a control of the page. -->
+    <a class="feedback" href="https://forms.gle/NXuRssSGsofxXGiQ9" target="_blank" rel="noopener"
+      >Feedback</a
     >
+    <ViewMenu {dock} />
     {#if store.swVersionAvailable}
       <!-- A new build is cached and waiting. This was the footer's, and the
            footer is gone; it is the one thing there that asked to be acted on
@@ -82,8 +96,8 @@
       href="https://github.com/tothambrus11/abi-explorer-2"
       target="_blank"
       rel="noopener"
-      aria-label="Source on GitHub"
-      use:tooltip={'Source on GitHub'}
+      aria-label="Contribute on GitHub"
+      use:tooltip={'Contribute on GitHub'}
     >
       <!-- Lucide dropped brand marks, and this one is worth having by name. -->
       <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true">
@@ -102,7 +116,7 @@
     <button
       class="btn share"
       onclick={share}
-      use:tooltip={'Copy a link that encodes the code and all options'}
+      use:tooltip={'Copy a link with the sources, their options and the panel layout in it'}
     >
       {copied === 'ok' ? 'Copied!' : copied === 'fail' ? 'Copy failed' : 'Share'}
     </button>
@@ -139,6 +153,16 @@
     display: flex;
     align-items: center;
     gap: 10px;
+    color: inherit;
+    text-decoration: none;
+    border-radius: 6px;
+  }
+  .brand:hover h1 {
+    color: var(--accent);
+  }
+  .brand:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 3px;
   }
   h1 {
     font-size: 17px;
@@ -159,6 +183,16 @@
     display: flex;
     align-items: center;
     gap: 10px;
+  }
+  .feedback {
+    color: var(--text-secondary);
+    font-size: 13px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    white-space: nowrap;
+  }
+  .feedback:hover {
+    color: var(--text-primary);
   }
 
   /* One row, always. The brand and the actions are two flex items in a

@@ -26,6 +26,268 @@ async function hoverWord(page: Page, needle: string, word: string): Promise<void
 const statValues = (page: Page) => page.locator('.summary .value').allTextContents();
 
 /**
+ * Picks a target.
+ *
+ * The target is a chip that opens a menu you type into, so this types the
+ * triple and takes the first row, which is how a reader reaches both a listed
+ * target and one that is not listed at all.
+ */
+async function setTarget(page: Page, triple: string): Promise<void> {
+  await page.locator('#target').click();
+  await page.locator('.field-menu input').fill(triple);
+  await page.locator('.field-menu [role=option]').first().click();
+  await expect(page.locator('.field-menu')).toHaveCount(0);
+}
+
+/** Opens the options panel behind the row's "more" mark. */
+async function openMoreOptions(page: Page): Promise<void> {
+  await page.locator('#more-options').click();
+  await expect(page.locator('[role=dialog][aria-label="More options"]')).toBeVisible();
+}
+
+test.describe('the theme control', () => {
+  test('one control with two halves, and a row worn while it is pointed at', async ({ page }) => {
+    await waitReady(page);
+    const page_bg = () =>
+      page.evaluate(() =>
+        getComputedStyle(document.documentElement).getPropertyValue('--page').trim(),
+      );
+    const glacier = await page_bg();
+
+    // The left half flips light and dark; the caret opens the list. Two halves
+    // of one control, not two controls.
+    await expect(page.locator('.theme .split')).toHaveCount(1);
+    await page.click('button[aria-label="Toggle light/dark theme"]');
+    const nocturne = await page_bg();
+    expect(nocturne).not.toBe(glacier);
+    await page.click('button[aria-label="Toggle light/dark theme"]');
+    expect(await page_bg()).toBe(glacier);
+
+    // Resting on a row wears it; leaving puts back what is chosen.
+    await page.click('button[aria-label="Choose theme"]');
+    const paper = page.locator('[role=option]', { hasText: 'Paper' });
+    await paper.hover();
+    await expect.poll(page_bg).not.toBe(glacier);
+    const worn = await page_bg();
+    await page.locator('[role=listbox] .group').first().hover();
+    await expect.poll(page_bg).toBe(glacier);
+
+    // Pressing it keeps it, and the list closes.
+    await paper.hover();
+    await paper.click();
+    await expect(page.locator('[role=listbox]')).toHaveCount(0);
+    expect(await page_bg()).toBe(worn);
+
+    // Nothing of the try survives once the list is shut: leaving the row after
+    // the choice must not put the old theme back.
+    await page.mouse.move(400, 400);
+    await page.waitForTimeout(200);
+    expect(await page_bg()).toBe(worn);
+  });
+});
+
+test.describe('the theme editor', () => {
+  test('a tooltip inside it paints over it', async ({ page }) => {
+    await waitReady(page);
+    await page.click('button[aria-label="Choose theme"]');
+    await page.locator('.popover .item', { hasText: 'Customize themes' }).click();
+    const editor = page.locator('.dock-panel-theme-editor');
+    await expect(editor).toBeVisible();
+
+    // The editor is a floating group, which dockview stacks over the panels;
+    // a tooltip describing a control inside it has to stack over that.
+    await editor.locator('button').first().hover();
+    const tip = page.locator('.abix-tip');
+    await expect(tip).toBeVisible();
+    const layers = await page.evaluate(() => {
+      const z = (el: Element | null | undefined) =>
+        el ? Number(getComputedStyle(el).zIndex) || 0 : 0;
+      const tipEl = document.querySelector('.abix-tip');
+      const group = document
+        .querySelector('.dock-panel-theme-editor')
+        ?.closest('.dv-resize-container');
+      return { tip: z(tipEl), group: z(group) };
+    });
+    expect(layers.group).toBeGreaterThan(0);
+    expect(layers.tip).toBeGreaterThan(layers.group);
+  });
+});
+
+test.describe('editing a theme that ships', () => {
+  test('a preset takes edits and gives them back', async ({ page }) => {
+    await waitReady(page);
+    const token = (name: string) =>
+      page.evaluate(
+        (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim(),
+        name,
+      );
+    const shipped = await token('--accent');
+
+    await page.click('button[aria-label="Choose theme"]');
+    await page.locator('.popover .item', { hasText: 'Customize themes' }).click();
+    const editor = page.locator('.dock-panel-theme-editor');
+    await expect(editor).toBeVisible();
+
+    // The fields are live for a preset now, and the page follows at once.
+    const hex = editor.locator('.field', { hasText: 'Accent' }).locator('input.hex').first();
+    await hex.fill('#ff0000');
+    await hex.press('Enter');
+    await expect.poll(() => token('--accent')).toBe('#ff0000');
+    await expect(editor.locator('select[aria-label="Theme to edit"]')).toHaveValue('glacier');
+    await expect(editor.locator('option[value="glacier"]')).toHaveText(/edited/);
+
+    // And the original is one press away.
+    await editor.locator('#reset-theme').click();
+    await expect.poll(() => token('--accent')).toBe(shipped);
+    await expect(editor.locator('option[value="glacier"]')).not.toHaveText(/edited/);
+
+    // It survives a reload, which is where a preference has to live.
+    await hex.fill('#00aa00');
+    await hex.press('Enter');
+    await expect.poll(() => token('--accent')).toBe('#00aa00');
+    await page.reload();
+    await expect(page.locator('#results').first()).toBeVisible({ timeout: 240_000 });
+    await expect.poll(() => token('--accent')).toBe('#00aa00');
+  });
+
+  test('editing a colour the editor does not use leaves the editor alone', async ({ page }) => {
+    // Redefining a Monaco theme replaces its whole stylesheet and re-tokenises
+    // every model, which shows as a flash of unstyled editor. A page colour is
+    // not one of the editor's own, so it must not reach Monaco at all.
+    await waitReady(page);
+    await page.click('button[aria-label="Choose theme"]');
+    await page.locator('.popover .item', { hasText: 'Customize themes' }).click();
+    const editor = page.locator('.dock-panel-theme-editor');
+    await expect(editor).toBeVisible();
+
+    await page.evaluate(() => {
+      const w = window as unknown as { __monacoCss: number };
+      w.__monacoCss = 0;
+      const observer = new MutationObserver((records) => {
+        w.__monacoCss += records.length;
+      });
+      for (const style of document.querySelectorAll('style')) {
+        if (style.textContent.includes('.monaco-editor')) {
+          observer.observe(style, { characterData: true, childList: true, subtree: true });
+        }
+      }
+    });
+    const rewrites = () =>
+      page.evaluate(() => (window as unknown as { __monacoCss: number }).__monacoCss);
+
+    const pageHex = editor.locator('.field', { hasText: 'Page background' }).locator('input.hex');
+    for (const value of ['#f0f0f0', '#e8e8e8', '#dddddd']) {
+      await pageHex.fill(value);
+      await pageHex.press('Enter');
+    }
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          getComputedStyle(document.documentElement).getPropertyValue('--page').trim(),
+        ),
+      )
+      .toBe('#dddddd');
+    expect(await rewrites(), 'the editor was rebuilt for a colour it does not use').toBe(0);
+
+    // An editor colour is a change it does have to hear about.
+    const editorHex = editor
+      .locator('.field', { hasText: 'Editor background' })
+      .locator('input.hex');
+    await editorHex.fill('#112233');
+    await editorHex.press('Enter');
+    await expect.poll(rewrites).toBeGreaterThan(0);
+    await expect
+      .poll(() => page.$eval('.monaco-editor', (e) => getComputedStyle(e).backgroundColor))
+      .toBe('rgb(17, 34, 51)');
+  });
+
+  test('a swatch opens the picker in its own window, and it edits the preset', async ({ page }) => {
+    await waitReady(page);
+    const token = () =>
+      page.evaluate(() =>
+        getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
+      );
+    await page.click('button[aria-label="Choose theme"]');
+    await page.locator('.popover .item', { hasText: 'Customize themes' }).click();
+    const editor = page.locator('.dock-panel-theme-editor');
+    await expect(editor).toBeVisible();
+    const picker = page.locator('.dock-panel-color-picker');
+    await expect(picker).toHaveCount(0);
+
+    // Pressing a colour brings the picker out where it can be used.
+    await editor.locator('.field', { hasText: 'Accent' }).locator('button.swatch').first().click();
+    await expect(picker).toBeVisible();
+    await expect(picker).toContainText('Accent');
+
+    // And it writes to the theme that ships, which used to be refused.
+    const hex = picker.locator('input[aria-label="Hex colour"]');
+    await hex.fill('#ff0000');
+    await hex.press('Enter');
+    await expect.poll(token).toBe('#ff0000');
+
+    // Put back where it was, it stays there: the next swatch does not tear it out again.
+    await picker.locator('button[aria-label*="Attach"]').click();
+    await expect(picker).toHaveCount(0);
+    await editor.locator('.field', { hasText: 'Borders' }).locator('button.swatch').first().click();
+    await expect(picker).toHaveCount(0);
+    await expect(editor.locator('.picker')).toContainText('Borders');
+  });
+});
+
+test.describe('the query row', () => {
+  test('every field is a menu you can type into, and any triple is one', async ({ page }) => {
+    await waitReady(page);
+    // The standard has a menu of its own, not the language's.
+    await page.click('#std');
+    await expect(page.locator('.field-menu [role=option]').first()).toBeVisible();
+    const stds = await page.locator('.field-menu [role=option]').allTextContents();
+    expect(stds.every((s) => /^(c|gnu)\d+$/.test(s.trim()))).toBe(true);
+    await page.keyboard.press('Escape');
+
+    // The target menu filters by what a reader would type, and the triple
+    // travels beside the name.
+    await page.click('#target');
+    await page.locator('.field-menu input').fill('apple');
+    const rows = await page.locator('.field-menu [role=option]').allTextContents();
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.every((r) => /apple/i.test(r))).toBe(true);
+
+    // A triple that is not on the list is offered as itself, which is what
+    // Compiler Explorer's link into this app relies on.
+    await page.locator('.field-menu input').fill('riscv128-unknown-elf');
+    await expect(page.locator('.field-menu [role=option]')).toHaveCount(1);
+    await expect(page.locator('.field-menu [role=option]')).toContainText('riscv128-unknown-elf');
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#target')).toContainText('riscv128-unknown-elf');
+
+    // And something that could not be a triple is refused rather than offered.
+    await page.click('#target');
+    await page.locator('.field-menu input').fill('not a triple!!');
+    await expect(page.locator('.field-menu [role=option]')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+
+    // The options are behind the mark at the end of the row. Back on a real
+    // target first: an unknown triple has no layout to report padding in.
+    await setTarget(page, 'x86_64-unknown-linux-gnu');
+    await openMoreOptions(page);
+    await page.check('#warn-padded');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#more-options')).toContainText('1');
+    await expect(page.locator('.diagnostics')).toContainText('padding', { timeout: 60_000 });
+  });
+});
+
+/**
+ * Loads an example into the source on screen.
+ *
+ * The select lives in the Source group's header, and a session with the Code
+ * panels split over several groups has one per group; the first is the one
+ * these tests, which open one source, mean.
+ */
+const loadExample = (page: Page, option: { label: string }) =>
+  page.locator('select.example').first().selectOption(option);
+
+/**
  * Opens every collapsible row.
  *
  * The table starts collapsed: a record's own members are what it is, and what
@@ -81,10 +343,10 @@ test.describe('ABI Explorer', () => {
     expect(await statValues(page)).toEqual(['40', '8', '13']);
     await expect(page.locator('.field-table tbody tr[class]').first()).toBeVisible();
 
-    await page.selectOption('#target', 'avr-unknown-unknown');
+    await setTarget(page, 'avr-unknown-unknown');
     await expect.poll(() => statValues(page)).toEqual(['21', '1', '0']);
 
-    await page.selectOption('#target', 'x86_64-pc-windows-msvc');
+    await setTarget(page, 'x86_64-pc-windows-msvc');
     await expect.poll(() => statValues(page)).toEqual(['40', '8', '13']);
   });
 
@@ -116,11 +378,11 @@ test.describe('ABI Explorer', () => {
     await page.addInitScript(() => {
       const w = window as unknown as {
         __seen: Sample[];
-        __abix?: { store?: { compiler: Sample } };
+        __abix?: { store?: { backends: { clang: Sample } } };
       };
       w.__seen = [];
       const tick = () => {
-        const c = w.__abix?.store?.compiler;
+        const c = w.__abix?.store?.backends.clang;
         if (c) w.__seen.push({ ...c });
         if (c?.state !== 'ready') requestAnimationFrame(tick);
       };
@@ -195,11 +457,11 @@ test.describe('ABI Explorer', () => {
     await page.addInitScript(() => {
       const w = window as unknown as {
         __seen: Sample[];
-        __abix?: { store?: { compiler: Sample } };
+        __abix?: { store?: { backends: { clang: Sample } } };
       };
       w.__seen = [];
       const tick = () => {
-        const c = w.__abix?.store?.compiler;
+        const c = w.__abix?.store?.backends.clang;
         if (c) w.__seen.push({ ...c });
         if (c?.state !== 'ready') requestAnimationFrame(tick);
       };
@@ -279,7 +541,7 @@ test.describe('ABI Explorer', () => {
 
   test('what the reader opened stays open while they type', async ({ page }) => {
     await waitReady(page);
-    await page.selectOption('#example', { label: 'Union + nested' });
+    await loadExample(page, { label: 'Union + nested' });
     await expandAll(page);
     const kind = page.locator('.field-table .fname', { hasText: 'kind' });
     await expect(kind).toHaveCount(1);
@@ -295,7 +557,7 @@ test.describe('ABI Explorer', () => {
 
   test('a member hovered inside a shut row still lights it', async ({ page }) => {
     await waitReady(page);
-    await page.selectOption('#example', { label: 'Union + nested' });
+    await loadExample(page, { label: 'Union + nested' });
     // Shut to begin with, so the row that would carry the highlight is the
     // group, not the member: hovering the member in the editor must light
     // something, or the table looks broken.
@@ -381,7 +643,7 @@ test.describe('ABI Explorer', () => {
 
   test('compound members: nested struct, union, anonymous', async ({ page }) => {
     await waitReady(page);
-    await page.selectOption('#example', { label: 'Union + nested' });
+    await loadExample(page, { label: 'Union + nested' });
     await expandAll(page);
     await expect(page.locator('#record-chips .chip')).toHaveCount(3);
     // A named compound member is one unit, so its circle carries one colour,
@@ -438,7 +700,7 @@ test.describe('ABI Explorer', () => {
 
   test('chips and the member count follow the record’s own members', async ({ page }) => {
     await waitReady(page);
-    await page.selectOption('#example', { label: 'Union + nested' });
+    await loadExample(page, { label: 'Union + nested' });
     await expandAll(page);
     await expect(page.locator('.record .title')).toContainText('Message');
 
@@ -465,7 +727,7 @@ test.describe('ABI Explorer', () => {
 
   test('grouped table: hovering a parent row and collapsing it', async ({ page }) => {
     await waitReady(page);
-    await page.selectOption('#example', { label: 'Union + nested' });
+    await loadExample(page, { label: 'Union + nested' });
     const hdr = page.locator('.field-table tr.group', { hasText: 'hdr' }).first();
     // Hovering the parent row highlights its declaration line in the editor and
     // shows the group tooltip.
@@ -487,7 +749,7 @@ test.describe('ABI Explorer', () => {
 
   test('drilling: a compound member opens its own record', async ({ page }) => {
     await waitReady(page);
-    await page.selectOption('#example', { label: 'Union + nested' });
+    await loadExample(page, { label: 'Union + nested' });
     await expect(page.locator('.record .title')).toContainText('Message');
 
     // Clicking the `hdr` row inspects struct Header, and the caret follows.
@@ -501,7 +763,7 @@ test.describe('ABI Explorer', () => {
 
     // An anonymous member has no name to write, but is still inspectable: it is
     // shown even though it is not listed as a record of its own.
-    await page.selectOption('#example', { label: 'Union + nested' });
+    await loadExample(page, { label: 'Union + nested' });
     await expect(page.locator('.record .title')).toContainText('Message');
     await page.locator('.field-table tr.group .open', { hasText: '(anonymous)' }).first().click();
     await expect(page.locator('.field-table .fname')).toHaveText(['crc_lo', 'crc_hi']);
@@ -510,7 +772,7 @@ test.describe('ABI Explorer', () => {
   // Issue #3: an explicit tab pick must not be undone by the cursor rule.
   test('picking a record from the tabs moves the caret to its declaration', async ({ page }) => {
     await waitReady(page);
-    await page.selectOption('#example', { label: 'Union + nested' });
+    await loadExample(page, { label: 'Union + nested' });
     await expect(page.locator('#record-chips .chip')).toHaveCount(3);
 
     // Pick Header, not the default selection (the last record is).
@@ -543,7 +805,7 @@ test.describe('ABI Explorer', () => {
     page,
   }) => {
     await waitReady(page);
-    await page.selectOption('#example', { label: 'Union + nested' });
+    await loadExample(page, { label: 'Union + nested' });
     await expect(page.locator('#record-chips .chip')).toHaveCount(3, { timeout: 60_000 });
     await expect(page.locator('.record .title')).toContainText('Message');
 
@@ -563,7 +825,7 @@ test.describe('ABI Explorer', () => {
     await expect(page.locator('.summary .label').first()).toHaveText('sizeof');
     await expect(page.locator('.summary .label').nth(1)).toHaveText('alignof');
 
-    await page.selectOption('#example', { label: 'Virtual inheritance (diamond)' });
+    await loadExample(page, { label: 'Virtual inheritance (diamond)' });
     await expect(page.locator('#record-chips .chip')).toHaveCount(4, { timeout: 60_000 });
     await page.locator('#record-chips .chip', { hasText: 'struct D ' }).click();
     await expect(page.locator('.record .title')).toContainText('struct D');
@@ -587,7 +849,7 @@ test.describe('ABI Explorer', () => {
     // non-virtual size rather than its sizeof, none of which is recoverable
     // from a list of offsets, and all of which decides which bytes light up.
     await waitReady(page);
-    await page.selectOption('#example', { label: 'Virtual inheritance (diamond)' });
+    await loadExample(page, { label: 'Virtual inheritance (diamond)' });
     await expect.poll(() => page.locator('.record .title').textContent()).toContain('struct D');
 
     await page.locator('.field-table tr.group', { hasText: 'virtual A' }).first().hover();
@@ -615,7 +877,7 @@ test.describe('ABI Explorer', () => {
     // rows (and their parent, whose leaves are then all hovered), not just
     // whichever member the stripe happens to paint first.
     await waitReady(page);
-    await page.selectOption('#example', { label: 'Union + nested' });
+    await loadExample(page, { label: 'Union + nested' });
     await expandAll(page);
     await expect
       .poll(() => page.locator('.record .title').textContent())
@@ -637,7 +899,7 @@ test.describe('ABI Explorer', () => {
 
   test('the byte grid brackets what a base subobject contributes', async ({ page }) => {
     await waitReady(page);
-    await page.selectOption('#example', { label: 'Virtual & bases' });
+    await loadExample(page, { label: 'Virtual & bases' });
     await expect
       .poll(() => page.locator('.record .title').textContent())
       .toContain('struct Diamond');
@@ -652,7 +914,7 @@ test.describe('ABI Explorer', () => {
 
   test('C++: virtual bases on MSVC and Itanium, private members measured', async ({ page }) => {
     await waitReady(page);
-    await page.selectOption('#example', { label: 'Virtual & bases' });
+    await loadExample(page, { label: 'Virtual & bases' });
     await expandAll(page);
     await expect(page.locator('#record-chips .chip')).toHaveCount(4);
     await expect
@@ -660,7 +922,7 @@ test.describe('ABI Explorer', () => {
       .toContain('struct Diamond');
     expect(await statValues(page)).toEqual(['32', '8', '4']);
     await expect(page.locator('.field-table .fname', { hasText: 'vtable pointer' })).toHaveCount(2);
-    await page.selectOption('#target', 'x86_64-pc-windows-msvc');
+    await setTarget(page, 'x86_64-pc-windows-msvc');
     await expect(page.locator('.field-table .fname', { hasText: 'vbtable pointer' })).toHaveCount(
       1,
     );
@@ -671,7 +933,7 @@ test.describe('ABI Explorer', () => {
     // it is reached by its id from the member that uses it. Nothing in the app
     // matches a printed type name to find it, which is the point.
     await waitReady(page);
-    await page.selectOption('#example', { label: 'Using standard library (libc++)' });
+    await loadExample(page, { label: 'Using standard library (libc++)' });
     await expect(page.locator('.record .title')).toContainText('Probe');
     await expect(page.locator('#record-chips .chip')).toHaveCount(1);
 
@@ -688,7 +950,7 @@ test.describe('ABI Explorer', () => {
     // page showing through below it when the row was hovered, and the
     // hovered colour wiping the nesting guides besides.
     await waitReady(page);
-    await page.selectOption('#example', { label: 'Using standard library (libc++)' });
+    await loadExample(page, { label: 'Using standard library (libc++)' });
     await expect(page.locator('.record .title')).toContainText('Probe');
     // Probe::s → basic_string's __rep_ → the union's __l member. Names are
     // matched whole, `s` being a substring of most of them. Each record is
@@ -718,7 +980,7 @@ test.describe('ABI Explorer', () => {
 
   test('the standard library resolves on every kind of target, and says how', async ({ page }) => {
     await waitReady(page);
-    await page.selectOption('#example', { label: 'Using standard library (libc++)' });
+    await loadExample(page, { label: 'Using standard library (libc++)' });
     await expect.poll(() => statValues(page)).toEqual(['72', '8', '0']);
     // musl's own tree on Linux, and the details say so.
     await page.hover('#info-button');
@@ -726,14 +988,14 @@ test.describe('ABI Explorer', () => {
 
     // A target musl has no headers for: it still resolves, over this target's
     // own scalar types, and the details say which layer answered.
-    await page.selectOption('#target', 'aarch64-apple-macosx');
+    await setTarget(page, 'aarch64-apple-macosx');
     await page.hover('#info-button');
     await expect(page.locator('#header-config')).toContainText('libc++ · musl (portable)');
     await expect(page.locator('#results')).toBeVisible();
     await expect(page.locator('.record .title')).toContainText('Probe');
 
     // …including Windows, where nothing of the MSVC runtime is shipped.
-    await page.selectOption('#target', 'x86_64-pc-windows-msvc');
+    await setTarget(page, 'x86_64-pc-windows-msvc');
     await page.hover('#info-button');
     await expect(page.locator('#header-config')).toContainText('musl (portable)');
     await expect(page.locator('.record .title')).toContainText('Probe');
@@ -745,7 +1007,7 @@ test.describe('ABI Explorer', () => {
     // `Pair`, and the index, which knew that spelling only as the first
     // instantiation to register it, answered `Pair<double>` twice.
     await waitReady(page);
-    await page.selectOption('#example', { label: 'Template instantiation' });
+    await loadExample(page, { label: 'Template instantiation' });
     await expect.poll(() => page.locator('#record-chips .chip').count()).toBeGreaterThan(1);
     const hover = page.locator('.monaco-editor .monaco-hover:not(.hidden)');
 
@@ -770,7 +1032,7 @@ test.describe('ABI Explorer', () => {
     // siblings', and with no guide lines to fall back on, a leaf beside a
     // collapsible sibling read as its child.
     await waitReady(page);
-    await page.selectOption('#example', { label: 'Using standard library (libc++)' });
+    await loadExample(page, { label: 'Using standard library (libc++)' });
     await expandAll(page);
     await expect
       .poll(() => page.locator('.record .title').textContent(), { timeout: 120_000 })
@@ -821,7 +1083,7 @@ test.describe('ABI Explorer', () => {
     // screen. Both signals are real and want the same edge; the only way to
     // catch one silently eating the other is to compare what is rendered.
     await waitReady(page);
-    await page.selectOption('#example', { label: 'Virtual inheritance (diamond)' });
+    await loadExample(page, { label: 'Virtual inheritance (diamond)' });
     await expandAll(page);
     await expect.poll(() => page.locator('#record-chips .chip').count()).toBeGreaterThan(3);
     await page.locator('#record-chips .chip', { hasText: 'struct D' }).click();
@@ -861,7 +1123,7 @@ test.describe('ABI Explorer', () => {
     // container in the layout and not in the language: it gathers them, and
     // has no colour of its own because its bytes have several.
     await waitReady(page);
-    await page.selectOption('#example', { label: 'Virtual inheritance (diamond)' });
+    await loadExample(page, { label: 'Virtual inheritance (diamond)' });
     await expandAll(page);
     await expect.poll(() => page.locator('#record-chips .chip').count()).toBeGreaterThan(3);
     await page.locator('#record-chips .chip', { hasText: 'struct D' }).click();
@@ -940,7 +1202,7 @@ test.describe('ABI Explorer', () => {
 
   test('stacked view shows all records and links hovers across sections', async ({ page }) => {
     await waitReady(page);
-    await page.selectOption('#example', { label: 'Union + nested' });
+    await loadExample(page, { label: 'Union + nested' });
     await page.click('#view-toggle');
     await expect(page.locator('.record')).toHaveCount(3);
     // After the switch: stacking draws a table per record, and each of them
@@ -973,11 +1235,10 @@ test.describe('ABI Explorer', () => {
     // reaches the editor as no squiggle at all, and the diagnostics panel is
     // the only place it can appear.
     await waitReady(page);
-    await page.selectOption('#target', '__custom__');
-    await page.fill('#custom-triple', 'riscv128-unknown-elf');
+    await setTarget(page, 'riscv128-unknown-elf');
     await expect(page.locator('.diagnostics')).toContainText('unknown target triple');
     // …and it recovers.
-    await page.fill('#custom-triple', 'riscv64-unknown-elf');
+    await setTarget(page, 'riscv64-unknown-elf');
     await expect(page.locator('.record .title')).toContainText('Example');
   });
 
@@ -991,7 +1252,7 @@ test.describe('ABI Explorer', () => {
 
     // An option change is a step: this is the half an editor's own undo stack
     // knows nothing about.
-    await page.selectOption('#target', 'avr-unknown-unknown');
+    await setTarget(page, 'avr-unknown-unknown');
     await expect.poll(() => statValues(page)).toEqual(['21', '1', '0']);
     await expect(page.locator('#undo')).toBeEnabled();
 
@@ -1042,7 +1303,7 @@ test.describe('ABI Explorer', () => {
 
   test('the history does not survive a reload', async ({ page }) => {
     await waitReady(page);
-    await page.selectOption('#target', 'avr-unknown-unknown');
+    await setTarget(page, 'avr-unknown-unknown');
     await expect(page.locator('#undo')).toBeEnabled();
     await page.reload();
     await expect(page.locator('#results')).toBeVisible({ timeout: 240_000 });
@@ -1053,7 +1314,7 @@ test.describe('ABI Explorer', () => {
 
   test('share URL round-trips source and options', async ({ page, context }) => {
     await waitReady(page);
-    await page.selectOption('#target', 'msp430-none-elf');
+    await setTarget(page, 'msp430-none-elf');
     await page.click('input[name=lang][value="c++"] + span');
     await expect.poll(() => statValues(page)).not.toEqual(['40', '8', '13']); // recompiled for msp430/C++
     await page.waitForTimeout(800); // hash sync is debounced
@@ -1062,9 +1323,54 @@ test.describe('ABI Explorer', () => {
     const page2 = await context.newPage();
     await page2.goto(url);
     await expect(page2.locator('#results')).toBeVisible({ timeout: 120_000 });
-    await expect(page2.locator('#target')).toHaveValue('msp430-none-elf');
+    await expect(page2.locator('#target')).toHaveText(/MSP430/);
     await expect(page2.locator('input[name=lang][value="c++"]')).toBeChecked();
     expect(await statValues(page2)).toEqual(await statValues(page));
+  });
+
+  test('several sources each get their panels, and a link carries them all', async ({
+    page,
+    context,
+  }) => {
+    await waitReady(page);
+    // One source: the tabs say what they are, and the options sit above the dock.
+    await expect(page.locator('.dv-tab', { hasText: 'Source' })).toHaveCount(1);
+    await expect(page.locator('section.controls:not(.compact)')).toHaveCount(1);
+    await page.click('button[aria-label="Add source"]');
+    // Two: every group has a tab per source and says what kind it holds, and
+    // each Source panel carries the options of its own source.
+    await expect(page.locator('.dock-group-label', { hasText: 'Source' })).toHaveCount(1);
+    await expect(page.locator('.dv-tab', { hasText: 'Source 2' })).toHaveCount(3);
+    await expect(page.locator('section.controls:not(.compact)')).toHaveCount(0);
+    await expect(page.locator('section.controls.compact')).toHaveCount(1);
+
+    // The new source is in focus and empty; what is typed there is laid out
+    // in its own Layout panel, while the first source's answer stands.
+    await page.locator('.monaco-editor').click();
+    await page.keyboard.type('struct B { char c; int i; };');
+    await expect.poll(() => statValues(page), { timeout: 30_000 }).toEqual(['8', '4', '3']);
+
+    // Pressing the first source's Layout tab brings its Code forward too.
+    await page.locator('.dv-tab', { hasText: 'Source 1' }).nth(2).click();
+    await expect.poll(() => statValues(page), { timeout: 30_000 }).toEqual(['40', '8', '13']);
+    await expect(page.locator('.monaco-editor:visible')).toContainText('struct Example');
+
+    // The link carries every source and opens on the one that was in focus.
+    await page.waitForTimeout(800); // hash sync is debounced
+    const page2 = await context.newPage();
+    await page2.goto(page.url());
+    await expect(page2.locator('#results').first()).toBeVisible({ timeout: 120_000 });
+    await expect(page2.locator('.dv-tab', { hasText: 'Source 2' })).toHaveCount(3);
+    await expect.poll(() => statValues(page2), { timeout: 30_000 }).toEqual(['40', '8', '13']);
+    await page2.locator('.dv-tab', { hasText: 'Source 2' }).first().click();
+    await expect.poll(() => statValues(page2), { timeout: 30_000 }).toEqual(['8', '4', '3']);
+
+    // Removing a source takes its panels with it, and the options go back up.
+    await page2.click('#view-button');
+    await page2.click('button[aria-label="Remove Source 2"]');
+    await expect(page2.locator('.dv-tab', { hasText: 'Source 2' })).toHaveCount(0);
+    await expect(page2.locator('section.controls:not(.compact)')).toHaveCount(1);
+    await expect.poll(() => statValues(page2), { timeout: 30_000 }).toEqual(['40', '8', '13']);
   });
 
   test('works offline after the first visit (PWA)', async ({ page, context }) => {
@@ -1081,12 +1387,12 @@ test.describe('ABI Explorer', () => {
     await context.setOffline(true);
     await page.reload();
     await expect(page.locator('#results')).toBeVisible({ timeout: 120_000 });
-    await page.selectOption('#target', 'avr-unknown-unknown');
+    await setTarget(page, 'avr-unknown-unknown');
     await expect.poll(() => statValues(page)).toEqual(['21', '1', '0']);
     // The headers are local too, not just the wasm; this is what shipping
     // them in the payload rather than fetching them on demand is for.
-    await page.selectOption('#target', 'x86_64-unknown-linux-gnu');
-    await page.selectOption('#example', { label: 'Using standard library (libc++)' });
+    await setTarget(page, 'x86_64-unknown-linux-gnu');
+    await loadExample(page, { label: 'Using standard library (libc++)' });
     await expect.poll(() => page.locator('.record .title').textContent()).toContain('Probe');
     expect((await statValues(page))[0]).toBe('72');
     await context.setOffline(false);

@@ -32,6 +32,9 @@
 :root {
   --font-ui: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', 'Cascadia Code', Consolas, monospace;
+  /* The wash under a hovered control. Derived from the ink rather than named
+     per palette, so every theme has one without listing it. */
+  --hover: color-mix(in srgb, var(--text-primary) 8%, transparent);
   --editor-bg: #f7f9fc;
 }
 @media (prefers-color-scheme: dark) {

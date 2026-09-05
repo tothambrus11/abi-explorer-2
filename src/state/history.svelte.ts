@@ -12,24 +12,46 @@
 // of typing coalesces into one step. That is the trade for having the options
 // in the same history, and it is why `COALESCE_MS` is short.
 //
+// With several buffers the pair widens but the idea does not: the snapshot
+// holds every buffer, each with its own options, and which one was in focus,
+// so undoing a "switch tab, edit" run puts the edit back in the tab it
+// happened in.
+//
 // Nothing here is persisted. A reload starts from the URL, which carries the
 // state but not how it was arrived at, and an undo across a reload would put
 // back something the user has no memory of doing.
 
-import type { CompileOptions } from '$core/options';
+import type { SourceBuffer } from '$core/url-state';
 
 /** A state worth being able to return to. */
 export interface Snapshot {
-  source: string;
-  options: CompileOptions;
+  /** Every buffer, in tab order, with its options: the whole of the question. */
+  buffers: SourceBuffer[];
+  /** Which buffer was in focus: undo puts back the view, not just the text. */
+  active: number;
 }
 
-/** Two snapshots differ if either half does. */
+const sameOptions = (a: SourceBuffer, b: SourceBuffer): boolean =>
+  JSON.stringify(a.options) === JSON.stringify(b.options);
+
+/** Every half of a buffer that is not its text: the deliberate ones. */
+function sameShape(a: SourceBuffer[], b: SourceBuffer[]): boolean {
+  return a.length === b.length && a.every((x, i) => x.name === b[i]!.name && sameOptions(x, b[i]!));
+}
+
+/** Two snapshots differ if any half does. */
 function same(a: Snapshot, b: Snapshot): boolean {
-  return a.source === b.source && JSON.stringify(a.options) === JSON.stringify(b.options);
+  return (
+    a.active === b.active &&
+    sameShape(a.buffers, b.buffers) &&
+    a.buffers.every((x, i) => x.source === b.buffers[i]!.source)
+  );
 }
 
-const clone = (s: Snapshot): Snapshot => ({ source: s.source, options: { ...s.options } });
+const clone = (s: Snapshot): Snapshot => ({
+  buffers: s.buffers.map((b) => ({ ...b, options: { ...b.options } })),
+  active: s.active,
+});
 
 /** How long a run of edits stays one undo step. */
 const COALESCE_MS = 600;
@@ -66,16 +88,18 @@ export class History {
   /**
    * Note that the state is now `next`.
    *
-   * A change to the source alone within `COALESCE_MS` of the last one replaces
+   * A change to the sources alone within `COALESCE_MS` of the last one replaces
    * the present rather than pushing it, so that typing a word is one step. A
-   * change to the options never coalesces: it is a deliberate act, and the
-   * state before it is one a user will want back.
+   * change to the options, the active buffer, or the shape of the buffer list
+   * never coalesces: each is a deliberate act, and the state before it is one
+   * a user will want back.
    */
   record(next: Snapshot, now = Date.now()): void {
     if (this.applying || same(next, this.present)) return;
 
-    const optionsChanged = JSON.stringify(next.options) !== JSON.stringify(this.present.options);
-    const coalesce = !optionsChanged && now - this.recordedAt < COALESCE_MS;
+    const p = this.present;
+    const deliberate = next.active !== p.active || !sameShape(next.buffers, p.buffers);
+    const coalesce = !deliberate && now - this.recordedAt < COALESCE_MS;
     if (!coalesce) this.past = [...this.past, this.present];
     // A new act abandons whatever was undone out of: the future it belonged to
     // is not reachable from here any more.

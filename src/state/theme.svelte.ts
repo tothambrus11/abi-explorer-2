@@ -73,6 +73,11 @@ const mql = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme
  * everything else is the user's, stored in this browser. Nothing here touches
  * the document: `applyThemeTokens` does that, from an effect.
  */
+/** Does this id name a theme the app ships? */
+function isPresetId(id: string): boolean {
+  return PRESET_SPECS.some((s) => s.id === id);
+}
+
 class ThemeStore {
   private saved = loadPersisted();
   /** User-authored theme specs. */
@@ -84,19 +89,58 @@ class ThemeStore {
   picking: { group: ColorGroup; key: string } | null = $state(null);
   /** The picker lives at the bottom of the theme editor unless detached into its own window. */
   pickerDetached = $state(false);
+  /**
+   * The reader put the picker back in the panel. Picking a colour opens the
+   * picker in a window of its own, which is not what someone who has just
+   * attached it wants to happen to their next press.
+   */
+  pickerAttachedByHand = $state(false);
+
+  /** Moves the picker, and remembers that the move was asked for. */
+  setPickerDetached(detached: boolean): void {
+    this.pickerDetached = detached;
+    this.pickerAttachedByHand = !detached;
+  }
+
+  /**
+   * Starts picking a colour, and brings the picker to where it can be used:
+   * its own window, unless the screen is too narrow for one or the reader has
+   * put it back in the panel. Passing the same field again stops picking.
+   */
+  pick(group: ColorGroup, key: string, canDetach: boolean): void {
+    const same = this.picking?.group === group && this.picking.key === key;
+    this.picking = same ? null : { group, key };
+    if (!same && canDetach && !this.pickerAttachedByHand) this.pickerDetached = true;
+  }
 
   /** Compiled custom themes, memoized per spec object (update() replaces only the edited spec). */
   private compiled = new WeakMap<ThemeSpec, Theme>();
+  private compile(spec: ThemeSpec, preset: boolean): Theme {
+    let t = this.compiled.get(spec);
+    if (!t) {
+      t = compileTheme(spec, preset);
+      this.compiled.set(spec, t);
+    }
+    return t;
+  }
+  /**
+   * The specs in `custom` that stand for a shipped theme rather than a new
+   * one: an edited preset is stored under the preset's own id, so it takes
+   * the preset's place here rather than appearing beside it.
+   */
+  private edits: Map<string, ThemeSpec> = $derived(
+    new Map(this.custom.filter((s) => isPresetId(s.id)).map((s) => [s.id, s])),
+  );
+  /** The themes the reader authored: everything in `custom` that is not an edit of a preset. */
+  mine: ThemeSpec[] = $derived(this.custom.filter((s) => !isPresetId(s.id)));
   all: Theme[] = $derived([
-    ...THEMES,
-    ...this.custom.map((s) => {
-      let t = this.compiled.get(s);
-      if (!t) {
-        t = compileTheme(s, false);
-        this.compiled.set(s, t);
-      }
-      return t;
+    // A preset keeps its place in the list whether or not it has been edited:
+    // it is the same theme, with the reader's colours in it.
+    ...THEMES.map((t) => {
+      const edit = this.edits.get(t.id);
+      return edit ? this.compile(edit, true) : t;
     }),
+    ...this.mine.map((s) => this.compile(s, false)),
   ]);
   lastLight = $state(DEFAULT_LIGHT);
   lastDark = $state(DEFAULT_DARK);
@@ -108,6 +152,25 @@ class ThemeStore {
     const id = this.chosen ?? (this.osDark ? this.lastDark : this.lastLight);
     return this.byId(id) ?? THEMES[0]!;
   });
+  /**
+   * A theme being tried rather than chosen: the pointer is resting on it in
+   * the list. Nothing is remembered and nothing is persisted; it ends when
+   * the pointer moves on.
+   */
+  previewing: string | null = $state(null);
+  /**
+   * The theme to draw in: the one being tried while there is one, else the
+   * one chosen. What the page and the editor follow.
+   */
+  shown: Theme = $derived.by(() => {
+    const t = this.previewing === null ? undefined : this.byId(this.previewing);
+    return t ?? this.current;
+  });
+  /**
+   * The mode of the *chosen* theme, not of the one being tried: it is what the
+   * light/dark button flips, and a theme under the pointer must not change
+   * what pressing it would do.
+   */
   mode: ThemeMode = $derived(this.current.mode);
 
   /**
@@ -130,6 +193,14 @@ class ThemeStore {
   }
 
   /**
+   * Wears `id` without choosing it, or stops (null). An unknown id stops too:
+   * there is nothing to show.
+   */
+  preview(id: string | null): void {
+    this.previewing = id !== null && this.byId(id) ? id : null;
+  }
+
+  /**
    * Chooses a theme and remembers it, for this mode and across visits.
    *
    * An unknown id does nothing rather than clearing the choice. Selecting a
@@ -140,6 +211,7 @@ class ThemeStore {
   select(id: string): void {
     const t = this.byId(id);
     if (!t) return;
+    this.previewing = null;
     this.chosen = id;
     if (t.mode === 'light') {
       this.lastLight = id;
@@ -191,32 +263,58 @@ class ThemeStore {
   }
 
   /**
-   * Edits a custom theme in place, through `patch`.
+   * Edits a theme in place, through `patch`.
    *
-   * `patch` mutates a private copy, so it may write freely; an unknown or
-   * preset id does nothing. Re-selects when the theme being edited is the one
-   * showing, since an edit can change its mode and with it which theme the
-   * light/dark toggle should flip to.
+   * `patch` mutates a private copy, so it may write freely; an unknown id does
+   * nothing. A shipped theme is editable too: the first change makes a copy of
+   * what shipped, stored under the same id, so the theme keeps its name and
+   * its place and `reset` can throw the copy away. Re-selects when the theme
+   * being edited is the one showing, since an edit can change its mode and
+   * with it which theme the light/dark toggle should flip to.
    */
   update(id: string, patch: (spec: ThemeSpec) => void): void {
     const i = this.custom.findIndex((s) => s.id === id);
-    if (i < 0) return;
-    const next = structuredClone($state.snapshot(this.custom[i]!));
+    const from = i >= 0 ? this.custom[i]! : PRESET_SPECS.find((s) => s.id === id);
+    if (!from) return;
+    const next = structuredClone($state.snapshot(from));
     patch(next);
-    this.custom = this.custom.map((s, j) => (j === i ? next : s));
+    this.custom = i >= 0 ? this.custom.map((s, j) => (j === i ? next : s)) : [...this.custom, next];
     this.persistCustom();
     // keep last-light/dark consistent if the mode changed
     if (this.chosen === id) this.select(id);
   }
 
+  /** Has this shipped theme been edited? False for anything else. */
+  isEdited(id: string): boolean {
+    return this.edits.has(id);
+  }
+
   /**
-   * Deletes a custom theme, and moves anything pointing at it out of the way.
+   * Throws away the edits to a shipped theme, leaving what shipped.
    *
-   * An unknown or preset id does nothing. Whatever referred to it — the
+   * The theme itself stays: it keeps its id, so the selection, either mode's
+   * last theme and the editor all go on naming something that exists. Does
+   * nothing for a theme that ships unedited, or one the reader authored, which
+   * has no original to go back to.
+   */
+  reset(id: string): void {
+    if (!this.isEdited(id)) return;
+    this.custom = this.custom.filter((s) => s.id !== id);
+    this.persistCustom();
+    if (this.chosen === id) this.select(id);
+  }
+
+  /**
+   * Deletes a theme the reader authored, and moves anything pointing at it out
+   * of the way.
+   *
+   * An unknown id does nothing, and so does a shipped one: a preset has no
+   * deleting, only `reset`, since the app ships it either way. Whatever referred to it — the
    * selection, either mode's last theme, the editor — falls back to a default
    * of the same mode, so nothing is left naming a theme that no longer exists.
    */
   remove(id: string): void {
+    if (isPresetId(id)) return;
     const spec = this.custom.find((s) => s.id === id);
     if (!spec) return;
     this.custom = this.custom.filter((s) => s.id !== id);
@@ -229,9 +327,9 @@ class ThemeStore {
     this.persist();
   }
 
-  /** Does this id name a theme that ships? Presets cannot be edited or deleted. */
+  /** Does this id name a theme that ships? A shipped theme can be edited, but not deleted. */
   isPresetId(id: string): boolean {
-    return PRESET_SPECS.some((s) => s.id === id);
+    return isPresetId(id);
   }
 
   /**

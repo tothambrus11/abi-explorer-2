@@ -20,7 +20,8 @@
   const { detached = false }: { detached?: boolean } = $props();
 
   const editing = $derived(theme.editingId ? theme.byId(theme.editingId) : null);
-  const readOnly = $derived(!editing || editing.preset);
+  /** Nothing is being edited at all; a theme that ships is edited like any other. */
+  const none = $derived(!editing);
   const value = $derived.by(() => {
     const pk = theme.picking;
     const ed = editing;
@@ -41,7 +42,7 @@
 
   function set(v: string) {
     const pk = theme.picking;
-    if (!pk || !editing || editing.preset) return;
+    if (!pk || !editing) return;
     theme.update(editing.id, (s: ThemeSpec) => {
       (s[pk.group] as unknown as Record<string, string>)[pk.key] = v;
     });
@@ -54,12 +55,14 @@
 <div class="picker" class:detached>
   <div class="head">
     <span class="title">{value ? label : 'Colour picker'}</span>
-    {#if !readOnly && value}<span class="hex-preview mono">{value}</span>{/if}
+    {#if !none && value}<span class="hex-preview mono">{value}</span>{/if}
     {#if !store.narrow}
       <button
         class="icon-btn small"
         type="button"
-        onclick={() => (theme.pickerDetached = !detached)}
+        onclick={() => {
+          theme.setPickerDetached(!detached);
+        }}
         aria-label={detached
           ? 'Attach picker to the theme editor'
           : 'Detach picker into its own window'}
@@ -69,7 +72,7 @@
       </button>
     {/if}
   </div>
-  {#if value && !readOnly}
+  {#if value && !none}
     <hex-color-picker color={toHex6(value)} oncolor-changed={onPickerInput}></hex-color-picker>
     <div class="row">
       <span class="swatch" style:background={value}></span>
@@ -86,9 +89,7 @@
     </div>
   {:else}
     <p class="empty">
-      {readOnly
-        ? 'Duplicate a preset to edit its colours.'
-        : 'Click a colour swatch above to edit it.'}
+      {none ? 'No theme is being edited.' : 'Click a colour swatch above to edit it.'}
     </p>
   {/if}
 </div>

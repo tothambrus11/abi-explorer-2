@@ -40,6 +40,14 @@ jobs:
       - run: npm run check
       - run: npm test
       - run: npm run build
+      # The share-link package on its own: what `npm run check` and `npm test`
+      # above see is its source through an alias, and what is published is
+      # `dist` built by the package's own tsconfig.
+      - run: npm run build --workspaces
+      - run: npm test --workspaces
+      # What JSR will say to the package as it is: its own type and export checks.
+      - run: npx jsr publish --dry-run --allow-dirty
+        working-directory: packages/share-link
 
   e2e:
     runs-on: ubuntu-latest

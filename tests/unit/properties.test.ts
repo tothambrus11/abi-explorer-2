@@ -45,16 +45,34 @@ const optionsArb = fc
     };
   });
 
+const buffersArb = fc
+  .tuple(
+    fc.array(
+      fc.record({
+        name: fc.constantFrom('Source 1', 'Helpers', 'A name with spaces'),
+        source: fc.string({ maxLength: 120 }),
+        options: optionsArb,
+        selectedRecord: fc.option(fc.constantFrom('struct Example', 'union U'), { nil: null }),
+      }),
+      { minLength: 1, maxLength: 4 },
+    ),
+    fc.nat(),
+  )
+  .map(([buffers, pick]) => {
+    // Names travel with every buffer, a lone one included; they only have to
+    // be names, which the decoder trims and caps.
+    void pick;
+    return { buffers: buffers.map((b, i) => ({ ...b, name: `${b.name} ${String(i + 1)}` })) };
+  });
+
 describe('share URL (property)', () => {
-  it('round-trips source and every option', async () => {
+  it('round-trips every buffer and every option', async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.string({ maxLength: 400 }),
-        optionsArb,
-        fc.option(fc.constantFrom('struct Example', 'union U'), { nil: null }),
+        buffersArb,
         fc.constantFrom('tabs' as const, 'stack' as const),
-        async (source, options, selectedRecord, view) => {
-          const state = { source, options, selectedRecord, view };
+        async ({ buffers }, view) => {
+          const state = { buffers, view };
           const back = await decodeShareState(await encodeShareState(state));
           expect(back).toEqual(state);
         },
@@ -93,16 +111,26 @@ describe('share URL (property)', () => {
 });
 
 function expectValidState(s: ShareState): void {
-  const o = s.options;
-  expect(typeof s.source).toBe('string');
-  expect(['c', 'c++', 'hylo']).toContain(o.lang);
-  expect(['', '1', '2', '4', '8', '16']).toContain(o.pack);
-  // A triple goes straight into `--target=`; it must stay a plain token.
-  expect(o.triple).toMatch(/^[A-Za-z0-9_.-]{1,64}$/);
-  expect(o.extraFlags.length).toBeLessThanOrEqual(500);
+  expect(s.buffers.length).toBeGreaterThan(0);
+  expect(s.buffers.length).toBeLessThanOrEqual(8);
+  for (const b of s.buffers) {
+    expect(typeof b.source).toBe('string');
+    expect(b.name.length).toBeGreaterThan(0);
+    expect(b.name.length).toBeLessThanOrEqual(40);
+    // Every buffer's options are its own, and every one of them is one clang
+    // or Hylo would take.
+    const o = b.options;
+    expect(['c', 'c++', 'hylo']).toContain(o.lang);
+    expect(['', '1', '2', '4', '8', '16']).toContain(o.pack);
+    // A triple goes straight into `--target=`; it must stay a plain token.
+    expect(o.triple).toMatch(/^[A-Za-z0-9_.-]{1,64}$/);
+    if (o.lang === 'hylo') expect(o.triple).toBe('hylo');
+    expect(o.extraFlags.length).toBeLessThanOrEqual(500);
+    const stds = o.lang === 'c++' ? CXX_STANDARDS : o.lang === 'hylo' ? [] : C_STANDARDS;
+    if (stds.length) expect(stds).toContain(o.std);
+    else expect(o.std).toBe('');
+  }
   expect(['tabs', 'stack']).toContain(s.view);
-  const stds = o.lang === 'c++' ? CXX_STANDARDS : o.lang === 'hylo' ? [] : C_STANDARDS;
-  if (stds.length) expect(stds).toContain(o.std);
 }
 
 // ------------------------------------------------------ flag allowlist ----

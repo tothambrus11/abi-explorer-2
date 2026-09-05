@@ -4,13 +4,13 @@
   // `model` is the analysis it summarises. Stride is computed here rather than
   // reported by the backends, because only one of them has a word for it.
   import type { RenderModel } from '$core/types';
+  import type { Language } from '$core/options';
   import { tooltip } from './tooltip';
-  import { store } from '$state/store.svelte';
   import { strideOf } from '$state/type-hover';
-  const { model }: { model: RenderModel } = $props();
+  const { model, lang }: { model: RenderModel; lang: Language } = $props();
   // `sizeof` and `alignof` are C operators; a Hylo type has a size and an
   // alignment, and a stride, which C folds into `sizeof` and Hylo does not.
-  const hylo = $derived(store.options.lang === 'hylo');
+  const hylo = $derived(lang === 'hylo');
   const fmt = new Intl.NumberFormat('en-US');
   const rec = $derived(model.record);
   // Null means the record was too big to scan for padding, which is a

@@ -82,12 +82,19 @@ a {
 }
 
 /* Themed tooltip (use:tooltip action and the grid/table tooltip) */
+/* What is stacked over what, in one place:
+     999   dockview's own overlays, the floating theme editor among them
+     1000  our menus and popovers, which are opened over whatever is beneath
+     1100  tooltips, which are never pressed and always describe something
+           already on top.
+   A tooltip at 100 rendered behind the theme editor, whose controls it was
+   describing. */
 .abix-tip {
   position: fixed;
-  z-index: 100;
+  z-index: 1100;
   max-width: 320px;
-  background: var(--tip-bg, var(--text-primary));
-  color: var(--tip-fg, var(--page));
+  background: var(--text-primary);
+  color: var(--page);
   padding: 6px 9px;
   border-radius: 7px;
   font-size: 12px;
@@ -319,6 +326,47 @@ input.input {
   overflow: hidden;
 }
 
+/* What a group holds, before its tabs: "Source", "Layout", "Diagnostics" when
+   the tabs are sources. Styled like a tab that cannot be pressed. */
+.dock-group-label {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 4px 0 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+/* `display: flex` above would otherwise beat the `hidden` attribute, and an
+   empty label 16px wide sat before the first tab of every single-source group. */
+.dock-group-label[hidden] {
+  display: none;
+}
+.dock-group-actions,
+.dock-group-add {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+/* Nothing open at all. */
+.dock-watermark {
+  height: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.dock-watermark p {
+  margin: 0;
+}
+
 /* A menu hanging off a control in the top bar.
    Anchored to the right of the nearest positioned ancestor (the whole action
    cluster, not the single button) and clamped to the viewport. Hung off the
@@ -326,12 +374,11 @@ input.input {
    off the *left* edge of the screen, and "Solarized Light" read "zed Light". */
 .popover {
   position: absolute;
+  /* Over the dock and anything floating in it, and under the tooltip that
+     describes whatever is in here. See the scale above. */
+  z-index: 1000;
   right: 0;
   top: calc(100% + 6px);
-  /* Above the controls' own options panel (30), which hangs from the row
-     below this one and would otherwise paint over a menu opened from the top
-     bar purely because it comes later in the document. Below the tooltip. */
-  z-index: 40;
   box-sizing: border-box;
   max-width: calc(100vw - 24px);
   max-height: min(70vh, 560px);

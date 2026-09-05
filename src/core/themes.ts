@@ -39,16 +39,30 @@ export interface PageColors {
   warn: string;
   ok: string;
 }
+/**
+ * The colours the two grammars can actually paint with.
+ *
+ * There is one per kind of token the tokenizers emit, and no more: a colour
+ * nothing emits is a knob that does nothing, which is worse than not offering
+ * it. Operators used to be one of those — C and C++ tokenise them as
+ * delimiters, so the colour only ever reached Hylo — and punctuation is now
+ * one colour in both languages.
+ */
 export interface SyntaxColors {
+  /** Everything with nothing more specific to say about it, identifiers included. */
   fg: string;
   comment: string;
+  /** `struct`, `return`, `let`; the built-in type names have their own colour. */
   keyword: string;
+  /** `#include`, `#define`: C and C++ only, which is where a preprocessor exists. */
   directive: string;
   string: string;
   number: string;
+  /** `int` and `unsigned` in C and C++; the name after `type` or `trait` in Hylo. */
   type: string;
+  /** Punctuation and operators alike: braces, semicolons, `*`, `&`, `->`. */
   delimiter: string;
-  operator: string;
+  /** `[[nodiscard]]` in C++, and the markers a comment is tagged with in Hylo. */
   annotation: string;
 }
 export interface EditorColors {
@@ -118,8 +132,7 @@ export const SYNTAX_FIELDS: { key: keyof SyntaxColors; label: string }[] = [
   { key: 'string', label: 'Strings' },
   { key: 'number', label: 'Numbers' },
   { key: 'type', label: 'Types' },
-  { key: 'delimiter', label: 'Delimiters' },
-  { key: 'operator', label: 'Operators' },
+  { key: 'delimiter', label: 'Delimiters and operators' },
   { key: 'annotation', label: 'Annotations' },
 ];
 export const MEMBER_FIELDS: { key: keyof MemberColors; label: string }[] = [
@@ -243,6 +256,28 @@ const strip = (c: string) => c.replace(/^#/, '');
  *   whether it may be overwritten.
  * - Pure: the same spec always compiles to the same theme.
  */
+/**
+ * The words C and C++ spell a built-in type with. The grammar calls them
+ * keywords, because they are; a reader looking at `unsigned int x` sees a type.
+ */
+const TYPE_KEYWORDS = [
+  'bool',
+  'char',
+  'double',
+  'float',
+  'int',
+  'long',
+  'short',
+  'signed',
+  'unsigned',
+  'void',
+  'wchar_t',
+  '__int8',
+  '__int16',
+  '__int32',
+  '__int64',
+];
+
 export function compileTheme(spec: ThemeSpec, preset = false): Theme {
   const { page: p, syntax: sx, editor: e, mode } = spec;
   const m: MemberColors = (spec as Partial<ThemeSpec>).members ?? DEFAULT_MEMBERS[mode];
@@ -272,22 +307,29 @@ export function compileTheme(spec: ThemeSpec, preset = false): Theme {
     '--c-8': m.c8,
     '--c-special': m.special,
   };
+  // Monaco matches a rule to every token that starts with it, so `comment`
+  // covers `comment.doc`, `string` covers `string.escape` and `string.raw`,
+  // `number` covers `number.hex`, and `keyword.directive` covers the pieces of
+  // an `#include`. One rule per colour is the whole theme.
   const rules: EditorTokenRule[] = [
     { token: '', foreground: strip(sx.fg) },
+    // Explicit, so a rule inherited from Monaco's own base theme cannot claim it.
+    { token: 'identifier', foreground: strip(sx.fg) },
     { token: 'comment', foreground: strip(sx.comment), fontStyle: 'italic' },
     { token: 'keyword', foreground: strip(sx.keyword) },
     { token: 'keyword.directive', foreground: strip(sx.directive) },
-    { token: 'keyword.directive.include', foreground: strip(sx.directive) },
     { token: 'string', foreground: strip(sx.string) },
-    { token: 'string.include.identifier', foreground: strip(sx.string) },
     { token: 'number', foreground: strip(sx.number) },
-    { token: 'number.hex', foreground: strip(sx.number) },
-    { token: 'number.float', foreground: strip(sx.number) },
     { token: 'type', foreground: strip(sx.type) },
-    { token: 'identifier', foreground: strip(sx.fg) },
     { token: 'delimiter', foreground: strip(sx.delimiter) },
-    { token: 'operator', foreground: strip(sx.operator) },
     { token: 'annotation', foreground: strip(sx.annotation) },
+    // A built-in type is a keyword to the C and C++ grammar, which emits it as
+    // `keyword.<the word>`. Without these the type colour would only ever
+    // reach Hylo, where a type is a name the tokenizer can see.
+    ...TYPE_KEYWORDS.map((word) => ({
+      token: `keyword.${word}`,
+      foreground: strip(sx.type),
+    })),
   ];
   const colors: Record<string, string> = {
     'editor.background': e.bg,
@@ -376,7 +418,6 @@ export const PRESET_SPECS: ThemeSpec[] = [
       number: '#b45309',
       type: '#0369a1',
       delimiter: '#64748b',
-      operator: '#475569',
       annotation: '#9333ea',
     },
     {
@@ -428,7 +469,6 @@ export const PRESET_SPECS: ThemeSpec[] = [
       number: '#8a5a00',
       type: '#1f5f8b',
       delimiter: '#7a6f62',
-      operator: '#5f564d',
       annotation: '#7a3e9d',
     },
     {
@@ -480,7 +520,6 @@ export const PRESET_SPECS: ThemeSpec[] = [
       number: '#d33682',
       type: '#b58900',
       delimiter: '#586e75',
-      operator: '#586e75',
       annotation: '#6c71c4',
     },
     {
@@ -532,7 +571,6 @@ export const PRESET_SPECS: ThemeSpec[] = [
       number: '#f78c6c',
       type: '#82aaff',
       delimiter: '#7fdbca',
-      operator: '#7fdbca',
       annotation: '#c792ea',
     },
     {
@@ -585,7 +623,6 @@ export const PRESET_SPECS: ThemeSpec[] = [
       number: '#b48ead',
       type: '#8fbcbb',
       delimiter: '#eceff4',
-      operator: '#81a1c1',
       annotation: '#d08770',
     },
     {
@@ -637,7 +674,6 @@ export const PRESET_SPECS: ThemeSpec[] = [
       number: '#d33682',
       type: '#b58900',
       delimiter: '#93a1a1',
-      operator: '#93a1a1',
       annotation: '#6c71c4',
     },
     {

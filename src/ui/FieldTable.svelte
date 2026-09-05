@@ -11,8 +11,7 @@
   // different record starts fresh.
   import type { RenderModel, TreeNode } from '$core/types';
   import { flattenVisible, groupColorClass } from '$core/render';
-  import { store } from '$state/store.svelte';
-  import { fmtOffset, type Session } from '$state/session.svelte';
+  import { fmtOffset, type SourceSession } from '$state/session.svelte';
   import { fmtSize, fmtGroupSize, memberTooltipHtml, groupTooltipHtml } from './format';
   import { tooltip } from './tooltip';
 
@@ -30,7 +29,7 @@
       guide line runs down the middle of it. Mirrored by `--indent` in the CSS. */
   const INDENT = 16;
 
-  const { model, record, session }: { model: RenderModel; record: string; session: Session } =
+  const { model, record, session }: { model: RenderModel; record: string; session: SourceSession } =
     $props();
 
   /** Shared so `open` has something stable to be when nothing is opened. */
@@ -64,7 +63,7 @@
   }
 
   const hovered = $derived(
-    new Set(store.hover.members.filter((m) => m.record === record).map((m) => m.leaf)),
+    new Set(session.source.hover.members.filter((m) => m.record === record).map((m) => m.leaf)),
   );
   /**
    * Is this row highlighted for the current hover?

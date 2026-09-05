@@ -1,32 +1,31 @@
 <script lang="ts">
   // The source editor, and the code half of every cross-highlight.
   //
-  // Owns the Monaco instance: it writes the buffer back to the store on every
+  // Owns the Monaco instance: it writes the buffer back to its source on every
   // keystroke, paints the decorations for whatever the reader is pointing at on
-  // the right, and answers hovers over type names. `session` is the per-tab
-  // state it highlights against; there is one editor per session.
+  // the right, and answers hovers over type names. `source` is what it edits
+  // and `session` is that source's state it highlights against; there is one
+  // editor per source.
   import { onMount } from 'svelte';
-  import { store } from '$state/store.svelte';
-  import type { Session } from '$state/session.svelte';
-  import { EXAMPLES } from '$core/targets';
-  import type { Language } from '$core/options';
+  import { store, type Source } from '$state/store.svelte';
+  import type { SourceSession } from '$state/session.svelte';
   import { createEditor, setEditorTheme, type EditorHandle } from './monaco';
   import { theme } from '$state/theme.svelte';
   import { memberDots } from '$state/editor-view';
-  import { tooltip } from './tooltip';
+  import Controls from './Controls.svelte';
 
-  const { session }: { session: Session } = $props();
+  const { source, session }: { source: Source; session: SourceSession } = $props();
   let host: HTMLDivElement;
   let editor: EditorHandle | null = null;
 
   onMount(() => {
     editor = createEditor(host, {
-      value: store.source,
+      value: source.text,
       theme: theme.current.id,
-      language: store.options.lang,
+      language: source.options.lang,
       typeHover: (line, word, signal) => session.describeType(line, word, signal),
     });
-    editor.onChange(() => (store.source = editor!.getValue()));
+    editor.onChange(() => (source.text = editor!.getValue()));
     editor.onSubmit(() => {
       session.compileNow();
     });
@@ -47,21 +46,21 @@
   // every pointer column, and one object would invalidate as a whole, re-running
   // the text/marker/decoration syncs (and `model.getValue()` over the whole
   // document) on every mouse move.
-  const value = $derived(store.source);
-  const language = $derived(store.options.lang);
-  const diagnostics = $derived(store.analysis?.diagnostics ?? []);
+  const value = $derived(source.text);
+  const language = $derived(source.options.lang);
+  const diagnostics = $derived(source.analysis?.diagnostics ?? []);
   // Dots only for what is on screen: the active record in tabs mode, all when stacked.
   const dots = $derived(
-    memberDots(session.lines.values(), new Set(store.sections.map((s) => s.key))),
+    memberDots(session.lines.values(), new Set(source.sections.map((s) => s.key))),
   );
-  const highlight = $derived(store.hover.line);
-  const nameRange = $derived(store.hover.nameRange);
-  const inlay = $derived(store.hover.inlay);
+  const highlight = $derived(source.hover.line);
+  const nameRange = $derived(source.hover.nameRange);
+  const inlay = $derived(source.hover.inlay);
 
   // ...and one effect per sink that applies it. Monaco's decoration APIs are
   // set-diffing, so handing them a derived value is all the reconciliation needed.
   $effect(() => {
-    setEditorTheme(theme.current);
+    setEditorTheme(theme.shown);
   });
   $effect(() => {
     editor?.setValue(value);
@@ -86,68 +85,25 @@
     const req = session.revealRequest;
     if (req) editor?.setCursor(req.line);
   });
-
-  /**
-   * The examples, grouped by the language they are written in.
-   *
-   * Grouped rather than filtered to the selected language: an example is an
-   * explicit act, and one written in a language you are not in is still one you
-   * might want. Filtering hid every C++ example from someone in C, which is
-   * where most visitors start. Loading one switches to its language, because
-   * that is the language it is an example of.
-   */
-  const LANGUAGE_NAMES: Record<Language, string> = { c: 'C', 'c++': 'C++', hylo: 'Hylo' };
-  const grouped = $derived(
-    (['c', 'c++', 'hylo'] as const)
-      .map((lang) => ({
-        lang,
-        label: LANGUAGE_NAMES[lang],
-        items: EXAMPLES.map((ex, i) => ({ ex, i })).filter((e) => e.ex.lang === lang),
-      }))
-      .filter((g) => g.items.length > 0),
-  );
-
-  function loadExample(e: Event) {
-    const sel = e.currentTarget as HTMLSelectElement;
-    if (sel.value !== '') store.loadExample(Number(sel.value));
-    sel.value = '';
-  }
 </script>
 
 <section class="pane">
-  <!-- Whether it compiled is on the Code tab now: it was one line above the
-       editor, where a phone has no line to spare and the tab is already there. -->
-  <div class="head">
-    <select
-      id="example"
-      class="input small"
-      aria-label="Load an example"
-      onchange={loadExample}
-      use:tooltip={'Load an example (replaces the code)'}
-    >
-      <option value="">Examples…</option>
-      {#each grouped as g (g.lang)}
-        <optgroup label={g.label}>
-          {#each g.items as e (e.ex.name)}<option value={e.i}>{e.ex.name}</option>{/each}
-        </optgroup>
-      {/each}
-    </select>
-  </div>
+  <!-- Whether it compiled is on the Source tab, and the examples and the new-source
+       button are on the group's header: nothing here but the editor, until a
+       second source arrives and the options become this source's own. -->
+  {#if store.sources.length > 1}
+    <Controls {source} compact />
+  {/if}
+  <!-- Nothing under the editor: what the strip there used to say about the
+       headers and about templates is in the details popover, beside the
+       headers that actually answered. -->
   <div
-    id="editor"
     class="editor"
+    data-source={source.id}
     bind:this={host}
     role="region"
-    aria-label="Source code editor"
+    aria-label="Source code editor: {source.name}"
   ></div>
-  <!-- What the language actually offers. Hylo has one standard library and no
-       templates to instantiate, so none of the C++ note applies to it. -->
-  {#if store.options.lang !== 'hylo'}
-    <p class="hint">
-      The C library (musl) and libc++ resolve for every target. The details beside the language
-      say which headers answered. Templates must be instantiated to appear.
-    </p>
-  {/if}
 </section>
 
 <style>
@@ -158,14 +114,8 @@
     background: var(--surface-1);
     padding: 10px 12px;
     box-sizing: border-box;
-  }
-  .head {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    margin-bottom: 8px;
-    gap: 8px;
-    flex: none;
+    /* The settings row inside asks how wide the panel is, not the window. */
+    container-type: inline-size;
   }
   .editor {
     flex: 1;
@@ -182,25 +132,5 @@
   .editor :global(.monaco-editor),
   .editor :global(.monaco-editor .overflow-guard) {
     border-radius: 8px;
-  }
-  .hint {
-    color: var(--text-muted);
-    font-size: 12px;
-    margin: 8px 0 0;
-    flex: none;
-  }
-  /* 52px of explanation on a 844px-tall phone, and the same sentence again in
-     the footer. The footer wins: it says which headers actually answered. */
-  @media (max-width: 760px), (max-height: 560px) {
-    .hint {
-      display: none;
-    }
-  }
-  .hint :global(kbd) {
-    font: inherit;
-    font-size: 11px;
-    padding: 0 4px;
-    border: 1px solid var(--border);
-    border-radius: 4px;
   }
 </style>

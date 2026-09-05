@@ -1,16 +1,16 @@
 <script lang="ts">
   // What the compiler said, ANSI colours and all.
   //
-  // Reads `store.analysis` directly rather than taking a prop: it is one of the
-  // dock's panels, mounted by name, and there is only ever one analysis to show.
-  // Empty output is a success, so it is worded as one.
-  import { store } from '$state/store.svelte';
+  // One of the dock's panels, mounted with the source whose diagnostics it
+  // shows. Empty output is a success, so it is worded as one.
+  import type { Source } from '$state/store.svelte';
   import { parseAnsi } from '$core/ansi';
-  const ansi = $derived(store.analysis?.diagnosticsText ?? '');
+  const { source }: { source: Source } = $props();
+  const ansi = $derived(source.analysis?.diagnosticsText ?? '');
   const spans = $derived(parseAnsi(ansi));
   // Whose approval this is. There are two compilers now, and only one of them
   // is clang.
-  const compiler = $derived(store.options.lang === 'hylo' ? 'hc' : 'clang');
+  const compiler = $derived(source.options.lang === 'hylo' ? 'hc' : 'clang');
 </script>
 
 <div class="diagnostics">

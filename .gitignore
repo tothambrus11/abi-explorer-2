@@ -9,3 +9,5 @@ coverage/
 # and `npm run hylo:fetch`, or a symlink to a local build.
 public/vendor/abi
 public/vendor/hylo
+.idea
+.wrangler/

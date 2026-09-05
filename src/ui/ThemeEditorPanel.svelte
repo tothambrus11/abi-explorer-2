@@ -1,12 +1,17 @@
 <script lang="ts">
-  // Theme editor panel content (hosted in a floating dockview group). Presets
-  // are read-only (duplicate to edit); custom themes are edited live and persisted.
+  // Theme editor panel content (hosted in a floating dockview group). Every
+  // theme is edited live and persisted, the ones that ship included: an edited
+  // preset keeps its name and its place in the list, and `Reset` throws the
+  // edits away and leaves what shipped. What a preset does not have is a
+  // delete, since the app ships it whatever the reader does to it.
   import Copy from '@lucide/svelte/icons/copy';
   import Trash2 from '@lucide/svelte/icons/trash-2';
+  import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
   import Plus from '@lucide/svelte/icons/plus';
   import Download from '@lucide/svelte/icons/download';
   import Upload from '@lucide/svelte/icons/upload';
   import { theme, type ColorGroup } from '$state/theme.svelte';
+  import { store } from '$state/store.svelte';
   import {
     EDITOR_FIELDS,
     MEMBER_FIELDS,
@@ -18,7 +23,10 @@
   import ColorPicker from './ColorPicker.svelte';
 
   const editing = $derived(theme.editingId ? theme.byId(theme.editingId) : null);
-  const readOnly = $derived(!editing || editing.preset);
+  /** Nothing to edit at all; every real theme is editable. */
+  const none = $derived(!editing);
+  /** A shipped theme with the reader's changes in it: the one thing `Reset` acts on. */
+  const edited = $derived(!!editing && theme.isEdited(editing.id));
 
   // Default to the current theme when opened.
   $effect(() => {
@@ -27,20 +35,20 @@
 
   // ---- edits
   function setColor(group: ColorGroup, key: string, value: string) {
-    if (!editing || editing.preset) return;
+    if (!editing) return;
     theme.update(editing.id, (s: ThemeSpec) => {
       (s[group] as unknown as Record<string, string>)[key] = value;
     });
   }
   function rename(e: Event) {
-    if (!editing || editing.preset) return;
+    if (!editing) return;
     const name = (e.currentTarget as HTMLInputElement).value;
     theme.update(editing.id, (s) => {
       s.name = name;
     });
   }
   function setMode(mode: 'light' | 'dark') {
-    if (!editing || editing.preset) return;
+    if (!editing) return;
     theme.update(editing.id, (s) => {
       s.mode = mode;
     });
@@ -59,6 +67,11 @@
     if (!confirm(`Delete theme "${editing.name}"?`)) return;
     theme.remove(editing.id);
     theme.editingId = theme.current.id;
+  }
+  /** Puts a shipped theme back the way it shipped. */
+  function reset() {
+    if (!editing || !edited) return;
+    theme.reset(editing.id);
   }
   function exportTheme() {
     if (!editing) return;
@@ -85,12 +98,12 @@
     if (id) theme.editingId = id;
     else flash('Not a valid theme JSON');
   }
-  // ---- colour picking: swatches select theme.picking; the picker itself lives
-  // at the bottom of this panel (ColorPicker) or in its own window when detached.
+  // ---- colour picking: a swatch says which colour is being picked, and the
+  // picker itself pops out into its own window, unless there is no room for
+  // one or the reader has put it back at the bottom of this panel.
   function openPicker(group: ColorGroup, key: string) {
-    if (readOnly) return;
-    theme.picking =
-      theme.picking?.key === key && theme.picking.group === group ? null : { group, key };
+    if (none) return;
+    theme.pick(group, key, !store.narrow);
   }
   // Editing another theme: the previous selection may not exist there.
   $effect(() => {
@@ -121,10 +134,11 @@
       aria-label="Theme to edit"
     >
       <optgroup label="Presets">
-        {#each theme.all.filter((t) => t.preset) as t (t.id)}<option value={t.id}>{t.name}</option
+        {#each theme.all.filter((t) => t.preset) as t (t.id)}<option value={t.id}
+            >{t.name}{theme.isEdited(t.id) ? ' (edited)' : ''}</option
           >{/each}
       </optgroup>
-      {#if theme.custom.length}
+      {#if theme.mine.length}
         <optgroup label="My themes">
           {#each theme.all.filter((t) => !t.preset) as t (t.id)}<option value={t.id}
               >{t.name}</option
@@ -144,14 +158,24 @@
       aria-label="Duplicate theme"
       use:tooltip={'Duplicate this theme'}><Copy size={16} /></button
     >
-    <button
-      class="icon-btn"
-      onclick={remove}
-      disabled={readOnly}
-      aria-label="Delete theme"
-      use:tooltip={readOnly ? 'Presets cannot be deleted' : 'Delete this theme'}
-      ><Trash2 size={16} /></button
-    >
+    {#if editing?.preset}
+      <button
+        class="icon-btn"
+        id="reset-theme"
+        onclick={reset}
+        disabled={!edited}
+        aria-label="Reset theme to the original"
+        use:tooltip={'Reset changes'}><RotateCcw size={16} /></button
+      >
+    {:else}
+      <button
+        class="icon-btn"
+        onclick={remove}
+        disabled={none}
+        aria-label="Delete theme"
+        use:tooltip={'Delete this theme'}><Trash2 size={16} /></button
+      >
+    {/if}
     <button
       class="icon-btn"
       onclick={exportTheme}
@@ -172,7 +196,6 @@
         class="input name"
         value={editing.name}
         oninput={rename}
-        disabled={readOnly}
         aria-label="Theme name"
         placeholder="Theme name"
       />
@@ -183,7 +206,6 @@
             name="theme-mode"
             value="light"
             checked={editing.mode === 'light'}
-            disabled={readOnly}
             onchange={() => {
               setMode('light');
             }}
@@ -195,7 +217,6 @@
             name="theme-mode"
             value="dark"
             checked={editing.mode === 'dark'}
-            disabled={readOnly}
             onchange={() => {
               setMode('dark');
             }}
@@ -203,9 +224,15 @@
         >
       </div>
     </div>
-    {#if readOnly}
+    {#if editing.preset}
       <p class="hint">
-        Presets are read-only. <button class="link" onclick={duplicate}>Duplicate</button> one to customize.
+        {#if edited}
+          Edited from the theme that ships.
+          <button class="link" onclick={reset}>Reset it</button>, or
+          <button class="link" onclick={duplicate}>duplicate</button> it to keep both.
+        {:else}
+          Changes are yours and are kept; the original is one press away.
+        {/if}
       </p>
     {/if}
     <div class="fields">
@@ -219,7 +246,7 @@
               type="button"
               class="swatch"
               style:background={value}
-              disabled={readOnly}
+              disabled={none}
               aria-label="Pick {f.label} colour"
               aria-expanded={theme.picking?.group === group && theme.picking.key === f.key}
               onclick={() => {
@@ -229,7 +256,7 @@
             <input
               class="hex mono"
               {value}
-              disabled={readOnly}
+              disabled={none}
               spellcheck="false"
               onchange={(e) => {
                 const v = e.currentTarget.value.trim();

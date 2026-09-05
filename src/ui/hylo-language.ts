@@ -209,7 +209,10 @@ export const HYLO_TOKENS: monaco.languages.IMonarchLanguage = {
       // like the same editor.
       [/[{}()[\]]/, '@brackets'],
       [/[,;:.]/, 'delimiter'],
-      [/[-+*/%<>=!&|^~?]+/, 'operator'],
+      // Punctuation, like every other operator in this app: C and C++ tokenise
+      // theirs as delimiters, and one colour for both languages is one colour
+      // a reader has to think about.
+      [/[-+*/%<>=!&|^~?]+/, 'delimiter'],
     ],
 
     /** `#literals` -> `string`: to the closing quote, `\.` escaped. */

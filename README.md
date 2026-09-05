@@ -18,21 +18,23 @@ clang would use there. Offsets, sizes, `sizeof` and alignment, the C++ details
 (`dsize`, `nvsize`, vtable pointers, base subobjects), and every byte of
 padding, drawn as a byte grid with bit-level cells where there are bit-fields.
 
-About 40 targets are in the dropdown: x86-64 SysV and MSVC, AArch64 including
+About 40 targets are on the list: x86-64 SysV and MSVC, AArch64 including
 Apple and Windows, Arm32, RISC-V, wasm32/64, PowerPC including AIX, MIPS,
 s390x, SPARC, LoongArch, AVR, MSP430, m68k, Hexagon, Xtensa, BPF, NVPTX,
-AMDGCN. You can also type any triple you like. The ABI quirks are real because
-clang's own frontend works them out.
+AMDGCN. The target opens a menu you type into, by the name you would say it
+by ("apple", "riscv") or by the triple, and any triple clang accepts can be
+typed even though it is not listed. The ABI quirks are real because clang's
+own frontend works them out.
 
-The layout options that matter are there too: C or C++ with a standard version,
-`-fpack-struct`, `-mms-bitfields`, `-fshort-enums`, `-fshort-wchar`, `-Wpadded`,
-plus a box for extra flags.
+The layout options that matter are there too, behind the mark at the end of
+the row: C or C++ with a standard version, `-fpack-struct`, `-mms-bitfields`,
+`-fshort-enums`, `-fshort-wchar`, `-Wpadded`, plus a box for extra flags.
 
 **The C++ standard library is on board, for every target.** `#include <string>`
 resolves against bundled libc++ and musl headers, so `sizeof(std::string)` is
 answered for the target you picked rather than for the machine you are sitting
-at. Windows, Darwin, WASI and bare metal included. The footer tells you which
-headers answered. Off Linux the C declarations are musl's portable ones over
+at. Windows, Darwin, WASI and bare metal included. The details beside the row
+tell you which headers answered. Off Linux the C declarations are musl's portable ones over
 that target's own scalar types, and `<locale>`, `<iostream>` and `<sys/*.h>`
 are absent rather than answered with some other platform's numbers.
 
@@ -42,9 +44,28 @@ way round), there is an inline `offset · size · align` hint, and any type name
 has a popup with its size and alignment. Clang's diagnostics come through in
 colour, with squiggles where the errors are.
 
-Panels (Code, Layout, Diagnostics) dock and resize. Six themes ship, and there
-is an editor if you want your own. Share copies a link with your source and
-options in it, and the whole thing installs as a PWA.
+One session can hold several sources. The `+` in the Source panel's header
+opens another, and every source is laid out on its own: it has its own Code,
+Layout and Diagnostics panel, and its own language, target and flags, which
+move from the row above the panels into its Source panel once there is a second
+source. Panels of one kind share a group, so the group says "Layout" and its
+tabs say which source. Selecting a source anywhere brings it forward in every
+group that has a panel of it. Pointing at a source's layout or diagnostics
+brings its other panels forward too, but only for as long as the pointer stays:
+nothing is selected, and the link does not change, until you press a tab or
+click inside a panel. A source is renamed by double-clicking its tab, or from
+the tab's menu (a right click, a long press on a touch screen, or the menu
+key), which also closes the panel or removes the source. A closed panel is
+only hidden; the sources menu in the top bar brings it back, and is also
+where a source is named, added or removed. A
+shared link carries every source with its options and its chosen record, one
+source or eight, in the same shape, along with the panel layout, which says
+where each panel is and which tab is in front where. That is also how a
+Compiler Explorer session with several editors travels here whole.
+
+Panels dock, split, tab and resize. Six themes ship, and there is an editor if
+you want your own. Share copies a link with your sources and options in it,
+and the whole thing installs as a PWA.
 
 ### Hylo
 
@@ -85,7 +106,7 @@ what.
 
 [hylo-abi-wasm](https://github.com/tothambrus11/hylo-abi-wasm) answers the same
 question for Hylo, out of the Hylo compiler's own front end. It is a
-WebAssembly *reactor* rather than a command: it type checks the standard
+WebAssembly _reactor_ rather than a command: it type checks the standard
 library once, when it loads, and every query afterwards is served from a copy
 of the resulting program. That is why the first Hylo answer takes about a
 second and the rest take about fifteen milliseconds. Its smaller answer is

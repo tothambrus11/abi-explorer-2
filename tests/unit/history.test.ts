@@ -10,9 +10,12 @@ import { History, historyIntent, ownsUndo, type Snapshot } from '$state/history.
 import { DEFAULT_OPTIONS } from '$core/options';
 
 const at = (source: string, over: Partial<typeof DEFAULT_OPTIONS> = {}): Snapshot => ({
-  source,
-  options: { ...DEFAULT_OPTIONS, ...over },
+  buffers: [{ name: 'Source 1', source, options: { ...DEFAULT_OPTIONS, ...over } }],
+  active: 0,
 });
+
+/** The active buffer's text, which is what these tests type into. */
+const src = (s: Snapshot | null) => s?.buffers[s.active]?.source;
 
 describe('History', () => {
   it('has nothing to undo until something changes', () => {
@@ -33,7 +36,7 @@ describe('History', () => {
     h.record(at('s'), 1000);
     h.record(at('st'), 1100);
     h.record(at('str'), 1200);
-    expect(h.undo()?.source).toBe('');
+    expect(src(h.undo())).toBe('');
     expect(h.canUndo, 'one step, not three').toBe(false);
   });
 
@@ -41,8 +44,8 @@ describe('History', () => {
     const h = new History(at(''));
     h.record(at('one'), 1000);
     h.record(at('one two'), 5000);
-    expect(h.undo()?.source).toBe('one');
-    expect(h.undo()?.source).toBe('');
+    expect(src(h.undo())).toBe('one');
+    expect(src(h.undo())).toBe('');
   });
 
   it('never swallows an option change into the typing before it', () => {
@@ -55,6 +58,28 @@ describe('History', () => {
     expect(h.undo()).toEqual(at('x'));
   });
 
+  it('never swallows a buffer switch, or a tab opened or closed', () => {
+    // Switching tabs is as deliberate as changing a target: "type, switch,
+    // type" must be three steps, not one, or undo would rewrite a tab the user
+    // never saw change.
+    const two = (active: number, a: string, b: string): Snapshot => ({
+      buffers: [
+        { name: 'Source 1', source: a, options: { ...DEFAULT_OPTIONS } },
+        { name: 'Source 2', source: b, options: { ...DEFAULT_OPTIONS } },
+      ],
+      active,
+    });
+    const h = new History(two(0, 'x', ''));
+    h.record(two(0, 'xy', ''), 1000);
+    // The switch lands moments after a keystroke, and must not coalesce into
+    // it; typing that follows the switch extends the switch's own step, as it
+    // does an option change's.
+    h.record(two(1, 'xy', ''), 1050);
+    h.record(two(1, 'xy', 'z'), 1100);
+    expect(h.undo()).toEqual(two(0, 'xy', ''));
+    expect(h.undo()).toEqual(two(0, 'x', ''));
+  });
+
   it('redoes what it undid, in order', () => {
     const h = new History(at('a'));
     h.record(at('b'), 1000);
@@ -62,8 +87,8 @@ describe('History', () => {
     h.undo();
     h.undo();
     expect(h.canRedo).toBe(true);
-    expect(h.redo()?.source).toBe('b');
-    expect(h.redo()?.source).toBe('c');
+    expect(src(h.redo())).toBe('b');
+    expect(src(h.redo())).toBe('c');
     expect(h.canRedo).toBe(false);
   });
 
@@ -84,7 +109,7 @@ describe('History', () => {
     h.applying = true;
     h.record(at('a'), 2000);
     h.applying = false;
-    expect(h.undo()?.source).toBe('a');
+    expect(src(h.undo())).toBe('a');
     expect(h.canUndo).toBe(false);
   });
 
@@ -153,7 +178,7 @@ describe('ownsUndo', () => {
     expect(ownsUndo(el('DIV'))).toBe(false);
   });
 
-  it("takes it from Monaco, whose stack is the one this history exists to beat", () => {
+  it('takes it from Monaco, whose stack is the one this history exists to beat', () => {
     expect(ownsUndo(el('TEXTAREA', { monaco: true }))).toBe(false);
   });
 

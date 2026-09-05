@@ -133,6 +133,21 @@ describe('Backends', () => {
     expect(seen).toEqual([]);
   });
 
+  it('reports every backend by name, and starts one by name', async () => {
+    // A session holding a C source and a Hylo source waits on both modules and
+    // shows each source its own; the active backend's status is not enough.
+    const { backends, made } = setup();
+    const seen: string[] = [];
+    backends.onAnyStatus((id, s) => seen.push(`${id}:${s.state}`));
+    await backends.start('hylo');
+    expect(made.get('hylo')?.started).toBe(1);
+    expect(made.has('clang'), 'clang stays undownloaded').toBe(false);
+    made.get('hylo')!.announce({ state: 'ready', version: 'hc' });
+    expect(seen).toEqual(['hylo:idle', 'hylo:ready']);
+    // Hylo was never selected, so the bar it would report to is clang's.
+    expect(backends.status).toEqual({ state: 'idle' });
+  });
+
   it('disposes every client it made', async () => {
     const { backends, made } = setup();
     await backends.start();

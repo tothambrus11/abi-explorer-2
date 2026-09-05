@@ -1,0 +1,75 @@
+# Publishes a package under packages/ to npm and JSR when a tag names a
+# version of it: `share-link-v0.1.0`. The tag must agree with the package's
+# own version, so a release is one bump, one tag, and both registries.
+#
+# One-time setup, outside this file:
+# - npm: either an automation token in the `NPM_TOKEN` secret, or a trusted
+#   publisher entry on npmjs.com for this repository and this workflow file
+#   (then the secret may be empty; provenance comes from the OIDC token).
+# - JSR: create each package on jsr.io under the scope in its `jsr.json`, and
+#   link this GitHub repository to it; publishing then needs no secret at all.
+name: Publish share packages
+
+on:
+  push:
+    tags: ['share-*-v*']
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  # Which package the tag names, and which version: `share-link-v0.1.0` is
+  # `share-link` at `0.1.0`. Resolved in shell and handed on, so that the
+  # publish job can be one job for any package under packages/.
+  resolve:
+    runs-on: ubuntu-latest
+    outputs:
+      package: ${{ steps.tag.outputs.package }}
+      version: ${{ steps.tag.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: tag
+        run: |
+          package="${GITHUB_REF_NAME%-v*}"
+          version="${GITHUB_REF_NAME##*-v}"
+          if [ ! -f "packages/$package/package.json" ]; then
+            echo "no package at packages/$package for tag $GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+          echo "package=$package" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: resolve
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/${{ needs.resolve.outputs.package }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+        working-directory: .
+      - name: The tag names the version in package.json and jsr.json
+        run: |
+          tag="${{ needs.resolve.outputs.version }}"
+          version="$(node -p 'require("./package.json").version')"
+          jsr="$(node -p 'require("./jsr.json").version')"
+          if [ "$tag" != "$version" ] || [ "$tag" != "$jsr" ]; then
+            echo "tag $tag, package.json $version, jsr.json $jsr" >&2
+            exit 1
+          fi
+      - run: npm run check
+      - run: npm test
+      - run: npm run build
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish to JSR
+        run: npx jsr publish

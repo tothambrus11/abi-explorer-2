@@ -1,0 +1,70 @@
+{
+  "name": "@ambrus-toth/abi-explorer-share-link",
+  "version": "0.1.1",
+  "description": "The URL fragment an ABI Explorer link shares a session in: the state, every version of the wire, the envelopes, and one reader for them all.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./encode": {
+      "types": "./dist/encode.d.ts",
+      "default": "./dist/encode.js"
+    },
+    "./decode": {
+      "types": "./dist/decode.d.ts",
+      "default": "./dist/decode.js"
+    },
+    "./envelope": {
+      "types": "./dist/envelope.d.ts",
+      "default": "./dist/envelope.js"
+    },
+    "./v1": {
+      "types": "./dist/v1.d.ts",
+      "default": "./dist/v1.js"
+    },
+    "./v2": {
+      "types": "./dist/v2.d.ts",
+      "default": "./dist/v2.js"
+    },
+    "./v3": {
+      "types": "./dist/v3.d.ts",
+      "default": "./dist/v3.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.ts",
+    "prepack": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tothambrus11/abi-explorer-2.git",
+    "directory": "packages/share-link"
+  },
+  "homepage": "https://abiexplorer.org",
+  "keywords": [
+    "abi",
+    "struct",
+    "layout",
+    "url",
+    "fragment",
+    "share"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
+  }
+}
