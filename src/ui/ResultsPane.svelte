@@ -1,11 +1,11 @@
 <script lang="ts">
   // The layout panel: a record per section, or whatever stands in for one.
   //
-  // Takes the `session` and reads its analysis, so the pane shows the state the
-  // rest of the tab is in — compiling, failed, empty, or laid out — rather than
-  // blanking while a new answer is on its way.
-  import { store } from '$state/store.svelte';
-  import type { Session } from '$state/session.svelte';
+  // Takes the `source` and its `session`, and reads the source's analysis, so
+  // the pane shows the state the rest of the source is in — compiling, failed,
+  // empty, or laid out — rather than blanking while a new answer is on its way.
+  import { store, type Source } from '$state/store.svelte';
+  import type { SourceSession } from '$state/session.svelte';
   import { bundle } from '$state/download-gate';
   import { backendFor, describeBackend } from '$compiler/Backends';
   import RecordSection from './RecordSection.svelte';
@@ -13,7 +13,10 @@
   import PanelTop from '@lucide/svelte/icons/panel-top';
   import { tooltip } from './tooltip';
 
-  const { session }: { session: Session } = $props();
+  const { source, session }: { source: Source; session: SourceSession } = $props();
+  const lang = $derived(source.options.lang);
+  /** This source's compiler, which is not necessarily the other sources'. */
+  const compiler = $derived(store.compilerFor(lang));
   // From the module's manifest, so this and the progress bar below it are the
   // same number rather than two guesses at it. 0 until it is known.
   let downloadMb = $state(0);
@@ -21,19 +24,19 @@
     // The figure follows the language: the two modules are different sizes,
     // and quoting clang's while Hylo is downloading would be the same lie the
     // hard-coded "~11 MB" used to be.
-    void bundle(backendFor(store.options.lang)).then((b) => {
+    void bundle(backendFor(lang)).then((b) => {
       if (b) downloadMb = Math.round(b.bytes / 1048576);
     });
   });
-  const loading = $derived(store.compiler.state !== 'ready');
+  const loading = $derived(compiler.state !== 'ready');
   const stacked = $derived(store.view === 'stack');
-  const empty = $derived(store.analysis !== null && store.visibleRecords.length === 0);
+  const empty = $derived(source.analysis !== null && source.visibleRecords.length === 0);
   const mb = (n: number) => (n / 1048576).toFixed(0);
   // Which compiler is being waited on. Naming clang while Hylo downloads would
   // be the same lie the hard-coded "~11 MB" used to be.
-  const backend = $derived(describeBackend(store.options.lang));
+  const backend = $derived(describeBackend(lang));
   const loadText = $derived.by(() => {
-    const c = store.compiler;
+    const c = compiler;
     switch (c.state) {
       case 'idle':
         return 'Starting…';
@@ -53,20 +56,20 @@
   });
   /** Null when there is nothing honest to fill a bar with. */
   const loadPct = $derived.by(() => {
-    const c = store.compiler;
+    const c = compiler;
     if (c.state !== 'loading' || !c.total) return null;
     return Math.min(100, Math.round((100 * c.done) / c.total));
   });
 </script>
 
 <section class="pane">
-  {#if store.awaitingDownloadConsent}
+  {#if store.awaitingDownloadConsent && compiler.state === 'idle'}
     <!-- Metered connection: don't spend the user's data without asking (issue #1). -->
     <div class="loading consent">
       <p id="consent-text">
         You appear to be on a metered or slow connection. Analysing layouts needs a one-time
-        {#if downloadMb}<strong>~{downloadMb} MB</strong>{/if} download of {backend.name} (cached
-        afterwards, and the app then works offline).
+        {#if downloadMb}<strong>~{downloadMb} MB</strong>{/if} download of {backend.name} (cached afterwards,
+        and the app then works offline).
       </p>
       <button
         id="allow-download"
@@ -77,7 +80,7 @@
       >
     </div>
   {:else if loading}
-    <div class="loading" class:failed={store.compiler.state === 'failed'}>
+    <div class="loading" class:failed={compiler.state === 'failed'}>
       <div class="track">
         {#if loadPct === null}
           <div class="fill indeterminate"></div>
@@ -90,33 +93,33 @@
         <p class="note">~{downloadMb} MB on first visit, then served from browser cache.</p>
       {/if}
     </div>
-  {:else if !store.analysis}
+  {:else if !source.analysis}
     <!-- No analysis yet: idle/running (first compile pending) or the first compile failed outright. -->
-    {#if store.status.kind === 'error'}
-      <p class="empty" id="empty-note">{store.status.message}</p>
+    {#if source.status.kind === 'error'}
+      <p class="empty" id="empty-note">{source.status.message}</p>
     {:else}
       <div class="loading"><p>Compiling…</p></div>
     {/if}
   {:else if empty}
     <p class="empty" id="empty-note">
-      {store.analysis?.code === 0
+      {source.analysis?.code === 0
         ? `No ${backend.declarations} found. Define one in the editor${
-            store.options.lang === 'c++' ? ', and make sure templates are instantiated' : ''
+            lang === 'c++' ? ', and make sure templates are instantiated' : ''
           }.`
         : 'Compilation failed. Fix the errors below.'}
     </p>
-  {:else if store.analysis}
+  {:else if source.analysis}
     <div id="results">
       <div class="bar">
         <div id="record-chips" class="chips" role="tablist" hidden={stacked}>
-          {#each store.visibleRecords as entry (entry.key)}
+          {#each source.visibleRecords as entry (entry.key)}
             {@const key = entry.key}
             {@const rec = entry.record}
             <button
               class="chip"
-              class:selected={key === store.activeRecordKey}
+              class:selected={key === source.activeRecordKey}
               role="tab"
-              aria-selected={key === store.activeRecordKey}
+              aria-selected={key === source.activeRecordKey}
               onclick={() => {
                 session.selectRecord(key);
               }}
@@ -140,7 +143,7 @@
         </button>
       </div>
       <div id="sections">
-        {#each store.sections as section (section.key)}
+        {#each source.sections as section (section.key)}
           <RecordSection {section} {session} />
         {/each}
       </div>
@@ -216,7 +219,7 @@
   .allow {
     font: inherit;
     font-weight: 600;
-    color: var(--accent-ink, #fff);
+    color: var(--on-accent);
     background: var(--accent);
     border: 1px solid var(--accent);
     border-radius: 6px;

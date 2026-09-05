@@ -62,18 +62,23 @@ describe('options / flags', () => {
   });
 });
 
-/** A single-buffer state, which is what every link used to be. */
-const oneBuffer = (source: string, lang: 'c' | 'c++' | 'hylo' = 'c') => ({
-  buffers: [{ name: 'Source 1', lang, source }],
-  active: 0,
+/** A single-buffer state. */
+const oneBuffer = (
+  source: string,
+  over: Partial<typeof DEFAULT_OPTIONS> = {},
+  selectedRecord: string | null = null,
+) => ({
+  buffers: [{ name: 'Source 1', source, options: { ...DEFAULT_OPTIONS, ...over }, selectedRecord }],
 });
 
 describe('url state', () => {
   it('round-trips and rejects garbage', async () => {
     const st = {
-      ...oneBuffer('struct A { int x; };\n// ünïcödé'),
-      options: { ...DEFAULT_OPTIONS, triple: 'avr-unknown-unknown', pack: '4' as const },
-      selectedRecord: 'struct A',
+      ...oneBuffer(
+        'struct A { int x; };\n// ünïcödé',
+        { triple: 'avr-unknown-unknown', pack: '4' as const },
+        'struct A',
+      ),
       view: 'stack' as const,
     };
     const frag = await encodeShareState(st);
@@ -95,13 +100,14 @@ describe('url state', () => {
       }),
     );
     const dec = await decodeShareState('#' + v1);
-    expect(dec?.options).toMatchObject({
+    expect(dec?.buffers).toHaveLength(1);
+    expect(dec?.buffers[0]).toMatchObject({ name: 'Source 1', source: 'x', selectedRecord: null });
+    expect(dec?.buffers[0]?.options).toMatchObject({
       lang: 'c++',
       std: 'gnu++17',
       triple: 'thumbv7-none-eabi',
       pack: '',
     });
-    expect(dec?.buffers).toEqual([{ name: 'Source 1', lang: 'c++', source: 'x' }]);
   });
 
   it('carries any triple clang would take, not just the listed ones', async () => {
@@ -114,12 +120,12 @@ describe('url state', () => {
       'sparc64-sun-solaris2.11',
     ]) {
       const st = {
-        ...oneBuffer('struct A { int x; };'),
-        options: { ...DEFAULT_OPTIONS, triple },
-        selectedRecord: null,
+        ...oneBuffer('struct A { int x; };', { triple }),
         view: 'tabs' as const,
       };
-      expect((await decodeShareState(await encodeShareState(st)))?.options.triple).toBe(triple);
+      expect((await decodeShareState(await encodeShareState(st)))?.buffers[0]?.options.triple).toBe(
+        triple,
+      );
     }
   });
 
@@ -139,22 +145,35 @@ describe('url state', () => {
     );
   });
 
-  it('round-trips several buffers, and opens the active one for old decoders', async () => {
+  it('round-trips several buffers, in the one shape every link has', async () => {
     const st = {
       buffers: [
-        { name: 'Source 1', lang: 'c' as const, source: 'struct A { int x; };' },
-        { name: 'Helpers', lang: 'c++' as const, source: 'struct B { char c; };' },
-        { name: 'Reordered', lang: 'hylo' as const, source: 'public struct S {}' },
+        {
+          name: 'Source 1',
+          source: 'struct A { int x; };',
+          options: { ...DEFAULT_OPTIONS, triple: 'avr-unknown-unknown' },
+          selectedRecord: 'struct A',
+        },
+        {
+          name: 'Helpers',
+          source: 'struct B { char c; };',
+          options: { ...DEFAULT_OPTIONS, lang: 'c++' as const, std: 'c++20', pack: '2' as const },
+          selectedRecord: null,
+        },
+        {
+          name: 'Reordered',
+          source: 'public struct S {}',
+          options: { ...DEFAULT_OPTIONS, lang: 'hylo' as const, std: '', triple: 'hylo' },
+          selectedRecord: 'S',
+        },
       ],
-      active: 1,
-      options: { ...DEFAULT_OPTIONS, lang: 'c++' as const, std: 'c++20' },
-      selectedRecord: null,
       view: 'tabs' as const,
     };
     const frag = await encodeShareState(st);
     expect(await decodeShareState('#' + frag)).toEqual(st);
-    // The legacy `s`/`l` pair repeats the active buffer, so a decoder from
-    // before `bs` existed opens on what was on screen.
+    // Nothing is repeated at the top level: the buffers are `bs`, whatever
+    // their number, each with its own selected record; which is in focus is
+    // the arrangement's to say.
     const wire = JSON.parse(
       new TextDecoder().decode(
         await new Response(
@@ -167,14 +186,50 @@ describe('url state', () => {
             .pipeThrough(new DecompressionStream('deflate-raw')),
         ).arrayBuffer(),
       ),
-    ) as { s: string; l: string };
-    expect(wire.s).toBe('struct B { char c; };');
-    expect(wire.l).toBe('c++');
+    ) as {
+      v: number;
+      s?: string;
+      l?: string;
+      r?: unknown;
+      bi?: unknown;
+      bs: { s: string; l: string; p: string; r: string | null }[];
+    };
+    expect(wire.v).toBe(3);
+    expect(wire.s).toBeUndefined();
+    expect(wire.l).toBeUndefined();
+    expect(wire.r).toBeUndefined();
+    expect(wire.bi).toBeUndefined();
+    expect(wire.bs.map((b) => b.l)).toEqual(['c', 'c++', 'hylo']);
+    expect(wire.bs[1]).toMatchObject({ s: 'struct B { char c; };', p: '2', r: null });
+    expect(wire.bs[2]?.r).toBe('S');
+    // A lone buffer travels the same way, its name included.
+    const one = { ...oneBuffer('int x;'), view: 'tabs' as const };
+    one.buffers[0]!.name = 'main.c';
+    expect(await decodeShareState(await encodeShareState(one))).toEqual(one);
+  });
+
+  it('carries the panel layout only when given one, and only a real one', async () => {
+    const layout = { grid: { root: { type: 'branch' } }, panels: { 'editor:#0': {} } };
+    const st = { ...oneBuffer('int x;'), view: 'tabs' as const, layout };
+    expect(await decodeShareState(await encodeShareState(st))).toEqual(st);
+    // Absent stays absent: no `layout` key, so a comparison with a state that
+    // never had one holds.
+    const bare = { ...oneBuffer('int x;'), view: 'tabs' as const };
+    expect(await decodeShareState(await encodeShareState(bare))).toEqual(bare);
+    // Something that is not a layout is not carried in as one.
+    const frag = (wire: unknown) =>
+      btoa(JSON.stringify({ v: 3, ...(wire as object) }))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+    for (const ly of ['x', 42, [], { grid: 1 }, { panels: {} }, { grid: {}, panels: null }, null]) {
+      expect((await decodeShareState(frag({ s: 'a', ly })))?.layout).toBeUndefined();
+    }
   });
 
   it('coerces hostile buffer lists into something the app could hold', async () => {
     const frag = (wire: unknown) =>
-      btoa(JSON.stringify({ v: 1, ...(wire as object) }))
+      btoa(JSON.stringify({ v: 3, ...(wire as object) }))
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
         .replace(/=+$/, '');
@@ -187,15 +242,20 @@ describe('url state', () => {
         bi: 99,
       }),
     );
+    const plain = { ...DEFAULT_OPTIONS };
     expect(dec?.buffers).toEqual([
-      { name: 'a name', lang: 'c', source: 'int x;' },
-      { name: 'Source 2', lang: 'c', source: '' },
-      { name: 'Source 3', lang: 'c', source: '' },
+      { name: 'a name', source: 'int x;', options: plain, selectedRecord: null },
+      { name: 'Source 2', source: '', options: plain, selectedRecord: null },
+      { name: 'Source 3', source: '', options: plain, selectedRecord: null },
     ]);
-    expect(dec?.active).toBe(0);
-    // An empty list is no list: the single-buffer reading applies.
+    // An empty list is one empty buffer: the version says where the sources
+    // are, and V3 keeps nothing at the top level.
     expect((await decodeShareState(frag({ s: 'solo', bs: [] })))?.buffers).toEqual([
-      { name: 'Source 1', lang: 'c', source: 'solo' },
+      { name: 'Source 1', source: '', options: plain, selectedRecord: null },
     ]);
+    // Whereas a V1 wire is read at the top level, whatever else it carries.
+    expect((await decodeShareState(frag({ v: 1, s: 'solo', bs: [{ s: 'no' }] })))?.buffers).toEqual(
+      [{ name: 'Source 1', source: 'solo', options: plain, selectedRecord: null }],
+    );
   });
 });

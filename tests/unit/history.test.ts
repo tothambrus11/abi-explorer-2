@@ -10,9 +10,8 @@ import { History, historyIntent, ownsUndo, type Snapshot } from '$state/history.
 import { DEFAULT_OPTIONS } from '$core/options';
 
 const at = (source: string, over: Partial<typeof DEFAULT_OPTIONS> = {}): Snapshot => ({
-  buffers: [{ name: 'Source 1', lang: 'c', source }],
+  buffers: [{ name: 'Source 1', source, options: { ...DEFAULT_OPTIONS, ...over } }],
   active: 0,
-  options: { ...DEFAULT_OPTIONS, ...over },
 });
 
 /** The active buffer's text, which is what these tests type into. */
@@ -65,11 +64,10 @@ describe('History', () => {
     // never saw change.
     const two = (active: number, a: string, b: string): Snapshot => ({
       buffers: [
-        { name: 'Source 1', lang: 'c', source: a },
-        { name: 'Source 2', lang: 'c', source: b },
+        { name: 'Source 1', source: a, options: { ...DEFAULT_OPTIONS } },
+        { name: 'Source 2', source: b, options: { ...DEFAULT_OPTIONS } },
       ],
       active,
-      options: { ...DEFAULT_OPTIONS },
     });
     const h = new History(two(0, 'x', ''));
     h.record(two(0, 'xy', ''), 1000);

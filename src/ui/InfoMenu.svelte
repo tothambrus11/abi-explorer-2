@@ -16,9 +16,12 @@
   // close what the user was reaching for. Escape and a press elsewhere are what
   // dismiss it.
   import Info from '@lucide/svelte/icons/info';
-  import { store } from '$state/store.svelte';
+  import { store, type Source } from '$state/store.svelte';
   import { headerSummary, headerExplanation } from '$core/headers';
   import { describeBackend } from '$compiler/Backends';
+
+  /** The source the row it sits in configures. */
+  const { source }: { source: Source } = $props();
 
   let open = $state(false);
   let root: HTMLDivElement | undefined = $state();
@@ -28,13 +31,14 @@
    */
   let closing: ReturnType<typeof setTimeout> | null = null;
 
+  const compiler = $derived(store.compilerFor(source.options.lang));
   const version = $derived(
-    store.compiler.state === 'ready' ? store.compiler.version.replace(/\(.*?\)\s*/, '') : '',
+    compiler.state === 'ready' ? compiler.version.replace(/\(.*?\)\s*/, '') : '',
   );
-  const headers = $derived(store.analysis?.headers ?? null);
+  const headers = $derived(source.analysis?.headers ?? null);
   const summary = $derived(headerSummary(headers));
   const explanation = $derived(headerExplanation(headers));
-  const backend = $derived(describeBackend(store.options.lang));
+  const backend = $derived(describeBackend(source.options.lang));
 
   /** The icon, so the panel can be placed against it. */
   let mark: HTMLButtonElement | undefined = $state();
@@ -135,7 +139,7 @@
 
         <dt>Target</dt>
         <dd class="mono">
-          {store.options.lang === 'hylo' ? 'the one ABI Hylo describes' : store.options.triple}
+          {source.options.lang === 'hylo' ? 'todo' : source.options.triple}
         </dd>
       </dl>
 
@@ -143,8 +147,8 @@
         Layouts are computed by <a href={backend.home} rel="noopener">{backend.name}</a> itself,
         compiled to WebAssembly (<a href={backend.module.url} rel="noopener"
           >{backend.module.name}</a
-        >). It runs in this tab: nothing you type leaves the page, and the whole thing works
-        offline once the module has downloaded.
+        >). It runs in this tab: nothing you type leaves the page, and the whole thing works offline
+        once the module has downloaded.
       </p>
       {#if store.offlineReady}<p id="offline-status" class="ok">✓ available offline</p>{/if}
     </div>

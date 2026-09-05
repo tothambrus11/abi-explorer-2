@@ -1,14 +1,15 @@
 <script lang="ts">
   // The single floating tooltip, positioned near whatever is hovered.
   //
-  // Mounted once, at the top of the app, and driven entirely by
-  // `store.hover.tooltip`: anything that wants a tooltip sets that, rather than
-  // rendering its own, so two hovers can never leave two tips on screen.
+  // Mounted once, at the top of the app, and driven entirely by the sources'
+  // `hover.tooltip`: anything that wants a tooltip sets that, rather than
+  // rendering its own, so two hovers can never leave two tips on screen. One
+  // pointer, so at most one source has one; the first found is it.
   // Clamped to the viewport, and flipped below the cursor when there is no room
   // above.
   import { store } from '$state/store.svelte';
   let el: HTMLDivElement | undefined = $state();
-  const tip = $derived(store.hover.tooltip);
+  const tip = $derived(store.sources.find((s) => s.hover.tooltip)?.hover.tooltip ?? null);
   const pos = $derived.by(() => {
     if (!tip || !el) return { x: 0, y: 0 };
     const tw = el.offsetWidth,

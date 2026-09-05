@@ -4,12 +4,11 @@
   // GRID_LIMIT bytes a proportional bar is drawn instead. Hover state comes
   // from the store; identity is also carried by the table, never color alone.
   import type { RenderModel } from '$core/types';
-  import { store } from '$state/store.svelte';
-  import type { Session } from '$state/session.svelte';
+  import type { SourceSession } from '$state/session.svelte';
   import { memberTooltipHtml } from './format';
   import { leavesCovering } from '$state/hover';
 
-  const { model, record, session }: { model: RenderModel; record: string; session: Session } =
+  const { model, record, session }: { model: RenderModel; record: string; session: SourceSession } =
     $props();
   const GRID_LIMIT = 2048;
   const size = $derived(model.record.sizeBytes);
@@ -84,7 +83,7 @@
   });
 
   const hovered = $derived(
-    new Set(store.hover.members.filter((m) => m.record === record).map((m) => m.leaf)),
+    new Set(session.source.hover.members.filter((m) => m.record === record).map((m) => m.leaf)),
   );
   /**
    * The extent of what is hovered. Bytes inside it that no member covers, a
@@ -92,7 +91,7 @@
    * five hold fields, so without this the other three read as belonging to
    * nothing, and the row's size has no visible answer.
    */
-  const hoveredExtent = $derived(store.hover.ranges.filter((r) => r.record === record));
+  const hoveredExtent = $derived(session.source.hover.ranges.filter((r) => r.record === record));
   const inHovered = (byte: number) => hoveredExtent.some((r) => byte >= r.start && byte < r.end);
 
   function stripe(leaves: number[]): string {

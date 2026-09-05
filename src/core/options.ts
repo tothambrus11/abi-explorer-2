@@ -16,6 +16,9 @@ import {
 
 export type Language = 'c' | 'c++' | 'hylo';
 
+/** What each language is called on screen. */
+export const LANGUAGE_NAMES: Record<Language, string> = { c: 'C', 'c++': 'C++', hylo: 'Hylo' };
+
 export interface CompileOptions {
   lang: Language;
   std: string;

@@ -73,8 +73,11 @@ src/compiler/      abi.worker / hylo.worker (a module in a Worker), AbiClient
                    spelling probes), hylo-wire (Hylo layouts as the wire shape
                    the views read), module-assets (fetch, decompress, cache),
                    wasi-shim (just enough WASI for a module with no files)
-src/state/         store (Svelte 5 runes), session (orchestration, hover, type
-                   docs), code-locations (the editor's per-line index), theme
+src/state/         store (Svelte 5 runes: the sources, each with its options
+                   and its answer), session (the visit: history, the link,
+                   which compilers to load), source-session (one source's
+                   compile, hover and type docs), code-locations (the
+                   editor's per-line index), theme
 src/ui/            Svelte components, Monaco setup, dockview integration, themes
 tests/unit/        vitest; tests/fixtures/responses holds the recorded corpus
 tests/e2e/         Playwright against the production build
@@ -142,3 +145,32 @@ CI (`.github/workflows/ci.yml`) fetches the pinned clang-abi-wasm release, then
 runs lint, type-check, the unit suites (including the ones that drive the real
 module), the build and Playwright, all against the same copy of the module the
 site serves.
+
+## The share-link package
+
+The URL fragment a link carries is the work of `packages/share-link`,
+published as `@ambrus-toth/abi-explorer-share-link` on npm and JSR so that
+other tools can write links this app opens. It holds the session state, every
+version of the wire format (`WireV1`, `WireV2`, `WireV3`; `Wire` is the
+union, told apart by `v`), the envelopes a wire travels in (plain base64url,
+and deflate behind `2.`), and one reader for all of it. `encode` and `decode`
+are the two halves; each piece is its own module and nothing runs on import,
+so a program that only writes carries no reader.
+
+Wires V1 and V2 are one source at the top level, what abiexplorer.org wrote
+as of September 2026 (V1 in the plain envelope, V2 in the compressed one);
+wire V3 is any number of sources in `bs`.
+
+The package depends on nothing; `src/core/url-state.ts` adds what the values
+mean in this build. The app imports it through an alias onto its source, so
+an edit there needs no build step; `npm run check` and `npm test` cover the
+app and the package together.
+
+A new version of the wire is a new `vN.ts` beside the others with its own
+`toWireVN` and `fromWireVN`, a member of `Wire`, a line in `fromWire`, and a
+fragment added to `tests/unit/share-link.test.ts`. A new envelope is the same
+in `envelope.ts`. A fixture, once added, is never changed: a link shared under
+it must open forever.
+
+To release: bump `version` in `package.json` and `jsr.json`, and push a tag
+`share-link-v<version>`; `.github/workflows/publish-share.yml` does the rest.

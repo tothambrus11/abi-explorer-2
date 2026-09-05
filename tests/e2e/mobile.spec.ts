@@ -61,8 +61,8 @@ test.describe('on a phone', () => {
 
   test('the options panel opens on the screen', async ({ page }) => {
     await ready(page);
-    await page.click('.more > summary');
-    const grid = page.locator('.more[open] .grid');
+    await page.click('#more-options');
+    const grid = page.locator('[role=dialog][aria-label="More options"]');
     await expect(grid).toBeVisible();
     await withinViewport(page, grid);
     // The last row is reachable rather than off the right-hand edge.
@@ -86,13 +86,13 @@ test.describe('on a phone', () => {
     await expect(tab(page, 'Diagnostics')).toContainText('[2]');
   });
 
-  test('whether it compiled is on the Code tab', async ({ page }) => {
+  test('whether it compiled is on the Source tab', async ({ page }) => {
     await ready(page);
-    await expect(tab(page, 'Code').locator('[role=status].ok')).toBeVisible();
+    await expect(tab(page, 'Source').locator('[role=status].ok')).toBeVisible();
     await page.locator('.monaco-editor .view-lines').click();
     await page.keyboard.press('Control+End');
     await page.keyboard.type('\nstruct Broken { int x }');
-    await expect(tab(page, 'Code').locator('[role=status].error')).toBeVisible();
+    await expect(tab(page, 'Source').locator('[role=status].error')).toBeVisible();
   });
 
   test('nothing states the compiler except the details popover', async ({ page }) => {

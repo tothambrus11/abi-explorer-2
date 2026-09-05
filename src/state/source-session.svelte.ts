@@ -1,0 +1,385 @@
+// One source's orchestration: runs its query with debounce and cancellation,
+// resolves what the reader is pointing at in it, and answers hovers over its
+// type names. The UI never talks to the compiler directly.
+//
+// There used to be two async resources here, and a feedback loop between them:
+// the compile produced models, the models decided which records to request an
+// AST dump for, and the dump produced alignments that the models were rebuilt
+// from. Keeping that from oscillating took dedup-by-key on both resources and a
+// guarded equality check on the alignment map. All of it existed because
+// locations and alignments arrived separately from the layout they described.
+// They arrive together now, so one resource is left and the loop is gone.
+
+import type { AbiAnalyzer, AnalysedRecord, Analysis } from '$compiler/AbiAnalyzer';
+import type { CompileOptions } from '$core/options';
+import { describeRecord, describeSpelling, subjectAt } from './type-hover';
+import { store, type Hover, type MemberRef, type Source } from './store.svelte';
+import {
+  effectivePos,
+  hoveredPrimary,
+  resolveHover,
+  type EditorPos,
+  type HoverInputs,
+  type HoverIntent,
+  type TooltipAnchor,
+} from './hover';
+import { AsyncRunner } from './async-resource.svelte';
+import { computeAnalysisStatus } from './status';
+import { declLineFor } from './inspected-record';
+import { buildLineIndex, type LineIndex, type LineInfo } from './code-locations';
+
+export type { LineInfo };
+
+const samePos = (a: EditorPos | null, b: EditorPos | null): boolean =>
+  a === b || (a !== null && b !== null && a.line === b.line && a.col === b.col);
+
+interface CompileInput {
+  source: string;
+  options: CompileOptions;
+}
+
+const SOURCE_DEBOUNCE_MS = 500;
+
+/**
+ * What one source does, as opposed to what it shows.
+ *
+ * Owns the query and every hover input for its source, and is the only thing
+ * that writes the source's derived state. Nothing here touches the DOM: a view
+ * calls a method and reads the source, so the orchestration can be driven from
+ * a test without a browser.
+ *
+ * `start` wires the reactive effects and returns their disposer; nothing runs
+ * until it is called. One of these per source, made and disposed by the
+ * `Session` as sources come and go.
+ */
+export class SourceSession {
+  /**
+   * The query as a reactive resource: debounced (source edits) or immediate
+   * (option changes / first run), deduped by input, and cancelling. `value` is
+   * the latest Analysis; the source's `analysis`/`status` mirror it (see start()).
+   */
+  private readonly compile = new AsyncRunner<CompileInput, Analysis>(
+    (input, signal) => this.analyzer.analyze(input.source, input.options, signal),
+    {
+      key: (i) => JSON.stringify(i.options) + '\n' + i.source,
+      // Option changes (and the very first compile) apply immediately; source
+      // edits debounce so we don't re-query on every keystroke.
+      debounce: (i, prev) =>
+        !prev || JSON.stringify(prev.options) !== JSON.stringify(i.options)
+          ? 0
+          : SOURCE_DEBOUNCE_MS,
+    },
+  );
+
+  /** The per-line index derived from the models currently on screen. */
+  private readonly index: LineIndex = $derived.by(() => buildLineIndex(this.source.models));
+  /** line -> LineInfo across all visible records. */
+  get lines(): Map<number, LineInfo> {
+    return this.index;
+  }
+
+  /** Records with their declaration extents, for resolving the caret. */
+  private records: AnalysedRecord[] = $derived.by(() => this.source.modelRecords);
+
+  /**
+   * Type spellings clang reported somewhere in this TU: the only bare words
+   * worth probing when the pointer stops on one.
+   */
+  private knownSpellings: Set<string> = $derived.by(() => {
+    const out = new Set<string>();
+    const a = this.source.analysis;
+    if (!a) return out;
+    for (const t of a.typedefs) out.add(t.name);
+    for (const name of a.byName.keys()) out.add(name);
+    for (const r of a.records) {
+      for (const leaf of r.model.leaves) if (leaf.type) out.add(leaf.type);
+    }
+    return out;
+  });
+
+  /** Hover sources: pointer over the editor, the text cursor, pointer over grid/table. */
+  private mouse: EditorPos | null = $state.raw(null);
+  private cursor: EditorPos | null = $state.raw(null);
+  /**
+   * What the pointer is over in the grid/table: an *intent* (record + index),
+   * resolved against the current models by `resolveHover`, so it can never
+   * point at a member of a superseded analysis.
+   */
+  private hoverIntent: HoverIntent | null = $state.raw(null);
+  /** Last input wins: after keyboard cursor movement the cursor beats the (still) hovered line until the mouse moves again. */
+  private preferCursor = $state(false);
+
+  /**
+   * A one-shot request for the editor to move its caret (issue #3): picking a
+   * record from the tab bar navigates to its declaration, so the cursor, which
+   * decides the record when nothing is hovered, agrees with the tab.
+   */
+  revealRequest: { line: number; seq: number } | null = $state.raw(null);
+  private revealSeq = 0;
+  /**
+   * Cursor position when a record was picked explicitly. While the cursor is
+   * still there, the pick outranks the cursor rule. Otherwise a pick made
+   * before the analysis lands is undone the moment it arrives.
+   */
+  private pickedAt: EditorPos | null = $state.raw(null);
+
+  /** The effective hover: grid/table intent first, then the pointer, then the cursor. */
+  readonly hover: Hover = $derived(resolveHover(this.hoverInputs));
+  /** Record owning the hovered line, for record-follows-cursor in tabs mode. */
+  private readonly hoverPrimary: string | null = $derived(hoveredPrimary(this.hoverInputs));
+
+  private cleanup: (() => void) | null = null;
+
+  /**
+   * The session of `source`, answering through `analyzer`, which is shared
+   * between every source: it memoizes by question, and two sources asking the
+   * same one should get one answer.
+   */
+  constructor(
+    readonly source: Source,
+    private readonly analyzer: AbiAnalyzer,
+    private readonly app: { allowDownload(): void },
+  ) {}
+
+  /**
+   * The user accepted a download from this source's pane. The decision is the
+   * visit's, not the source's, so it is handed up.
+   */
+  allowDownload(): void {
+    this.app.allowDownload();
+  }
+
+  /** Wire reactive effects. Returns a disposer. */
+  start(): () => void {
+    const stopRoot = $effect.root(() => {
+      // Drive the query from the source's text and options. This effect also
+      // tracks the module's status, which changes on every progress tick
+      // during the download. Dedup-by-input is what keeps that from turning
+      // into a hundred identical queries the moment it becomes ready.
+      $effect(() => {
+        const input: CompileInput = {
+          source: this.source.text,
+          options: { ...this.source.options },
+        };
+        if (store.compilerFor(input.options.lang).state === 'ready') this.compile.trigger(input);
+      });
+      // Mirror the resource into the source; status is derived from both.
+      $effect(() => {
+        this.source.analysis = this.compile.value;
+      });
+      $effect(() => {
+        this.source.status = computeAnalysisStatus(
+          this.compile,
+          this.source.analysis,
+          this.source.visibleRecords.length,
+        );
+      });
+      // A new analysis drops the grid/table hover: the pointer will re-enter a
+      // row and produce a fresh intent. (Resolution is index-safe either way.)
+      $effect(() => {
+        void this.source.analysis; // track
+        this.hoverIntent = null;
+      });
+      // The resolved hover is derived; this is the only place it reaches the source.
+      $effect(() => {
+        this.source.hover = this.hover;
+      });
+      // Command (deliberately *not* part of the derivation): in tabs mode,
+      // *moving* the cursor onto a record selects it.
+      //
+      // The trigger is the cursor position changing, not the record we derive
+      // from it. Those differ twice over: the position is unchanged while an
+      // explicit tab pick is in force (so the pick must not be reverted), and
+      // it is also unchanged when an analysis merely finishes, at which point
+      // resolving the caret's record for the first time would otherwise pull
+      // the panel off the record it opened on.
+      let lastPos: EditorPos | null = null;
+      let started = false;
+      $effect(() => {
+        const pos = effectivePos(this.hoverInputs);
+        const primary = this.hoverPrimary;
+        if (this.pickedAt !== null && samePos(this.pickedAt, this.cursor)) return;
+        this.pickedAt = null;
+        if (started && samePos(pos, lastPos)) return;
+        lastPos = pos;
+        const first = !started;
+        started = true;
+        if (first || store.view !== 'tabs' || primary === null) return;
+        if (this.source.activeRecordKey !== primary && this.source.models.has(primary)) {
+          this.source.selectedRecord = primary;
+        }
+      });
+    });
+
+    this.cleanup = () => {
+      stopRoot();
+      this.compile.dispose();
+    };
+    return this.cleanup;
+  }
+
+  /** Undoes `start`. Safe to call more than once, or before `start`. */
+  dispose(): void {
+    this.cleanup?.();
+    this.cleanup = null;
+  }
+
+  /**
+   * Explicitly pick a record (tab bar). The caret jumps to its declaration so
+   * this choice also survives as the cursor-driven default.
+   */
+  selectRecord(key: string): void {
+    this.source.selectedRecord = key;
+    this.pickedAt = this.cursor;
+    const line = declLineFor(key, this.records);
+    if (line !== null) this.revealRequest = { line, seq: ++this.revealSeq };
+  }
+
+  /**
+   * Drill into a compound member: inspect the record it is an instance of.
+   * Returns false when the member has no record to open: a plain field, or a
+   * type this analysis did not lay out.
+   *
+   * This used to strip the record keyword off the member's printed type and
+   * search an index by name. The group carries the record's id.
+   */
+  inspectGroup(record: string, groupIndex: number): boolean {
+    const recordId = this.source.models.get(record)?.groups[groupIndex]?.recordId ?? null;
+    const analysis = this.source.analysis;
+    if (recordId === null || !analysis) return false;
+    const target = analysis.byId.get(recordId);
+    // Already there: drilling into a member of your own type is a no-op.
+    if (!target || target.key === record) return false;
+    this.selectRecord(target.key);
+    return true;
+  }
+
+  /**
+   * Runs the query now, unchanged input and pending debounce notwithstanding.
+   *
+   * What Ctrl+Enter is for: the answer to an unchanged question is already on
+   * screen, so this exists for the reader who wants to see it recomputed.
+   */
+  compileNow(): void {
+    this.compile.trigger(
+      { source: this.source.text, options: { ...this.source.options } },
+      { force: true },
+    );
+  }
+
+  // ---------------------------------------------------------- hover ----
+
+  /**
+   * Pointer moved in the editor (null = left it). Positions are compared by
+   * value: re-reporting the same one must not invalidate the derived hover, or
+   * the editor's own refresh would feed itself in a loop.
+   */
+  hoverLine(pos: EditorPos | null): void {
+    if (samePos(this.mouse, pos)) return;
+    this.mouse = pos;
+  }
+
+  /** The text cursor moved. Keyboard moves take precedence over a stale hover. */
+  setCursorLine(pos: EditorPos | null, byKeyboard = false): void {
+    if (byKeyboard) this.preferCursor = true;
+    if (samePos(this.cursor, pos)) return;
+    this.cursor = pos;
+  }
+
+  /** Any pointer movement over the editor hands control back to the mouse. */
+  noteMouseActivity(): void {
+    this.preferCursor = false;
+  }
+
+  /**
+   * Grid/table hover: highlight one member and its source line. A tooltip
+   * without a member (padding cell) shows just the tooltip; null/null ends
+   * the hover.
+   */
+  hoverMember(ref: MemberRef | null, tooltip: TooltipAnchor | null): void {
+    this.hoverIntent = ref
+      ? { kind: 'leaf', record: ref.record, leaf: ref.leaf, tooltip }
+      : tooltip
+        ? { kind: 'tooltip', tooltip }
+        : null;
+  }
+
+  /**
+   * Byte-map hover on a region: a cell, or one bit of it. Every member with
+   * bits in the region is meant at once, which is how a union's overlap stays
+   * visible in the table.
+   */
+  hoverArea(record: string, fromBit: number, toBit: number, tooltip: TooltipAnchor | null): void {
+    this.hoverIntent = { kind: 'area', record, fromBit, toBit, tooltip };
+  }
+
+  /**
+   * Table hover on a parent (group) row: highlights all the group's leaves and
+   * points to the group's own declaration line.
+   */
+  hoverGroup(record: string, groupIndex: number, tooltip: TooltipAnchor | null): void {
+    this.hoverIntent = { kind: 'group', record, group: groupIndex, tooltip };
+  }
+
+  /** Everything `resolveHover` needs, tracked reactively. */
+  private get hoverInputs(): HoverInputs {
+    return {
+      intent: this.hoverIntent,
+      mouse: this.mouse,
+      cursor: this.cursor,
+      preferCursor: this.preferCursor,
+      models: this.source.models,
+      lines: this.index,
+      records: this.records,
+      current: this.source.activeRecordKey,
+    };
+  }
+
+  /**
+   * Documentation hover at (line, word). What the word *is* is decided by the
+   * pure `subjectAt`; what is left here is the one thing it cannot do, measure
+   * a spelling the analysis has no record for, which costs a query.
+   */
+  async describeType(
+    line: number,
+    word: { word: string; startColumn: number; endColumn: number },
+    signal?: AbortSignal,
+  ): Promise<string | null> {
+    const analysis = this.source.analysis;
+    if (!analysis) return null;
+    const subject = subjectAt(line, word, {
+      analysis,
+      lines: this.index,
+      knownSpellings: this.knownSpellings,
+    });
+    if (subject?.kind === 'records') {
+      return subject.records
+        .map((r) => describeRecord(r, analysis.options.lang))
+        .join('\n\n---\n\n');
+    }
+
+    // Hylo answers about the cursor rather than about a spelling, which is what
+    // lets it describe a type this source does not declare: `Int` belongs to
+    // another module, so it is in no spelling here and no record this query
+    // returned, but the compiler assigned it to the tree under the cursor.
+    if (analysis.options.lang === 'hylo') {
+      const at = await this.analyzer
+        .probeTypeAt(analysis, line - 1, word.startColumn - 1, signal)
+        .catch(() => null);
+      if (!at) return null;
+      // The same card a record declared here gets. There is nothing a Hylo
+      // cursor knows less about than a declaration does, so there is no reason
+      // for two cards.
+      return describeRecord(at, analysis.options.lang);
+    }
+
+    if (!subject) return null; // member names, keywords, numbers…: no query for these
+    // A spelling probe is a full re-parse of the user's TU; pass the hover's
+    // cancellation on so an abandoned hover does not hold the single wasm clang.
+    const measured = await this.analyzer
+      .probeSpelling(analysis, subject.spelling, signal)
+      .catch(() => null);
+    if (!measured || measured.bits <= 0) return null;
+    return describeSpelling(subject.spelling, subject.alias, measured, analysis.options.lang);
+  }
+}

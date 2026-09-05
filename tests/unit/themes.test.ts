@@ -3,7 +3,8 @@
 // localStorage and from imported files, so a spec that compiles to nonsense (
 // or throws) takes the UI with it: `state/theme.svelte.ts` validates a stored
 // spec precisely by compiling it.
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { theme } from '$state/theme.svelte';
 import {
   alpha,
   compileTheme,
@@ -110,12 +111,105 @@ describe('presets', () => {
     expect(THEMES.find((t) => t.id === DEFAULT_DARK)?.mode).toBe('dark');
   });
 
+  it('every syntax colour reaches a token the grammars emit', () => {
+    // A colour nothing paints with is a knob that does nothing. These are the
+    // token types monaco's C/C++ grammar and this app's Hylo grammar produce;
+    // Monaco matches a rule to every token that starts with it.
+    const emitted = [
+      'comment',
+      'comment.doc',
+      'keyword',
+      'keyword.int',
+      'keyword.directive',
+      'keyword.directive.include',
+      'string',
+      'string.escape',
+      'string.include.identifier',
+      'number',
+      'number.hex',
+      'type',
+      'identifier',
+      'delimiter',
+      'delimiter.curly',
+      'annotation',
+    ];
+    const { rules } = compileTheme(PRESET_SPECS[0]!).monaco;
+    /** The rule Monaco would use: the longest one this token starts with. */
+    const ruleFor = (token: string) =>
+      rules
+        .filter((r) => r.token === '' || token === r.token || token.startsWith(r.token + '.'))
+        .sort((a, b) => b.token.length - a.token.length)[0];
+    for (const token of emitted) {
+      expect(ruleFor(token), `no rule paints ${token}`).toBeDefined();
+    }
+
+    // And every colour is reached by something: `type` through the built-in
+    // type names, which the grammar calls keywords.
+    const syntax = PRESET_SPECS[0]!.syntax;
+    const painted = new Set(emitted.map((t) => ruleFor(t)?.foreground));
+    for (const f of SYNTAX_FIELDS) {
+      expect(painted, `nothing is painted with ${f.key}`).toContain(syntax[f.key].replace('#', ''));
+    }
+    expect(ruleFor('keyword.int')?.foreground).toBe(syntax.type.replace('#', ''));
+    expect(ruleFor('keyword')?.foreground).toBe(syntax.keyword.replace('#', ''));
+  });
+
   it('the editor’s field lists match the colours a spec actually has', () => {
     const s = PRESET_SPECS[0]!;
     for (const f of PAGE_FIELDS) expect(s.page[f.key], `page.${f.key}`).toBeTruthy();
     for (const f of SYNTAX_FIELDS) expect(s.syntax[f.key], `syntax.${f.key}`).toBeTruthy();
     for (const f of EDITOR_FIELDS) expect(s.editor[f.key], `editor.${f.key}`).toBeTruthy();
     for (const f of MEMBER_FIELDS) expect(s.members[f.key], `members.${f.key}`).toBeTruthy();
+  });
+});
+
+describe('editing a theme that ships', () => {
+  beforeEach(() => {
+    theme.custom = [];
+  });
+
+  it('keeps its name and its place, and says it is edited', () => {
+    const before = theme.all.map((t) => t.id);
+    theme.update('glacier', (spec) => {
+      spec.page.accent = '#ff0000';
+    });
+    expect(
+      theme.all.map((t) => t.id),
+      'no new theme beside it',
+    ).toEqual(before);
+    expect(theme.byId('glacier')?.page.accent).toBe('#ff0000');
+    expect(theme.byId('glacier')?.name).toBe('Glacier');
+    expect(theme.byId('glacier')?.preset, 'still one of the ones that ship').toBe(true);
+    expect(theme.isEdited('glacier')).toBe(true);
+    // Not one of the reader's own themes: the editor lists it under Presets.
+    expect(theme.mine).toEqual([]);
+  });
+
+  it('goes back to what shipped, and nothing else does', () => {
+    theme.update('glacier', (spec) => {
+      spec.page.accent = '#ff0000';
+    });
+    const mine = theme.duplicate('nocturne', 'Mine');
+    theme.update(mine, (spec) => {
+      spec.page.accent = '#00ff00';
+    });
+
+    theme.reset('glacier');
+    expect(theme.isEdited('glacier')).toBe(false);
+    expect(theme.byId('glacier')?.page.accent).toBe(PRESET_SPECS[0]!.page.accent);
+    // The reader's own theme has no original to go back to, and keeps its own.
+    expect(theme.byId(mine)?.page.accent).toBe('#00ff00');
+    theme.reset(mine);
+    expect(theme.byId(mine)?.page.accent).toBe('#00ff00');
+  });
+
+  it('cannot be deleted: the app ships it either way', () => {
+    theme.update('glacier', (spec) => {
+      spec.page.accent = '#ff0000';
+    });
+    theme.remove('glacier');
+    expect(theme.byId('glacier'), 'still there').toBeTruthy();
+    expect(theme.isEdited('glacier'), 'and still edited').toBe(true);
   });
 });
 

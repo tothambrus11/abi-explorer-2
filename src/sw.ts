@@ -31,8 +31,7 @@ self.addEventListener('activate', (event) => {
 
 /** Is this a file of one of the compiler modules, which are cached by their own workers? */
 const inModule = (url: URL, dir: string) =>
-  url.origin === self.location.origin &&
-  new RegExp(`/vendor/${dir}/[^/]+$`).test(url.pathname);
+  url.origin === self.location.origin && new RegExp(`/vendor/${dir}/[^/]+$`).test(url.pathname);
 
 /**
  * The names the worker fetching each module uses, so the two agree about where

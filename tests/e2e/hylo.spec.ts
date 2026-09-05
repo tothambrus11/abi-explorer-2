@@ -125,7 +125,7 @@ test.describe('Hylo', () => {
     await selectLanguage(page, 'Hylo');
     // Hylo describes one ABI and takes none of clang's flags.
     await expect(page.locator('#target')).toBeHidden();
-    await expect(page.locator('details.more')).toBeHidden();
+    await expect(page.locator('#more-options')).toBeHidden();
 
     await selectLanguage(page, 'C');
     await expect(page.locator('#target')).toBeVisible();
@@ -152,18 +152,20 @@ test.describe('Hylo', () => {
     const card = await page.evaluate(async () => {
       const w = window as unknown as {
         __abix: {
-          store: { source: string };
+          store: { active: { text: string } };
           session: {
-            describeType: (
-              line: number,
-              word: { word: string; startColumn: number; endColumn: number },
-            ) => Promise<string | null>;
+            active: {
+              describeType: (
+                line: number,
+                word: { word: string; startColumn: number; endColumn: number },
+              ) => Promise<string | null>;
+            };
           };
         };
       };
-      const line = w.__abix.store.source.split('\n')[1] ?? '';
+      const line = w.__abix.store.active.text.split('\n')[1] ?? '';
       const col = line.indexOf('Int') + 1;
-      return w.__abix.session.describeType(2, {
+      return w.__abix.session.active.describeType(2, {
         word: 'Int',
         startColumn: col,
         endColumn: col + 3,
@@ -189,7 +191,7 @@ test.describe('Hylo', () => {
     // Grouped by language, every one of them reachable from any of them.
     const groups = () =>
       page
-        .locator('#example optgroup')
+        .locator('select.example optgroup')
         .evaluateAll((gs) => gs.map((g) => (g as HTMLOptGroupElement).label));
     expect(await groups()).toEqual(['C', 'C++', 'Hylo']);
 

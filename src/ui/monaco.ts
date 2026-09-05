@@ -33,10 +33,60 @@ const MONACO_LANGUAGE: Record<Language, { id: string; extension: string }> = {
 
 for (const t of THEMES) monaco.editor.defineTheme(t.id, t.monaco);
 
-/** (Re)define and activate a compiled theme (called from the theme effect). */
-export function setEditorTheme(t: Theme): void {
+/** The theme Monaco is on, and the data it was given for it. */
+let applied: { id: string; data: string } | null = null;
+/** When that was, and what is waiting: see `setEditorTheme`. */
+let appliedAt = 0;
+let pending: Theme | null = null;
+let timer: ReturnType<typeof setTimeout> | null = null;
+/**
+ * How close together two redefinitions of the *same* theme may be. Dragging a
+ * colour reports one on every pointer move, and each is a stylesheet swap.
+ */
+const REDEFINE_GAP_MS = 70;
+
+function defineNow(t: Theme, data: string): void {
+  applied = { id: t.id, data };
+  appliedAt = Date.now();
   monaco.editor.defineTheme(t.id, t.monaco);
   monaco.editor.setTheme(t.id);
+}
+
+/**
+ * (Re)define and activate a compiled theme (called from the theme effect).
+ *
+ * Redefining a theme replaces the whole of Monaco's stylesheet and re-tokenises
+ * every model, which shows as a flash of unstyled editor. So:
+ *
+ * - Data Monaco already has is not handed to it again. Most theme edits are
+ *   page or member colours, which the editor's own theme knows nothing about,
+ *   and the effect that calls this runs for all of them.
+ * - Editing the editor's own colours *is* a change, and a drag reports one per
+ *   pointer move; those are spaced out, with the last one always applied, so a
+ *   drag flashes a few times rather than sixty.
+ * - Changing to a different theme is not an edit and never waits: a theme
+ *   tried on from the list has to appear at once.
+ */
+export function setEditorTheme(t: Theme): void {
+  const data = JSON.stringify(t.monaco);
+  if (applied?.id === t.id && applied.data === data) return;
+  if (timer) {
+    clearTimeout(timer);
+    timer = null;
+  }
+  pending = null;
+  const wait = applied?.id === t.id ? REDEFINE_GAP_MS - (Date.now() - appliedAt) : 0;
+  if (wait <= 0) {
+    defineNow(t, data);
+    return;
+  }
+  pending = t;
+  timer = setTimeout(() => {
+    timer = null;
+    const next = pending;
+    pending = null;
+    if (next) defineNow(next, JSON.stringify(next.monaco));
+  }, wait);
 }
 
 // ----------------------------------------------------------------- facade --
@@ -110,6 +160,9 @@ export interface CreateEditorOptions {
   typeHover: (line: number, word: WordAt, signal: AbortSignal) => Promise<string | null>;
 }
 
+/** How many editors this page has made, so each model has a name of its own. */
+let editorSeq = 0;
+
 /** Bridge Monaco's CancellationToken to the AbortSignal our async code takes. */
 function signalFor(token: monaco.CancellationToken): AbortSignal {
   const ac = new AbortController();
@@ -131,10 +184,14 @@ function signalFor(token: monaco.CancellationToken): AbortSignal {
  * since it is cancelled when the pointer moves on.
  */
 export function createEditor(container: HTMLElement, opts: CreateEditorOptions): EditorHandle {
+  // Named per editor: there is one per source, and Monaco keeps one model
+  // per name for the whole page.
   const model = monaco.editor.createModel(
     opts.value,
     MONACO_LANGUAGE[opts.language].id,
-    monaco.Uri.parse('inmemory://input.' + MONACO_LANGUAGE[opts.language].extension),
+    monaco.Uri.parse(
+      `inmemory://input-${String(++editorSeq)}.${MONACO_LANGUAGE[opts.language].extension}`,
+    ),
   );
   const editor = monaco.editor.create(container, {
     model,

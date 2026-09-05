@@ -1,6 +1,13 @@
 <script lang="ts">
-  // Light/dark switch (flips between the last-used light and dark themes) plus
-  // a chevron opening the full theme list.
+  // One control with two halves: the left flips between the last-used light
+  // and dark themes, the caret opens the list. Two buttons side by side read
+  // as one button whose halves do the same thing; a rule between them says
+  // they do not.
+  //
+  // Resting on a row in the list wears that theme for as long as the pointer
+  // is there, which is the only way to answer "what does Paper look like"
+  // without choosing it. Leaving puts back the one that is chosen; pressing
+  // chooses.
   import Sun from '@lucide/svelte/icons/sun';
   import Moon from '@lucide/svelte/icons/moon';
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
@@ -16,49 +23,63 @@
   function openEditor() {
     theme.editingId = theme.current.id;
     theme.editorOpen = true;
-    open = false;
+    close();
   }
 
+  /** Shuts the list, and with it whatever was being tried on. */
+  function close() {
+    open = false;
+    theme.preview(null);
+  }
   function onDocClick(e: MouseEvent) {
-    if (open && menu && !menu.contains(e.target as Node)) open = false;
+    if (open && menu && !menu.contains(e.target as Node)) close();
   }
   function onKey(e: KeyboardEvent) {
-    if (e.key === 'Escape') open = false;
+    if (e.key === 'Escape') close();
   }
   function pick(id: string) {
     theme.select(id);
     open = false;
   }
+  // A menu that goes away with the component takes its preview with it.
+  $effect(() => () => {
+    theme.preview(null);
+  });
 </script>
 
 <svelte:document onclick={onDocClick} onkeydown={onKey} />
 
 <div class="theme" bind:this={menu}>
-  <button
-    class="icon-btn"
-    type="button"
-    onclick={() => {
-      theme.toggleMode();
-    }}
-    use:tooltip={theme.mode === 'dark'
-      ? `Switch to light (${theme.all.find((t) => t.id === theme.lastLight)?.name})`
-      : `Switch to dark (${theme.all.find((t) => t.id === theme.lastDark)?.name})`}
-    aria-label="Toggle light/dark theme"
-    data-mode={theme.mode}
-  >
-    {#if theme.mode === 'dark'}<Sun size={16} />{:else}<Moon size={16} />{/if}
-  </button>
-  <button
-    class="icon-btn chevron"
-    type="button"
-    aria-haspopup="listbox"
-    aria-expanded={open}
-    aria-label="Choose theme"
-    use:tooltip={'Choose theme'}
-    onclick={() => (open = !open)}
-  >
-    <ChevronDown size={16} />
-  </button>
+  <div class="split">
+    <button
+      class="half"
+      type="button"
+      onclick={() => {
+        theme.toggleMode();
+      }}
+      use:tooltip={theme.mode === 'dark'
+        ? `Switch to light (${theme.all.find((t) => t.id === theme.lastLight)?.name})`
+        : `Switch to dark (${theme.all.find((t) => t.id === theme.lastDark)?.name})`}
+      aria-label="Toggle light/dark theme"
+      data-mode={theme.mode}
+    >
+      {#if theme.mode === 'dark'}<Sun size={16} />{:else}<Moon size={16} />{/if}
+    </button>
+    <button
+      class="half caret"
+      type="button"
+      aria-haspopup="listbox"
+      aria-expanded={open}
+      aria-label="Choose theme"
+      use:tooltip={'Choose theme'}
+      onclick={() => {
+        if (open) close();
+        else open = true;
+      }}
+    >
+      <ChevronDown size={14} />
+    </button>
+  </div>
   {#if open}
     <div class="popover menu" role="listbox" aria-label="Themes">
       {#each [['Light', light], ['Dark', dark]] as const as [label, list] (label)}
@@ -70,6 +91,18 @@
             aria-selected={t.id === theme.current.id}
             onclick={() => {
               pick(t.id);
+            }}
+            onmouseenter={() => {
+              theme.preview(t.id);
+            }}
+            onmouseleave={() => {
+              theme.preview(null);
+            }}
+            onfocus={() => {
+              theme.preview(t.id);
+            }}
+            onblur={() => {
+              theme.preview(null);
             }}
           >
             <span
@@ -98,10 +131,40 @@
        bar instead, whose right edge is the bar's own. Anchored here it hung
        off the chevron and ran off the left of a phone screen. */
     display: inline-flex;
-    gap: 4px;
   }
-  .chevron {
-    width: 24px;
+  /* One control, two halves: the same box the other header buttons have, with
+     a rule where its behaviour changes. */
+  .split {
+    display: inline-flex;
+    align-items: stretch;
+    height: 30px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: var(--page);
+    overflow: hidden;
+  }
+  .half {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+  .half.caret {
+    width: 22px;
+    border-left: 1px solid var(--border);
+  }
+  .half:hover {
+    background: var(--hover);
+    color: var(--text-primary);
+  }
+  .half:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
   }
   /* Positioning, clamping and the frame come from `.popover` in app.css. */
   .menu {

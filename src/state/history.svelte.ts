@@ -13,45 +13,44 @@
 // in the same history, and it is why `COALESCE_MS` is short.
 //
 // With several buffers the pair widens but the idea does not: the snapshot
-// holds every buffer and which one was on screen, so undoing a "switch tab,
-// edit" run puts the edit back in the tab it happened in.
+// holds every buffer, each with its own options, and which one was in focus,
+// so undoing a "switch tab, edit" run puts the edit back in the tab it
+// happened in.
 //
 // Nothing here is persisted. A reload starts from the URL, which carries the
 // state but not how it was arrived at, and an undo across a reload would put
 // back something the user has no memory of doing.
 
-import type { CompileOptions } from '$core/options';
 import type { SourceBuffer } from '$core/url-state';
 
 /** A state worth being able to return to. */
 export interface Snapshot {
-  /** Every buffer, in tab order; the sources are half of the question. */
+  /** Every buffer, in tab order, with its options: the whole of the question. */
   buffers: SourceBuffer[];
-  /** Which buffer was on screen: undo puts back the view, not just the text. */
+  /** Which buffer was in focus: undo puts back the view, not just the text. */
   active: number;
-  options: CompileOptions;
 }
 
-function sameBuffers(a: SourceBuffer[], b: SourceBuffer[]): boolean {
-  return (
-    a.length === b.length &&
-    a.every((x, i) => x.name === b[i]!.name && x.lang === b[i]!.lang && x.source === b[i]!.source)
-  );
+const sameOptions = (a: SourceBuffer, b: SourceBuffer): boolean =>
+  JSON.stringify(a.options) === JSON.stringify(b.options);
+
+/** Every half of a buffer that is not its text: the deliberate ones. */
+function sameShape(a: SourceBuffer[], b: SourceBuffer[]): boolean {
+  return a.length === b.length && a.every((x, i) => x.name === b[i]!.name && sameOptions(x, b[i]!));
 }
 
 /** Two snapshots differ if any half does. */
 function same(a: Snapshot, b: Snapshot): boolean {
   return (
     a.active === b.active &&
-    sameBuffers(a.buffers, b.buffers) &&
-    JSON.stringify(a.options) === JSON.stringify(b.options)
+    sameShape(a.buffers, b.buffers) &&
+    a.buffers.every((x, i) => x.source === b.buffers[i]!.source)
   );
 }
 
 const clone = (s: Snapshot): Snapshot => ({
-  buffers: s.buffers.map((b) => ({ ...b })),
+  buffers: s.buffers.map((b) => ({ ...b, options: { ...b.options } })),
   active: s.active,
-  options: { ...s.options },
 });
 
 /** How long a run of edits stays one undo step. */
@@ -99,11 +98,7 @@ export class History {
     if (this.applying || same(next, this.present)) return;
 
     const p = this.present;
-    const deliberate =
-      JSON.stringify(next.options) !== JSON.stringify(p.options) ||
-      next.active !== p.active ||
-      next.buffers.length !== p.buffers.length ||
-      next.buffers.some((b, i) => b.name !== p.buffers[i]!.name || b.lang !== p.buffers[i]!.lang);
+    const deliberate = next.active !== p.active || !sameShape(next.buffers, p.buffers);
     const coalesce = !deliberate && now - this.recordedAt < COALESCE_MS;
     if (!coalesce) this.past = [...this.past, this.present];
     // A new act abandons whatever was undone out of: the future it belonged to

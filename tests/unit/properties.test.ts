@@ -50,22 +50,19 @@ const buffersArb = fc
     fc.array(
       fc.record({
         name: fc.constantFrom('Source 1', 'Helpers', 'A name with spaces'),
-        lang: fc.constantFrom('c' as const, 'c++' as const),
         source: fc.string({ maxLength: 120 }),
+        options: optionsArb,
+        selectedRecord: fc.option(fc.constantFrom('struct Example', 'union U'), { nil: null }),
       }),
       { minLength: 1, maxLength: 4 },
     ),
     fc.nat(),
   )
   .map(([buffers, pick]) => {
-    // Names must be distinct per position or a round-trip cannot be exact —
-    // and a lone buffer travels as bare `s`/`l`, which carries no name at all,
-    // so it must wear the default one.
-    const named =
-      buffers.length === 1
-        ? buffers.map((b) => ({ ...b, name: 'Source 1' }))
-        : buffers.map((b, i) => ({ ...b, name: `${b.name} ${String(i + 1)}` }));
-    return { buffers: named, active: pick % named.length };
+    // Names travel with every buffer, a lone one included; they only have to
+    // be names, which the decoder trims and caps.
+    void pick;
+    return { buffers: buffers.map((b, i) => ({ ...b, name: `${b.name} ${String(i + 1)}` })) };
   });
 
 describe('share URL (property)', () => {
@@ -73,20 +70,9 @@ describe('share URL (property)', () => {
     await fc.assert(
       fc.asyncProperty(
         buffersArb,
-        optionsArb,
-        fc.option(fc.constantFrom('struct Example', 'union U'), { nil: null }),
         fc.constantFrom('tabs' as const, 'stack' as const),
-        async ({ buffers, active }, options, selectedRecord, view) => {
-          // The options describe the active buffer, as they do in the app.
-          const lang = buffers[active]!.lang;
-          const stds = lang === 'c++' ? CXX_STANDARDS : C_STANDARDS;
-          const state = {
-            buffers,
-            active,
-            options: { ...options, lang, std: stds.includes(options.std) ? options.std : stds[0]! },
-            selectedRecord,
-            view,
-          };
+        async ({ buffers }, view) => {
+          const state = { buffers, view };
           const back = await decodeShareState(await encodeShareState(state));
           expect(back).toEqual(state);
         },
@@ -125,27 +111,26 @@ describe('share URL (property)', () => {
 });
 
 function expectValidState(s: ShareState): void {
-  const o = s.options;
   expect(s.buffers.length).toBeGreaterThan(0);
   expect(s.buffers.length).toBeLessThanOrEqual(8);
   for (const b of s.buffers) {
     expect(typeof b.source).toBe('string');
-    expect(['c', 'c++', 'hylo']).toContain(b.lang);
     expect(b.name.length).toBeGreaterThan(0);
     expect(b.name.length).toBeLessThanOrEqual(40);
+    // Every buffer's options are its own, and every one of them is one clang
+    // or Hylo would take.
+    const o = b.options;
+    expect(['c', 'c++', 'hylo']).toContain(o.lang);
+    expect(['', '1', '2', '4', '8', '16']).toContain(o.pack);
+    // A triple goes straight into `--target=`; it must stay a plain token.
+    expect(o.triple).toMatch(/^[A-Za-z0-9_.-]{1,64}$/);
+    if (o.lang === 'hylo') expect(o.triple).toBe('hylo');
+    expect(o.extraFlags.length).toBeLessThanOrEqual(500);
+    const stds = o.lang === 'c++' ? CXX_STANDARDS : o.lang === 'hylo' ? [] : C_STANDARDS;
+    if (stds.length) expect(stds).toContain(o.std);
+    else expect(o.std).toBe('');
   }
-  expect(s.active).toBeGreaterThanOrEqual(0);
-  expect(s.active).toBeLessThan(s.buffers.length);
-  // The options describe the buffer on screen.
-  expect(o.lang).toBe(s.buffers[s.active]!.lang);
-  expect(['c', 'c++', 'hylo']).toContain(o.lang);
-  expect(['', '1', '2', '4', '8', '16']).toContain(o.pack);
-  // A triple goes straight into `--target=`; it must stay a plain token.
-  expect(o.triple).toMatch(/^[A-Za-z0-9_.-]{1,64}$/);
-  expect(o.extraFlags.length).toBeLessThanOrEqual(500);
   expect(['tabs', 'stack']).toContain(s.view);
-  const stds = o.lang === 'c++' ? CXX_STANDARDS : o.lang === 'hylo' ? [] : C_STANDARDS;
-  if (stds.length) expect(stds).toContain(o.std);
 }
 
 // ------------------------------------------------------ flag allowlist ----
