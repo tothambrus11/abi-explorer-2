@@ -12,18 +12,33 @@
   // row: the options are that source's, and a strip at the top would have to
   // say which source it was talking about. There the language is a chip like
   // the others, since a row inside a panel has no room for a control that is
-  // three buttons wide.
+  // three buttons wide; and so it is on a phone, for the same reason, where
+  // every field is a chip and the target takes the width the others leave.
+  //
+  // Narrower still, the fields do not fit on one line at all. They become one
+  // chip that says what the query is and opens the four of them in a panel: a
+  // row that wrapped spent two lines of a phone on four controls, and one
+  // squeezed to fit said "x86-64 · Li…" where which target it is was the
+  // point.
   //
   // Standard and target are chips that open a menu you can type into: forty
   // targets is too many to find by position, and the reader knows the word
   // ("apple", "riscv") rather than the place. The target menu also takes a
   // triple that is not on the list, which is the contract Compiler Explorer's
   // link into this app relies on.
-  import { type Source } from '$state/store.svelte';
+  import { store, type Source } from '$state/store.svelte';
   import { TARGET_GROUPS } from '$core/targets';
-  import { HYLO_AVAILABLE, LANGUAGE_NAMES, standardsFor, type Language } from '$core/options';
+  import {
+    changedOptionCount,
+    HYLO_AVAILABLE,
+    LANGUAGE_NAMES,
+    standardsFor,
+    type Language,
+  } from '$core/options';
   import { isKnownTriple } from '$core/url-state';
+  import { anchored } from './anchored';
   import { tooltip } from './tooltip';
+  import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import ChipMenu from './ChipMenu.svelte';
   import type { MenuItem } from './menu';
   import MoreOptions from './MoreOptions.svelte';
@@ -31,6 +46,8 @@
 
   const { source, compact = false }: { source: Source; compact?: boolean } = $props();
   const options = $derived(source.options);
+  /** Every field a chip: inside a panel, and on a phone. */
+  const chips = $derived(compact || store.narrow);
 
   // `soon` marks a language with no backend in this build: selectable would
   // silently compile the source as C and label the result Hylo. Hylo's module
@@ -61,80 +78,155 @@
   const targetLabel = $derived(
     targetItems.find((t) => t.value === options.triple)?.label ?? options.triple,
   );
+
+  /**
+   * Below this many pixels of row, the fields become one chip that opens
+   * them: enough for the language, the standard, a target worth reading and
+   * the options mark, and not much more.
+   */
+  const TIGHT_BELOW = 380;
+  let width = $state(0);
+  const tight = $derived(width > 0 && width < TIGHT_BELOW);
+  /** What the one chip says: the query, in the order the fields are read. */
+  const summaryLabel = $derived(
+    [LANGUAGE_NAMES[options.lang], options.std, clangOptions ? targetLabel : null]
+      .filter(Boolean)
+      .join(' · '),
+  );
+  const changed = $derived(changedOptionCount(options));
+
+  let open = $state(false);
+  let summary: HTMLButtonElement | undefined = $state();
+  let panel: HTMLDivElement | undefined = $state();
+  function onDocPointer(e: MouseEvent) {
+    if (!open) return;
+    const t = e.target;
+    if (!(t instanceof Element)) return;
+    if (summary?.contains(t) || panel?.contains(t)) return;
+    // A menu one of the fields opened is moved to the document, so a press in
+    // it lands outside this panel while being a press inside it.
+    if (t.closest('.field-menu, [role=dialog]')) return;
+    open = false;
+  }
+  function onKey(e: KeyboardEvent) {
+    if (e.key === 'Escape' && open) {
+      open = false;
+      summary?.focus();
+    }
+  }
+  // A row that grows past the threshold draws its fields again and loses the
+  // chip the panel hangs off, so the panel goes with it.
+  $effect(() => {
+    if (!tight) open = false;
+  });
 </script>
 
-<section class="controls" class:compact>
-  <!-- The scrolling part. `display: contents` on a wide screen, so the groups
-       are flex children of `.controls` exactly as before; a real scroll box on
-       a phone, where the row does not wrap. -->
-  <div class="lanes">
-    <div class="group">
-      {#if compact}
-        <ChipMenu
-          value={options.lang}
-          label={LANGUAGE_NAMES[options.lang]}
-          items={langItems}
-          ariaLabel="Language"
-          placeholder="Filter languages…"
-          title="The language this source is compiled as"
-          onPick={(id: string) => {
-            source.setLanguage(id as Language);
-          }}
-        />
-      {:else}
-        <div class="segmented" role="radiogroup" aria-label="Language">
-          {#each LANGS as l (l.id)}
-            <label use:tooltip={l.tip} class:soon={l.soon}
-              ><input
-                type="radio"
-                name="lang"
-                value={l.id}
-                checked={options.lang === l.id}
-                disabled={l.soon}
-                onchange={() => {
-                  source.setLanguage(l.id);
-                }}
-              /><span>{l.label}</span></label
-            >
-          {/each}
-        </div>
-      {/if}
-      {#if stds.length}
-        <ChipMenu
-          id={compact ? undefined : 'std'}
-          value={options.std}
-          label={options.std}
-          items={stdItems}
-          mono
-          ariaLabel="Language standard"
-          placeholder="Filter standards…"
-          title="Language standard (-std=)"
-          onPick={(std: string) => {
-            options.std = std;
-          }}
-        />
-      {/if}
-    </div>
+<svelte:document onmousedown={onDocPointer} onkeydown={onKey} />
 
-    <div class="group" class:hidden={!clangOptions}>
+{#snippet fields()}
+  <div class="group">
+    {#if chips}
       <ChipMenu
-        id={compact ? undefined : 'target'}
-        value={options.triple}
-        label={targetLabel}
-        items={targetItems}
-        custom
-        mono={!isKnownTriple(options.triple)}
-        ariaLabel="Target"
-        placeholder="Filter targets, or type a triple…"
-        title={`Target triple: ${options.triple}`}
-        foot="Any triple clang accepts can be typed."
-        onPick={(triple: string) => {
-          options.triple = triple;
+        value={options.lang}
+        label={LANGUAGE_NAMES[options.lang]}
+        items={langItems}
+        ariaLabel="Language"
+        placeholder="Filter languages…"
+        title="The language this source is compiled as"
+        onPick={(id: string) => {
+          source.setLanguage(id as Language);
         }}
       />
-      <MoreOptions id={compact ? undefined : 'more-options'} {source} />
-    </div>
+    {:else}
+      <div class="segmented" role="radiogroup" aria-label="Language">
+        {#each LANGS as l (l.id)}
+          <label use:tooltip={l.tip} class:soon={l.soon}
+            ><input
+              type="radio"
+              name="lang"
+              value={l.id}
+              checked={options.lang === l.id}
+              disabled={l.soon}
+              onchange={() => {
+                source.setLanguage(l.id);
+              }}
+            /><span>{l.label}</span></label
+          >
+        {/each}
+      </div>
+    {/if}
+    {#if stds.length}
+      <ChipMenu
+        id={compact ? undefined : 'std'}
+        value={options.std}
+        label={options.std}
+        items={stdItems}
+        mono
+        ariaLabel="Language standard"
+        placeholder="Filter standards…"
+        title="Language standard (-std=)"
+        onPick={(std: string) => {
+          options.std = std;
+        }}
+      />
+    {/if}
   </div>
+
+  <div class="group target" class:hidden={!clangOptions}>
+    <ChipMenu
+      id={compact ? undefined : 'target'}
+      value={options.triple}
+      label={targetLabel}
+      items={targetItems}
+      custom
+      mono={!isKnownTriple(options.triple)}
+      ariaLabel="Target"
+      placeholder="Filter targets, or type a triple…"
+      title={`Target triple: ${options.triple}`}
+      foot="Any triple clang accepts can be typed."
+      onPick={(triple: string) => {
+        options.triple = triple;
+      }}
+    />
+    <MoreOptions id={compact ? undefined : 'more-options'} {source} />
+  </div>
+{/snippet}
+
+<section class="controls" class:compact class:chips bind:clientWidth={width}>
+  {#if tight}
+    <!-- The four fields as one chip: what it says is the query itself, so a
+         reader knows what answered without opening anything. The fields are
+         drawn once, here or in the panel this opens, never in both. -->
+    <button
+      class="field-chip summary"
+      class:open
+      type="button"
+      bind:this={summary}
+      aria-haspopup="dialog"
+      aria-expanded={open}
+      aria-label="Language, standard and target"
+      use:tooltip={open ? null : 'Language, standard and target'}
+      onclick={() => (open = !open)}
+    >
+      <span class="t">{summaryLabel}</span>
+      {#if changed}<span class="count">{changed}</span>{/if}
+      <ChevronDown size={12} class="caret" />
+    </button>
+    {#if open && summary}
+      <div class="query" role="dialog" aria-label="Query" bind:this={panel} use:anchored={summary}>
+        <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -- a render tag is a void call by design -->
+        {@render fields()}
+      </div>
+    {/if}
+  {:else}
+    <!-- `display: contents` on a wide screen, so the groups are flex children
+         of `.controls` exactly as before; a box of its own where every field
+         is a chip, and the target takes what the others leave. -->
+    <div class="lanes">
+      <!-- eslint-disable-next-line @typescript-eslint/no-confusing-void-expression -- a render tag is a void call by design -->
+      {@render fields()}
+    </div>
+  {/if}
 
   <!-- Last in the row, after whichever fields the language has: it describes
        what answered the query the row configures. -->
@@ -233,46 +325,61 @@
     color: var(--text-muted);
   }
 
-  /* A narrow Source panel: the row wraps rather than squeezing the target chip
-     down to a word and a chevron. The panel's width is the question, not the
-     window's, so this is a container query. */
-  @media (min-width: 0px) {
-    .controls.compact {
-      container-type: inline-size;
-    }
+  /* Where every field is a chip: one line, never two. The language and the
+     standard take what they need and the target, the one field with forty
+     values and a label to spare, takes the rest and ellipsises. The row used
+     to wrap here, spending two lines of a phone on four controls. */
+  .controls.chips {
+    flex-wrap: nowrap;
   }
-  @container (max-width: 430px) {
-    .controls.compact .group {
-      flex: 1 1 100%;
-      min-width: 0;
-    }
+  .controls.chips .lanes {
+    display: flex;
+    align-items: center;
+    gap: var(--field-gap);
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .controls.chips .group {
+    flex: 0 0 auto;
+  }
+  .controls.chips .group.target {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .controls.chips .group.target > :global(.field-chip) {
+    flex: 1 1 auto;
   }
 
-  /* One row, not three. Each group used to take `flex: 1 1 100%`, so a phone
-     spent a fifth of the screen on three controls. Everything stays on one
-     line and scrolls sideways instead; the target chip, the only part with
-     room to give, ellipsises first. */
+  /* The one chip the fields become, and the panel it opens. The chip takes
+     the row's width and ellipsises; the panel gives each field a line, so the
+     target is read whole where it is chosen. */
+  .summary {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .query {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    width: 300px;
+    max-width: calc(100vw - 16px);
+    --field-h: 30px;
+    --field-gap: 8px;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.24);
+  }
+  .query .group.target > :global(.field-chip) {
+    flex: 1 1 auto;
+  }
+
   @media (max-width: 760px), (max-height: 560px) {
     .controls:not(.compact) {
       --field-h: 28px;
       --field-gap: 6px;
       padding: 5px 10px;
-      flex-wrap: nowrap;
-    }
-    .controls:not(.compact) .lanes {
-      display: flex;
-      align-items: center;
-      gap: var(--field-gap);
-      flex: 1 1 auto;
-      min-width: 0;
-      overflow-x: auto;
-      scrollbar-width: none;
-    }
-    .controls:not(.compact) .lanes::-webkit-scrollbar {
-      display: none;
-    }
-    .controls:not(.compact) .group {
-      flex: 0 0 auto;
     }
     /* A placeholder for a language with no compiler yet is not worth the width. */
     .segmented label.soon {

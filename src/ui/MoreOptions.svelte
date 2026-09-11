@@ -8,7 +8,7 @@
   // like every other field on the row.
   import Ellipsis from '@lucide/svelte/icons/ellipsis';
   import { store, type Source } from '$state/store.svelte';
-  import { splitExtraFlags } from '$core/options';
+  import { changedOptionCount, splitExtraFlags } from '$core/options';
   import { anchored } from './anchored';
   import { tooltip } from './tooltip';
 
@@ -16,14 +16,7 @@
   const options = $derived(source.options);
   const rejected = $derived(splitExtraFlags(options.extraFlags)[1]);
   /** How far from the defaults this source is: what the mark counts. */
-  const count = $derived(
-    (options.pack ? 1 : 0) +
-      (options.msBitfields ? 1 : 0) +
-      (options.shortEnums ? 1 : 0) +
-      (options.shortWchar ? 1 : 0) +
-      (options.warnPadded ? 1 : 0) +
-      (options.extraFlags.trim() ? 1 : 0),
-  );
+  const count = $derived(changedOptionCount(options));
 
   let open = $state(false);
   let mark: HTMLButtonElement | undefined = $state();

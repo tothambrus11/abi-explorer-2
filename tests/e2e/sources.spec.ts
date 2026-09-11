@@ -385,13 +385,12 @@ test.describe('several sources', () => {
     // Stacked: every group as wide as the dock, one above the other.
     await expect.poll(async () => new Set(await widths()).size).toBe(1);
     expect((await widths())[0]).toBeGreaterThan(340);
-    // The settings row inside a Source panel gives each control a row of its own.
-    const rows = await page
-      .locator('section.controls.compact')
-      .first()
-      .locator('.group')
-      .evaluateAll((gs) => gs.map((g) => Math.round(g.getBoundingClientRect().width)));
-    expect(new Set(rows).size, 'every group at the full row width').toBe(1);
+    // The settings row inside a Source panel has no width for four fields:
+    // one chip stands for them, and the row stays one line. It used to give
+    // each group a line of its own, which spent two of them on four controls.
+    const row = page.locator('section.controls.compact').first();
+    await expect(row.locator('.field-chip.summary')).toBeVisible();
+    expect((await row.boundingBox())!.height, 'one line').toBeLessThan(44);
     await page.setViewportSize(wide);
     // Back to the wide arrangement, give or take the rounding of a stored sash.
     await expect
