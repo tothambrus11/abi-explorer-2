@@ -1,0 +1,13 @@
+node_modules/
+dist/
+dev-dist/
+playwright-report/
+test-results/
+coverage/
+*.local
+# The layout modules: tens of megabytes each, fetched by `npm run abi:fetch`
+# and `npm run hylo:fetch`, or a symlink to a local build.
+public/vendor/abi
+public/vendor/hylo
+.idea
+.wrangler/
