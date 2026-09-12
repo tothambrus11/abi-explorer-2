@@ -139,7 +139,7 @@
 
         <dt>Target</dt>
         <dd class="mono">
-          {source.options.lang === 'hylo' ? 'todo' : source.options.triple}
+          {source.options.lang === 'hylo' ? 'the one ABI Hylo describes' : source.options.triple}
         </dd>
       </dl>
 

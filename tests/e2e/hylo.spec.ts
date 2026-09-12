@@ -297,6 +297,22 @@ test.describe('Hylo', () => {
     expect(await seen()).toEqual({ left: true, right: true });
   });
 
+  test('says which target answered, and never a placeholder', async ({ page }) => {
+    await page.goto('/');
+    await ready(page);
+    // Hylo has one ABI and no triple to choose, so the row says so in words.
+    // It said "todo" for a while: a placeholder that reached production.
+    await selectLanguage(page, 'Hylo');
+    await page.hover('#info-button');
+    const target = page.locator('#info-panel dt', { hasText: 'Target' }).locator('+ dd');
+    await expect(target).toHaveText('the one ABI Hylo describes');
+
+    // And in C it is the triple itself, as it always was.
+    await selectLanguage(page, 'C');
+    await page.hover('#info-button');
+    await expect(target).toHaveText('x86_64-unknown-linux-gnu');
+  });
+
   test("is highlighted by its own grammar, not by C's", async ({ page }) => {
     await page.goto('/');
     await ready(page);
