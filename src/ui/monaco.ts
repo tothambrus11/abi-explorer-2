@@ -6,6 +6,7 @@ import EditorWorker from 'monaco-editor/editor/editor.worker.js?worker';
 import type { Diagnostic } from '$core/types';
 import type { Language } from '$core/options';
 import { THEMES, type Theme } from '$core/themes';
+import { spaced } from '$core/spaced';
 import type { MemberDot } from '$state/editor-view';
 import { widenToTemplateArgs } from '$state/type-hover';
 import { HYLO_LANGUAGE_ID, HYLO_TOKENS, HYLO_CONFIGURATION } from './hylo-language';
@@ -33,24 +34,17 @@ const MONACO_LANGUAGE: Record<Language, { id: string; extension: string }> = {
 
 for (const t of THEMES) monaco.editor.defineTheme(t.id, t.monaco);
 
-/** The theme Monaco is on, and the data it was given for it. */
-let applied: { id: string; data: string } | null = null;
-/** When that was, and what is waiting: see `setEditorTheme`. */
-let appliedAt = 0;
-let pending: Theme | null = null;
-let timer: ReturnType<typeof setTimeout> | null = null;
 /**
  * How close together two redefinitions of the *same* theme may be. Dragging a
  * colour reports one on every pointer move, and each is a stylesheet swap.
  */
 const REDEFINE_GAP_MS = 70;
 
-function defineNow(t: Theme, data: string): void {
-  applied = { id: t.id, data };
-  appliedAt = Date.now();
+/** The spacing itself is `spaced`, which is where the rule is explained. */
+const redefine = spaced<Theme>(REDEFINE_GAP_MS, (t) => {
   monaco.editor.defineTheme(t.id, t.monaco);
   monaco.editor.setTheme(t.id);
-}
+});
 
 /**
  * (Re)define and activate a compiled theme (called from the theme effect).
@@ -68,25 +62,7 @@ function defineNow(t: Theme, data: string): void {
  *   tried on from the list has to appear at once.
  */
 export function setEditorTheme(t: Theme): void {
-  const data = JSON.stringify(t.monaco);
-  if (applied?.id === t.id && applied.data === data) return;
-  if (timer) {
-    clearTimeout(timer);
-    timer = null;
-  }
-  pending = null;
-  const wait = applied?.id === t.id ? REDEFINE_GAP_MS - (Date.now() - appliedAt) : 0;
-  if (wait <= 0) {
-    defineNow(t, data);
-    return;
-  }
-  pending = t;
-  timer = setTimeout(() => {
-    timer = null;
-    const next = pending;
-    pending = null;
-    if (next) defineNow(next, JSON.stringify(next.monaco));
-  }, wait);
+  redefine.want(t.id, JSON.stringify(t.monaco), t);
 }
 
 // ----------------------------------------------------------------- facade --
