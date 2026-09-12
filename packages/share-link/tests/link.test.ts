@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { decode, encode, encodeDeflate, encodePlain, toWireV1, toWireV2 } from '../src/index.ts';
-import { ONE, TWO } from './fixtures.ts';
+import { FOREVER, ONE, TWO } from './fixtures.ts';
 
 describe('encode and decode: the two halves together', () => {
   it('a link opens on what was shared', async () => {
@@ -20,4 +20,15 @@ describe('encode and decode: the two halves together', () => {
     expect(await decode('#2.nope')).toBeNull();
     expect(await decode(encodePlain([1, 2]))).toBeNull();
   });
+});
+
+// Fragments from builds that are gone, read end to end. The app's suite keeps
+// the same corpus, but `publish-share.yml` runs only this one before `npm
+// publish` and `jsr publish`, so a release is gated on it here or nowhere.
+describe('fragments written once, readable forever', () => {
+  for (const [name, { fragment, state }] of Object.entries(FOREVER)) {
+    it(name, async () => {
+      expect(await decode(fragment)).toEqual(state);
+    });
+  }
 });

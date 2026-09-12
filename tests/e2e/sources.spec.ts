@@ -315,6 +315,34 @@ test.describe('several sources', () => {
     await expect(page.locator('.topbar .btn.share')).toHaveCount(1);
   });
 
+  test('a link is where a visit begins: nothing to undo on arrival', async ({ page, browser }) => {
+    await twoSources(page);
+    // An arrangement that fronts the second source, which is what makes this
+    // worth testing: the dock puts that source in focus as it applies the
+    // link, and that correction is not something the visitor did.
+    await tab(page, 'Layout', 'Source 2').click();
+    await expect.poll(() => activeIndex(page)).toBe(1);
+    await page.waitForTimeout(900); // hash sync is debounced
+
+    const reader = await browser.newContext();
+    const shared = await reader.newPage();
+    await shared.goto(page.url());
+    await expect(shared.locator('#results').first()).toBeVisible({ timeout: 120_000 });
+    // The link's own focus survived, so the dock did correct it...
+    await expect.poll(() => activeIndex(shared)).toBe(1);
+    // ...and there is still nothing behind this state. Undo used to be offered
+    // here, and pressing it snapped focus back to the first source: a state
+    // the visitor had never been in.
+    await expect(shared.locator('#undo')).toBeDisabled();
+    await expect(shared.locator('#redo')).toBeDisabled();
+
+    // And an edit still makes one, so the history is armed rather than dead.
+    await shared.locator('.monaco-editor:visible').first().click();
+    await shared.keyboard.type('//x');
+    await expect(shared.locator('#undo')).toBeEnabled({ timeout: 10_000 });
+    await reader.close();
+  });
+
   test('the name is a link that starts the session again', async ({ page }) => {
     await twoSources(page);
     await page.waitForTimeout(900); // hash sync is debounced
@@ -357,13 +385,12 @@ test.describe('several sources', () => {
     // Stacked: every group as wide as the dock, one above the other.
     await expect.poll(async () => new Set(await widths()).size).toBe(1);
     expect((await widths())[0]).toBeGreaterThan(340);
-    // The settings row inside a Source panel gives each control a row of its own.
-    const rows = await page
-      .locator('section.controls.compact')
-      .first()
-      .locator('.group')
-      .evaluateAll((gs) => gs.map((g) => Math.round(g.getBoundingClientRect().width)));
-    expect(new Set(rows).size, 'every group at the full row width').toBe(1);
+    // The settings row inside a Source panel has no width for four fields:
+    // one chip stands for them, and the row stays one line. It used to give
+    // each group a line of its own, which spent two of them on four controls.
+    const row = page.locator('section.controls.compact').first();
+    await expect(row.locator('.field-chip.summary')).toBeVisible();
+    expect((await row.boundingBox())!.height, 'one line').toBeLessThan(44);
     await page.setViewportSize(wide);
     // Back to the wide arrangement, give or take the rounding of a stored sash.
     await expect

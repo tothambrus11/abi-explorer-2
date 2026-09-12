@@ -39,14 +39,99 @@ test.describe('on a phone', () => {
     expect(Math.abs(mark.y + mark.height / 2 - (share.y + share.height / 2))).toBeLessThan(6);
   });
 
-  test('the theme menu opens on the screen', async ({ page }) => {
+  test('the theme is chosen from the view panel, which the bar has room for', async ({ page }) => {
     await ready(page);
-    await page.click('button[aria-label="Choose theme"]');
-    const menu = page.locator('[role=listbox][aria-label=Themes]');
-    await expect(menu).toBeVisible();
-    await withinViewport(page, menu);
-    // The whole name, not "zed Light".
-    await expect(menu).toContainText('Solarized Light');
+    // The two-part theme control is not in the bar: with it, Share was off
+    // the right of a 320px screen.
+    await expect(page.locator('button[aria-label="Choose theme"]')).toHaveCount(0);
+    await withinViewport(page, page.locator('.topbar .actions'));
+    await page.click('#view-button');
+    const panel = page.locator('#view-panel');
+    await withinViewport(page, panel);
+    const pick = panel.locator('select[aria-label="Theme"]');
+    await expect(pick.locator('option', { hasText: 'Solarized Light' })).toHaveCount(1);
+    const before = await page.evaluate(() =>
+      document.documentElement.style.getPropertyValue('--page'),
+    );
+    await pick.selectOption({ label: 'Solarized Light' });
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.style.getPropertyValue('--page')))
+      .not.toBe(before);
+    // And the light/dark toggle is in here too.
+    const chosen = await pick.inputValue();
+    await panel.locator('button[aria-label="Toggle light/dark theme"]').click();
+    await expect(pick).not.toHaveValue(chosen);
+  });
+
+  test('the query row fits: every field a chip, the target taking the rest', async ({ page }) => {
+    await ready(page);
+    // The language is a chip like the standard and the target, not three
+    // buttons; and nothing on the row is off the right of the screen. It used
+    // to scroll sideways, with the target and the options out of sight.
+    await expect(page.locator('.controls .segmented')).toHaveCount(0);
+    for (const label of ['Language', 'Language standard', 'Target', 'More options']) {
+      const chip = page.locator(`.controls [aria-label="${label}"]`).first();
+      const box = (await chip.boundingBox())!;
+      expect(box.x, `${label} starts on screen`).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width, `${label} ends on screen`).toBeLessThanOrEqual(PHONE.width);
+    }
+    // One line, whatever is on it.
+    expect((await page.locator('.controls').first().boundingBox())!.height).toBeLessThan(44);
+    // And the language chip works as the buttons did.
+    await page.click('.controls [aria-label="Language"]');
+    await page.locator('.field-menu [role=option]', { hasText: 'C++' }).click();
+    await expect(page.locator('.controls [aria-label="Language"]').first()).toContainText('C++');
+  });
+
+  test('a row too narrow for the fields becomes one chip that opens them', async ({ page }) => {
+    await ready(page);
+    await page.setViewportSize({ width: 320, height: PHONE.height });
+    // The fields are gone from the row: one chip stands for them, saying what
+    // the query is, on one line and on the screen.
+    const chip = page.locator('.controls .field-chip.summary').first();
+    await expect(chip).toContainText('C · gnu23 · x86-64');
+    await expect(page.locator('.controls [aria-label="Target"]')).toHaveCount(0);
+    expect((await page.locator('.controls').first().boundingBox())!.height).toBeLessThan(44);
+    await withinViewport(page, chip);
+
+    // Pressing it opens the four of them, each on the screen, and the target
+    // is read whole where it is chosen.
+    await chip.click();
+    const panel = page.locator('[role=dialog][aria-label="Query"]');
+    await withinViewport(page, panel);
+    await expect(panel.locator('[aria-label="Target"]')).toContainText('Linux (System V)');
+    await panel.locator('[aria-label="Target"]').click();
+    await page.locator('.field-menu input').fill('aarch64-apple');
+    await page.locator('.field-menu [role=option]').first().click();
+    await expect(chip).toContainText('AArch64 · macOS');
+    // The panel stays while a field of its own is being used; Escape shuts it.
+    await expect(panel).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0);
+
+    // A second source puts a row inside each Source panel, where it is
+    // narrower still: one chip there too, never two lines.
+    await page.setViewportSize(PHONE);
+    await page.click('#view-button');
+    await page.locator('#view-panel .add', { hasText: 'New source' }).click();
+    await page.keyboard.press('Escape');
+    const inPanel = page.locator('.controls.compact').first();
+    await expect(inPanel.locator('.field-chip.summary')).toBeVisible();
+    expect((await inPanel.boundingBox())!.height).toBeLessThan(44);
+  });
+
+  test('the examples move into the view panel, which the tab strip has no room for', async ({
+    page,
+  }) => {
+    await ready(page);
+    // Not in the strip: the tabs are what it is for, and the select crowded
+    // out the source they name.
+    await expect(page.locator('.dv-tabs-and-actions-container select.example')).toHaveCount(0);
+    await page.click('#view-button');
+    const panel = page.locator('#view-panel');
+    await withinViewport(page, panel);
+    await panel.locator('select.example').selectOption({ label: 'Bit-fields' });
+    await expect(page.locator('.monaco-editor')).toContainText('unsigned');
   });
 
   test('the details popover opens on the screen and says what answered', async ({ page }) => {

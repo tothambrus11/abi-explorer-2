@@ -1,6 +1,6 @@
 <script lang="ts">
-  // The app's header: name, undo/redo, theme, and a way back to the default
-  // layout.
+  // The app's header: name, undo/redo, theme (on a screen with room for it),
+  // and a way back to the default layout.
   //
   // `session` is what undo and redo act on — the history is over every
   // source and lives in memory only. `dock` is for the sources menu and the
@@ -90,7 +90,9 @@
         }}>Update available: reload</button
       >
     {/if}
-    <ThemeMenu />
+    <!-- On a phone the bar has no room for a two-part control; the theme is
+         chosen from inside the view panel instead. -->
+    {#if !store.narrow}<ThemeMenu />{/if}
     <a
       class="icon-btn"
       href="https://github.com/tothambrus11/abi-explorer-2"
@@ -198,8 +200,9 @@
   /* One row, always. The brand and the actions are two flex items in a
      wrapping bar, so on a phone the actions dropped to a line of their own:
      44px of a 844px-tall screen spent on a second row that had room beside
-     the title. The wordmark goes instead. The mark next to it says the same
-     thing, and the page title says it in the tab. */
+     the title. Where the whole name does not fit beside the actions, the
+     wordmark goes and the mark stays: it says the same thing, and the page
+     title says it in the tab. The name is never cut down to a part of it. */
   @media (max-width: 760px) {
     .topbar {
       padding: 6px 10px;
@@ -210,15 +213,11 @@
       gap: 6px;
     }
     h1 {
-      font-size: 0;
-    }
-    h1::after {
-      content: 'ABI';
       font-size: 15px;
-      font-weight: 650;
+      white-space: nowrap;
     }
   }
-  @media (max-width: 420px) {
+  @media (max-width: 440px) {
     h1 {
       display: none;
     }
