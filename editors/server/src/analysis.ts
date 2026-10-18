@@ -32,6 +32,8 @@ export interface AnalyzedDocument {
   version: number;
   /** The lines of the text the ranges in `records` refer to. */
   lines: string[];
+  /** The language the file was analysed as. */
+  language: Language;
   records: RecordView[];
   /** Any record the translation unit laid out, by a name the document can use for it. */
   recordNamed: (spelling: string) => RecordView | null;
@@ -204,6 +206,7 @@ export class Analyzer {
           uri,
           version,
           lines: text.split(/\r?\n/),
+          language,
           records: recordsInDocument(response.records, { guestPath: request.filename, text }),
           recordNamed: typeIndex(response.records),
           context: {

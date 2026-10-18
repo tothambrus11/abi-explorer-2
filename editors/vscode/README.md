@@ -4,7 +4,7 @@ See how your C and C++ structs are laid out, with your project's own compile fla
 
 - **Hover** a struct's name for its size, alignment, padding and a byte map; hover a member for its offset. Uses of a type hover the same way, library types included: `std::string`, `std::vector<int>`.
 - **Inlay hints** after each struct name: `40 B · align 8 · 9 B padding`.
-- **Reorder members by alignment**, a refactoring (the light bulb, or `Ctrl+.`) offered on a struct whose member order wastes space: it moves the member lines into the order that packs tightest.
+- **Refactorings** on a struct (the light bulb, or `Ctrl+.`): **Reorder members by alignment**, where the member order wastes space, moves the member lines into the order that packs tightest; **Pin layout with static_assert** adds assertions of its size, alignment and (where the file includes `<cstddef>`) member offsets, so a change that moves them stops the build.
 - **Struct Layout** view in the Explorer, following the caret, with a member table you can click to jump, and a button that copies the layout as text.
 
 Flags come from, in order: CMake Tools, `compile_commands.json` (searched like clangd does, or the directory clangd or the C/C++ extension is told to use), `compile_flags.txt`, then `abiExplorer.fallbackFlags`. System headers are found by asking the project's compiler, the way clangd's `--query-driver` does; MSVC (`cl.exe`, `clang-cl`) projects are supported.

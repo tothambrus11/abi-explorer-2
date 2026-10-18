@@ -177,7 +177,32 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     for (const edit of edits) lines[edit.range.start.line] = edit.newText;
     await session.change(uri, lines.join('\n'));
     expect((await session.layout(uri)).records[0]!.sizeBits / 8).toBe(8);
-    expect(await session.codeActions(uri, { line: 2, character: 4 })).toEqual([]);
+    const after = await session.codeActions(uri, { line: 2, character: 4 });
+    expect(after.map((action) => action.title)).toEqual([
+      "Pin Packet's layout with static_assert (8 B, align 4)",
+    ]);
+  });
+
+  it('pins a layout with assertions that hold, in C and C++', async () => {
+    for (const [file, text] of [
+      ['pinned.cpp', '#include <cstddef>\nstruct S {\n  char c;\n  double d;\n};\n'],
+      ['pinned.c', '#include <stddef.h>\nunion U {\n  char c;\n  double d;\n};\n'],
+    ] as const) {
+      const uri = project.uri(file);
+      fs.writeFileSync(project.path(file), text);
+      await session.open(uri);
+      const pin = (await session.codeActions(uri, { line: 2, character: 3 })).find((action) =>
+        action.title.startsWith('Pin'),
+      );
+      const [edit] = pin!.edit!.changes![uri]!;
+      expect(edit!.range.start).toEqual({ line: 5, character: 0 });
+      await session.change(uri, text + edit!.newText);
+      const { context } = await session.layout(uri);
+      expect(context?.errorCount, edit!.newText).toBe(0);
+      // The assertions hold now; one that did not would be an error.
+      await session.change(uri, text + edit!.newText.replace(/== \d+/, '== 99'));
+      expect((await session.layout(uri)).context?.errorCount).toBe(1);
+    }
   });
 
   it('re-analyses an edit, and a pushed command wins over the database', async () => {

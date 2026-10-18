@@ -7,7 +7,7 @@ flags and target.
 | Directory | What it is | Built with |
 |:--|:--|:--|
 | `shared/` | What the server and the panel both use: the [protocol](shared/src/protocol.ts), the [layout model](shared/src/layoutModel.ts), size formatting | (source only) |
-| `server/` | `abi-explorer-lsp`, the language server every editor runs: hovers, inlay hints, the reorder code action and the `abiExplorer/layout` request | npm, esbuild |
+| `server/` | `abi-explorer-lsp`, the language server every editor runs: hovers, inlay hints, the reorder and pin code actions and the `abiExplorer/layout` request | npm, esbuild |
 | `panel/` | The layout panel (byte map and member table) shown by VS Code's webview and CLion's tool window | npm, esbuild |
 | `vscode/` | The VS Code extension: the server, the Struct Layout view, CMake Tools' compile commands | npm, vsce |
 | `zed/` | The Zed extension: runs the server from npm with Zed's Node.js | cargo (`wasm32-wasip2`) |

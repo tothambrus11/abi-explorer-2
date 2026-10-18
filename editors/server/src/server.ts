@@ -28,6 +28,7 @@ import { ensureEngineFiles } from './engine/engineFiles.ts';
 import { createPathMap } from './engine/pathMap.ts';
 import { memberHover, recordHover } from './layout/hover.ts';
 import { typeNameAt } from './layout/typeNameAt.ts';
+import { pinAction } from './layout/pinAction.ts';
 import { layoutHints } from './layout/inlayHints.ts';
 import { reorderAction } from './layout/reorderAction.ts';
 import { textLayout } from './layout/textLayout.ts';
@@ -164,13 +165,12 @@ export function startServer(connection: Connection, options: ServerOptions): voi
   });
 
   connection.onCodeAction(({ textDocument, range, context }): CodeAction[] => {
-    const wanted = context.only;
-    if (wanted && !wanted.some((kind) => CodeActionKind.RefactorRewrite.startsWith(kind))) {
-      return [];
-    }
+    const offered = (kind: string) =>
+      !context.only || context.only.some((wanted) => kind.startsWith(wanted));
+    if (!offered(CodeActionKind.RefactorRewrite) && !offered(CodeActionKind.Refactor)) return [];
     const document = documents.get(textDocument.uri);
     const analysis = analyzer?.kept(textDocument.uri);
-    // Moving lines by stale positions would scramble them: only on the analysed text.
+    // Edits by stale positions would land in the wrong place: only on the analysed text.
     if (
       !document ||
       analysis?.kind !== 'analyzed' ||
@@ -178,16 +178,27 @@ export function startServer(connection: Connection, options: ServerOptions): voi
     ) {
       return [];
     }
-    const hit = innermostRecordAt(analysis.document.records, range.start);
-    const action = hit && reorderAction(hit.record, analysis.document.lines);
-    if (!action) return [];
-    return [
-      {
-        title: action.title,
+    const { records, lines, language } = analysis.document;
+    const hit = innermostRecordAt(records, range.start);
+    if (!hit) return [];
+    const actions: CodeAction[] = [];
+    const reorder = offered(CodeActionKind.RefactorRewrite) && reorderAction(hit.record, lines);
+    if (reorder) {
+      actions.push({
+        title: reorder.title,
         kind: CodeActionKind.RefactorRewrite,
-        edit: { changes: { [textDocument.uri]: action.edits } },
-      },
-    ];
+        edit: { changes: { [textDocument.uri]: reorder.edits } },
+      });
+    }
+    const pin = offered(CodeActionKind.Refactor) && pinAction(hit.record, lines, language);
+    if (pin) {
+      actions.push({
+        title: pin.title,
+        kind: CodeActionKind.Refactor,
+        edit: { changes: { [textDocument.uri]: [pin.edit] } },
+      });
+    }
+    return actions;
   });
 
   connection.onRequest(layoutRequest, async (params: LayoutParams): Promise<LayoutResult> => {
