@@ -3,7 +3,8 @@
 // It moves whole lines, so it is offered only where each member is one
 // declaration on a line of its own and nothing between them would change
 // meaning when they move (an access specifier, a preprocessor line).
-// Everything else in the record (comments, functions, blank lines) stays put.
+// A member takes the comment lines right above it along; everything else in
+// the record (other comments, functions, blank lines) stays put.
 
 import type { Range, RecordView } from '@abi-explorer/shared/protocol';
 import { formatSizeShort } from '@abi-explorer/shared/format';
