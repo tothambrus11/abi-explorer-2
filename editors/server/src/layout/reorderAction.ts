@@ -1,8 +1,8 @@
 // "Reorder members by alignment": the code action behind the reorder note.
 //
 // It moves whole lines, so it is offered only where each member is one
-// declaration on a line of its own and nothing between them would change
-// meaning when they move (an access specifier, a preprocessor line).
+// declaration on a line of its own and only comments and blank lines are
+// between them (not an access specifier, a preprocessor line, a nested type).
 // A member takes the comment lines right above it along; everything else in
 // the record (other comments, functions, blank lines) stays put.
 
@@ -46,9 +46,15 @@ export function reorderAction(record: RecordView, lines: readonly string[]): Reo
   }
   const first = Math.min(...blocks.keys());
   const last = slots.at(-1)!;
+  // Between the members, nothing but comments and blank lines: a member moved
+  // above a type or constant it uses would no longer compile, and one moved
+  // into or out of an anonymous struct would change the layout.
+  const inBlock = (line: number) =>
+    [...blocks.values()].some((block) => line >= block.start && line <= block.end);
   for (let line = first; line <= last; line++) {
-    const code = withoutComment(lines[line] ?? '');
-    if (ACCESS.test(code) || code.startsWith('#')) return null;
+    if (!inBlock(line) && withoutComment(lines[line] ?? '') !== '' && !isComment(lines[line]!)) {
+      return null;
+    }
   }
 
   // The same lines, the blocks taking each other's places in the tighter order.

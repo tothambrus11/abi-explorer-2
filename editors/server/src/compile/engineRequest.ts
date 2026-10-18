@@ -91,4 +91,6 @@ const TARGET_OPTIONS_WITH_VALUE = new Set([
   '-resource-dir',
   '--gcc-toolchain',
   '-arch',
+  // A code generation option, and its value with it.
+  '-mllvm',
 ]);

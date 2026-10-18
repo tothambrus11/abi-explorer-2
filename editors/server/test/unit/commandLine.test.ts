@@ -179,7 +179,15 @@ describe('buildCrossTargetRequest', () => {
         flags: [
           ...['-I/project/include', '-DNDEBUG', '-std=c++20', '-mms-bitfields'],
           ...['--target=x86_64-linux-gnu', '-target', 'x86_64-linux-gnu', '-m64', '-march=native'],
-          ...['--sysroot=/opt/sdk', '-isysroot', '/opt/sdk', '-nostdinc++', '-fpack-struct=2'],
+          ...[
+            '--sysroot=/opt/sdk',
+            '-isysroot',
+            '/opt/sdk',
+            '-nostdinc++',
+            '-fpack-struct=2',
+            '-mllvm',
+            '-inline-threshold=9',
+          ],
         ],
         language: 'c++',
       },

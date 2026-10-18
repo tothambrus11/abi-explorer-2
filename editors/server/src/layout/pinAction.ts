@@ -33,7 +33,15 @@ export function pinAction(
   // `typedef struct { … } Pair;` is named after the brace, and only by its typedef name.
   const typedefName = nameRange.start.line === extent.end.line && nameRange.start.character > brace;
   const c = language === 'c';
-  const type = c && !typedefName ? `${record.kind === 'union' ? 'union' : 'struct'} ${name}` : name;
+  // C needs the tag; C++ the qualified name, since the asserts follow a definition
+  // like `struct ns::S { … };` outside its namespace.
+  const type = typedefName
+    ? name
+    : c
+      ? `${record.kind === 'union' ? 'union' : 'struct'} ${name}`
+      : /^[\w:]+$/.test(record.name)
+        ? record.name
+        : name;
   const assert = (condition: string, what: string) =>
     `${indent}${c ? '_Static_assert' : 'static_assert'}(${condition}, "${what}");\n`;
   let text =

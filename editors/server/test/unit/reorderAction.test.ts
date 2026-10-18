@@ -115,6 +115,30 @@ describe('reorderAction', () => {
     expect(
       offered(lines('  char', '    type;', '  int length;', '  short checksum;'), [2, 3, 4]),
     ).toBe(false);
+    // A type or constant a member may use, or an anonymous struct, between members.
+    expect(
+      offered(
+        lines(
+          '  char type;',
+          '  struct Inner { double d; };',
+          '  int length;',
+          '  short checksum;',
+        ),
+        [1, 3, 4],
+      ),
+    ).toBe(false);
+    expect(
+      offered(
+        lines('  char type;', '  using T = int;', '  T length;', '  short checksum;'),
+        [1, 3, 4],
+      ),
+    ).toBe(false);
+    expect(
+      offered(
+        lines('  char type;', '  struct {', '    int length;', '  };', '  short checksum;'),
+        [1, 3, 5],
+      ),
+    ).toBe(false);
     // Template arguments are not declarators.
     expect(
       offered(

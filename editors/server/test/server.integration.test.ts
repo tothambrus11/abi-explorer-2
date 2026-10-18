@@ -237,6 +237,8 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     for (const [file, text] of [
       ['pinned.cpp', '#include <cstddef>\nstruct S {\n  char c;\n  double d;\n};\n'],
       ['pinned.c', '#include <stddef.h>\nunion U {\n  char c;\n  double d;\n};\n'],
+      // Defined outside its namespace: the asserts name it qualified.
+      ['outside.cpp', 'namespace ns { struct S; }\nstruct ns::S {\n  char c;\n  double d;\n};\n'],
     ] as const) {
       const uri = project.uri(file);
       fs.writeFileSync(project.path(file), text);

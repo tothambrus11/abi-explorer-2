@@ -47,8 +47,8 @@ describe('pinAction', () => {
     expect(action.edit).toEqual({
       range: range(5, 0, 5, 0),
       newText:
-        '  static_assert(sizeof(Packet) == 8, "Packet\'s size");\n' +
-        '  static_assert(alignof(Packet) == 4, "Packet\'s alignment");\n',
+        '  static_assert(sizeof(net::Packet) == 8, "Packet\'s size");\n' +
+        '  static_assert(alignof(net::Packet) == 4, "Packet\'s alignment");\n',
     });
   });
 
