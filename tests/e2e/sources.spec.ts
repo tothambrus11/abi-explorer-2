@@ -333,13 +333,20 @@ test.describe('several sources', () => {
     // ...and there is still nothing behind this state. Undo used to be offered
     // here, and pressing it snapped focus back to the first source: a state
     // the visitor had never been in.
-    await expect(shared.locator('#undo')).toBeDisabled();
-    await expect(shared.locator('#redo')).toBeDisabled();
+    await shared.keyboard.press('ControlOrMeta+z');
+    await shared.waitForTimeout(500);
+    expect(await activeIndex(shared)).toBe(1);
 
     // And an edit still makes one, so the history is armed rather than dead.
-    await shared.locator('.monaco-editor:visible').first().click();
+    const editor = shared.locator('.monaco-editor:visible').first();
+    await editor.click();
     await shared.keyboard.type('//x');
-    await expect(shared.locator('#undo')).toBeEnabled({ timeout: 10_000 });
+    await expect(editor).toContainText('//x');
+    // A step is recorded on a pause, so ask until there is one to take.
+    await expect(async () => {
+      await shared.keyboard.press('ControlOrMeta+z');
+      await expect(editor).not.toContainText('//x', { timeout: 500 });
+    }).toPass({ timeout: 10_000 });
     await reader.close();
   });
 
@@ -365,7 +372,7 @@ test.describe('several sources', () => {
     expect(page.url()).not.toBe(before);
 
     // And it is one undo away, like everything else.
-    await page.click('#undo');
+    await page.keyboard.press('ControlOrMeta+z');
     await expect(page.locator('.dv-tab', { hasText: 'Source 2' })).toHaveCount(3);
     await expect(page.locator('.monaco-editor:visible')).toContainText('struct B');
   });
@@ -464,7 +471,7 @@ test.describe('several sources', () => {
     await expect(page.locator('#view-panel')).toBeVisible();
     await expect(page.locator('#view-panel tbody tr')).toHaveCount(1);
     await page.keyboard.press('Escape');
-    await page.click('#undo');
+    await page.keyboard.press('ControlOrMeta+z');
     await expect(page.locator('.dv-tab', { hasText: 'packet.c' })).toHaveCount(3);
     await expect.poll(() => activeIndex(page)).toBe(1);
   });

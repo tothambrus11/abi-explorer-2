@@ -1,23 +1,19 @@
 <script lang="ts">
-  // The app's header: name, undo/redo, theme (on a screen with room for it),
-  // and a way back to the default layout.
+  // The app's header: name, theme (on a screen with room for it), and a way
+  // back to the default layout.
   //
-  // `session` is what undo and redo act on — the history is over every
-  // source and lives in memory only. `dock` is for the sources menu and the
-  // way back to the default arrangement.
+  // Undo and redo have no buttons: they are the keyboard's (see
+  // `Session.start`), which is where a reader already looks for them.
+  // `session` is what the name resets and Share encodes; `dock` is for the
+  // sources menu and the way back to the default arrangement.
   import ThemeMenu from './ThemeMenu.svelte';
   import ViewMenu from './ViewMenu.svelte';
   import { store } from '$state/store.svelte';
   import type { Dock } from './dock';
-  import Undo from '@lucide/svelte/icons/undo';
-  import Redo from '@lucide/svelte/icons/redo';
   import type { Session } from '$state/session.svelte';
   const { session, dock }: { session: Session; dock: Dock | null } = $props();
   import { tooltip } from './tooltip';
   let copied = $state<'idle' | 'ok' | 'fail'>('idle');
-  /** What to call the platform's modifier in a tooltip. */
-  const mod =
-    typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
   async function share() {
     try {
       // Encode the current state now: the address bar lags behind (debounced).
@@ -48,30 +44,6 @@
     <img class="brand-mark" src="/icons/icon.svg" alt="" width="20" height="20" />
     <h1>ABI Explorer</h1>
   </a>
-  <!-- Beside the title rather than among the actions on the right: these undo
-       what you just did, so they belong where the eye already is. -->
-  <div class="history">
-    <button
-      id="undo"
-      class="icon-btn"
-      onclick={() => {
-        session.undo();
-      }}
-      disabled={!session.history.canUndo}
-      aria-label="Undo"
-      use:tooltip={`Undo (${mod}Z)`}><Undo size={16} /></button
-    >
-    <button
-      id="redo"
-      class="icon-btn"
-      onclick={() => {
-        session.redo();
-      }}
-      disabled={!session.history.canRedo}
-      aria-label="Redo"
-      use:tooltip={`Redo (${mod}⇧Z)`}><Redo size={16} /></button
-    >
-  </div>
   <div class="actions">
     <!-- First in the cluster, and text rather than an icon: it is the one
          thing here that is not a control of the page. -->
@@ -126,21 +98,6 @@
 </header>
 
 <style>
-  /* Beside the title, not adrift between it and the actions: the bar is
-     `space-between`, so a third child would otherwise be pushed to the middle.
-     `margin-right: auto` gives it the slack instead, keeping it left. */
-  .history {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    margin-left: 4px;
-    margin-right: auto;
-  }
-  .history button[disabled] {
-    opacity: 0.4;
-    cursor: default;
-  }
-
   .topbar {
     display: flex;
     align-items: center;

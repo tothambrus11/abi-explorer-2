@@ -1246,22 +1246,18 @@ test.describe('ABI Explorer', () => {
     await waitReady(page);
     expect(await statValues(page)).toEqual(['40', '8', '13']);
 
-    // Nothing has been done yet, so there is nothing to undo.
-    await expect(page.locator('#undo')).toBeDisabled();
-    await expect(page.locator('#redo')).toBeDisabled();
-
     // An option change is a step: this is the half an editor's own undo stack
     // knows nothing about.
     await setTarget(page, 'avr-unknown-unknown');
     await expect.poll(() => statValues(page)).toEqual(['21', '1', '0']);
-    await expect(page.locator('#undo')).toBeEnabled();
 
-    await page.locator('#undo').click();
+    // There are no buttons for it: the keyboard is where undo lives.
+    await page.keyboard.press('ControlOrMeta+z');
     await expect.poll(() => statValues(page)).toEqual(['40', '8', '13']);
-    await page.locator('#redo').click();
+    await page.keyboard.press('ControlOrMeta+Shift+z');
     await expect.poll(() => statValues(page)).toEqual(['21', '1', '0']);
 
-    // And the keyboard, which has to beat the editor to the keystroke.
+    // Including inside the editor, where it has to beat Monaco's own stack.
     await page.locator('.monaco-editor').click();
     await page.keyboard.press('ControlOrMeta+z');
     await expect.poll(() => statValues(page)).toEqual(['40', '8', '13']);
@@ -1285,7 +1281,7 @@ test.describe('ABI Explorer', () => {
 
     // And their own text is one step away, since the language and the buffer
     // changed together.
-    await page.locator('#undo').click();
+    await page.keyboard.press('ControlOrMeta+z');
     await expect(editor).toContainText('struct Example');
   });
 
@@ -1297,19 +1293,23 @@ test.describe('ABI Explorer', () => {
     await expect.poll(() => statValues(page), { timeout: 30_000 }).toEqual(['1', '1', '0']);
 
     // One step, not one per character.
-    await page.locator('#undo').click();
+    await page.keyboard.press('ControlOrMeta+z');
     await expect.poll(() => statValues(page), { timeout: 30_000 }).toEqual(['40', '8', '13']);
   });
 
   test('the history does not survive a reload', async ({ page }) => {
     await waitReady(page);
     await setTarget(page, 'avr-unknown-unknown');
-    await expect(page.locator('#undo')).toBeEnabled();
+    await expect.poll(() => statValues(page)).toEqual(['21', '1', '0']);
+    await page.waitForTimeout(900); // hash sync is debounced
     await page.reload();
     await expect(page.locator('#results')).toBeVisible({ timeout: 240_000 });
+    await expect.poll(() => statValues(page)).toEqual(['21', '1', '0']);
     // The URL carries the state but not how it was arrived at, and undoing
     // across a reload would put back something the visitor never did here.
-    await expect(page.locator('#undo')).toBeDisabled();
+    await page.keyboard.press('ControlOrMeta+z');
+    await page.waitForTimeout(500);
+    expect(await statValues(page)).toEqual(['21', '1', '0']);
   });
 
   test('share URL round-trips source and options', async ({ page, context }) => {
