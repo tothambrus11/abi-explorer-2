@@ -23,7 +23,8 @@ require('abi-explorer').setup({
   editors (`termguicolors`); override the `AbiExplorerMember1`…`8`, `AbiExplorerMemberFaded1`…`8`,
   `AbiExplorerPadding` and `AbiExplorerSelected` highlight groups to change them.
 - `:AbiTarget armv7-unknown-linux-gnueabihf` lays structs out for another target, with the
-  engine's bundled headers; `:AbiTarget` alone goes back to the project's own.
+  engine's bundled headers; `:AbiTarget` alone goes back to the project's own. Tab completes
+  common targets.
 
 Compile flags come from `compile_commands.json` or `compile_flags.txt`, found the way clangd finds
 them. `vim.lsp.inlay_hint.enable` is per buffer, not per server, so turning hints on also shows

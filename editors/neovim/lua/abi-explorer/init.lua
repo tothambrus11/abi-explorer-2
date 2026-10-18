@@ -13,6 +13,22 @@ local NAMESPACE = vim.api.nvim_create_namespace('abi_explorer')
 -- split matches the hovers and panels of the other editors (a test checks).
 local PALETTE = { '#4e79a7', '#f28e2b', '#59a14f', '#b07aa1', '#e15759', '#76b7b2', '#edc948', '#9c755f' }
 local PADDING_COLOR = '#8a8a8a'
+
+-- `:AbiTarget`'s completions: the targets VS Code's Choose Target offers.
+local TARGETS = {
+  'x86_64-linux-gnu',
+  'x86_64-pc-windows-msvc',
+  'i686-linux-gnu',
+  'aarch64-linux-gnu',
+  'arm64-apple-macosx',
+  'armv7-unknown-linux-gnueabihf',
+  'thumbv7em-none-eabi',
+  'riscv32-unknown-elf',
+  'riscv64-linux-gnu',
+  'wasm32-wasi',
+  'avr-none',
+  'powerpc-linux-gnu',
+}
 local LETTERS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
 local PADDING_DOT = '·'
 local MARKER = '▶'
@@ -270,7 +286,15 @@ function M.setup(opts)
   vim.api.nvim_create_user_command('AbiLayout', M.toggle, { desc = 'Toggle the struct layout split' })
   vim.api.nvim_create_user_command('AbiTarget', function(command)
     M.set_target(command.args)
-  end, { nargs = '?', desc = "Lay structs out for a target triple, or the project's own with none" })
+  end, {
+    nargs = '?',
+    complete = function(lead)
+      return vim.tbl_filter(function(triple)
+        return vim.startswith(triple, lead)
+      end, TARGETS)
+    end,
+    desc = "Lay structs out for a target triple, or the project's own with none",
+  })
 end
 
 return M

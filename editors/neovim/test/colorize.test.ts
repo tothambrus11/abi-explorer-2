@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { memberColor, PADDING_COLOR } from '@abi-explorer/shared/layoutModel';
+import { TARGETS } from '@abi-explorer/shared/targets';
 import { findOnPath } from './findOnPath.ts';
 
 const plugin = path.join(import.meta.dirname, '..');
@@ -17,6 +18,13 @@ describe('Neovim colours', () => {
     const palette = /local PALETTE = \{([^}]*)\}/.exec(source)![1]!.match(/#\w{6}/g);
     expect(palette).toEqual(Array.from({ length: 8 }, (_, index) => memberColor(index)));
     expect(source).toContain(`local PADDING_COLOR = '${PADDING_COLOR}'`);
+  });
+
+  it(':AbiTarget completes the targets VS Code offers', () => {
+    const targets = /local TARGETS = \{([^}]*)\}/.exec(source)![1]!.match(/'[^']+'/g);
+    expect(targets?.map((quoted) => quoted.slice(1, -1))).toEqual(
+      TARGETS.map((target) => target.triple),
+    );
   });
 
   it.skipIf(!nvim)('colours map cells and table swatches, fading other members', () => {
