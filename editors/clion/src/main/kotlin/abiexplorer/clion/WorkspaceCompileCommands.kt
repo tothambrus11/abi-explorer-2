@@ -13,10 +13,10 @@ import com.intellij.platform.lsp.api.LspServerManager
 import com.intellij.platform.lsp.api.LspServerManagerListener
 import com.intellij.platform.lsp.api.LspServerState
 import com.intellij.util.concurrency.AppExecutorUtil
+import com.jetbrains.cidr.lang.toolchains.CidrCompilerSwitches
 import com.jetbrains.cidr.lang.workspace.OCResolveConfigurations
 import com.jetbrains.cidr.lang.workspace.OCWorkspace
 import com.jetbrains.cidr.lang.workspace.OCWorkspaceListener
-import com.jetbrains.cidr.lang.workspace.compiler.CidrCompilerSwitches
 
 /** Ends with the project, or when the plugin is unloaded: the parent for the plugin's listeners. */
 @Service(Service.Level.PROJECT)

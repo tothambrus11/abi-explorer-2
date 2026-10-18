@@ -136,18 +136,14 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+          # The IntelliJ Platform download (about 1.5 GB) is most of this job.
+          cache: gradle
       - run: npm ci && npm run build
         working-directory: editors
       - run: ./gradlew -p core test
         working-directory: editors/clion
       - run: ./gradlew buildPlugin
         working-directory: editors/clion
-      # TEMPORARY: where this CLion keeps the classes the plugin imports.
-      - if: failure()
-        run: |
-          find ~/.gradle/caches -name '*.jar' -path '*clion*' 2>/dev/null | while read -r jar; do
-            unzip -l "$jar" 2>/dev/null | grep -E 'CidrCompilerSwitches|/OCCompilerSettings\.class' | sed "s|^|$(basename "$jar"): |"
-          done
       - run: rustup target add wasm32-wasip2 && cargo build --release --target wasm32-wasip2
         working-directory: editors/zed
       - uses: actions/upload-artifact@v7
