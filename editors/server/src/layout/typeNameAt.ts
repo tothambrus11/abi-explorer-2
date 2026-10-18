@@ -27,6 +27,17 @@ export function typeNameAt(text: string, line: number, character: number): TypeN
     start = qualifier;
   }
 
+  // `int stat(const char *, struct stat *)`: a function declared with a record's
+  // name. A type name follows a type only after its tag.
+  const before = /(\w+)\s*$/.exec(text.slice(0, start))?.[1];
+  const declaresFunction =
+    /^\s*\(/.test(text.slice(end)) &&
+    before !== undefined &&
+    !/^(struct|class|union|enum|new|return|throw|typename|sizeof|alignof|const|volatile)$/.test(
+      before,
+    );
+  if (declaresFunction) return null;
+
   let argumentsEnd = end;
   while (argumentsEnd < text.length && text[argumentsEnd] === ' ') argumentsEnd++;
   if (text[argumentsEnd] === '<') {

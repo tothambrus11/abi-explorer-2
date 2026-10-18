@@ -25,4 +25,14 @@ describe('typeNameAt', () => {
     expect(spellingAt('a + b;', 2)).toBeNull();
     expect(spellingAt('x = 42;', 5)).toBeNull();
   });
+
+  it('reads no type off a function named like a record', () => {
+    // `struct stat` and the function `stat`.
+    expect(spellingAt('int stat(const char *path, struct stat *buf);', 5)).toBeNull();
+    expect(spellingAt('int stat(const char *path, struct stat *buf);', 36)).toBe('stat');
+    // Constructing one is still the record.
+    expect(spellingAt('auto p = Packet(1);', 10)).toBe('Packet');
+    expect(spellingAt('return Packet{1};', 9)).toBe('Packet');
+    expect(spellingAt('throw Error(1);', 7)).toBe('Error');
+  });
 });
