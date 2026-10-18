@@ -117,6 +117,8 @@ test('hovers, inlay hints and the layout view', async ({ page }) => {
   await expect(page.locator('.view-lines')).toContainText('24 B · align 4 · 5 B padding', {
     timeout: 60_000,
   });
+  await expect(page.locator('.statusbar')).toContainText('armv7-unknown-linux-gnueabihf');
+  await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-other-target.png') });
 });
 
 async function openFile(page: Page, name: string): Promise<void> {

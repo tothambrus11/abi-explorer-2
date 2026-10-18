@@ -13,7 +13,7 @@ import { layoutsChangedNotification } from '@abi-explorer/shared/protocol';
 import { followCMakeTools } from './cmakeTools.ts';
 import { LayoutPanel, LAYOUT_VIEW_ID } from './layoutPanel.ts';
 import { affectsServer, initializationOptions } from './settings.ts';
-import { chooseTarget } from './chooseTarget.ts';
+import { chooseTarget, targetStatus } from './chooseTarget.ts';
 
 /** The running client and what was set up for it; replaced as a whole on restart. */
 let session: { client: LanguageClient; disposables: vscode.Disposable[] } | undefined;
@@ -58,6 +58,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     ),
     vscode.commands.registerCommand('abiExplorer.restartServer', restart),
     vscode.commands.registerCommand('abiExplorer.chooseTarget', chooseTarget),
+    targetStatus(),
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (affectsServer(event)) void restart();
     }),

@@ -55,3 +55,28 @@ export async function chooseTarget(): Promise<void> {
     : vscode.ConfigurationTarget.Global;
   await settings.update('target', chosen || undefined, scope);
 }
+
+/** A status bar item while a target is set, so layouts are never mistaken for the project's own. */
+export function targetStatus(): vscode.Disposable {
+  const item = vscode.window.createStatusBarItem(
+    'abiExplorer.target',
+    vscode.StatusBarAlignment.Right,
+  );
+  item.name = 'ABI Explorer Target';
+  item.command = 'abiExplorer.chooseTarget';
+  const update = () => {
+    const target = vscode.workspace
+      .getConfiguration('abiExplorer')
+      .get<string>('target', '')
+      .trim();
+    item.text = `$(chip) ${target}`;
+    item.tooltip = `ABI Explorer lays structs out for ${target}, not the project's own target. Click to change.`;
+    if (target) item.show();
+    else item.hide();
+  };
+  update();
+  const listener = vscode.workspace.onDidChangeConfiguration((event) => {
+    if (event.affectsConfiguration('abiExplorer.target')) update();
+  });
+  return vscode.Disposable.from(item, listener);
+}
