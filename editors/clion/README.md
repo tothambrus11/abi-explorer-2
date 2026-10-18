@@ -9,8 +9,8 @@ CLion 2025.3 or newer. Struct layouts from the project's own compiler and flags:
   instead of the project's own (`armv7-unknown-linux-gnueabihf`, say).
 - **Pin layout with static_assert** and **Reorder members by alignment** (`Alt+Enter` on a
   struct; the reorder where its member order wastes space).
-- **Struct Layout** tool window, following the caret: click a member to jump to it, or copy the
-  layout as text.
+- **Struct Layout** tool window, following the caret: click a member to jump to it, copy the
+  layout as text, or reorder the members where that saves space.
 
 Each file's compiler and switches come from CLion's project model (CMake, Makefile, compilation
 database and the rest), so no `compile_commands.json` is needed. The language server runs on the

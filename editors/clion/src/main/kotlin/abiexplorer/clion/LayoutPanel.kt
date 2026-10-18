@@ -35,6 +35,13 @@ import com.intellij.util.Alarm
 import com.intellij.util.ui.NamedColorUtil
 import com.intellij.util.ui.UIUtil
 import java.awt.datatransfer.StringSelection
+import com.intellij.openapi.command.WriteCommandAction
+import org.eclipse.lsp4j.CodeActionContext
+import org.eclipse.lsp4j.CodeActionKind
+import org.eclipse.lsp4j.CodeActionParams
+import org.eclipse.lsp4j.Position
+import org.eclipse.lsp4j.Range
+import org.eclipse.lsp4j.TextDocumentIdentifier
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -148,7 +155,11 @@ class LayoutPanel(private val project: Project) : Disposable {
         lastResult = result
         if (!pageReady) return
         // The HostMessage of editors/panel/src/messages.ts.
-        browser.cefBrowser.executeJavaScript("window.postMessage({ type: 'layout', result: $result }, '*');", browser.cefBrowser.url, 0)
+        browser.cefBrowser.executeJavaScript(
+            "window.postMessage({ type: 'layout', result: $result, canReorder: true }, '*');",
+            browser.cefBrowser.url,
+            0,
+        )
     }
 
     /** A PanelMessage from the page (editors/panel/src/messages.ts). */
@@ -164,6 +175,45 @@ class LayoutPanel(private val project: Project) : Disposable {
                 UIUtil.invokeLaterIfNeeded { reveal(start["line"].asInt, start["character"].asInt) }
             }
             "copy" -> CopyPasteManager.getInstance().setContents(StringSelection(json["text"].asString))
+            "reorder" -> {
+                val start = json.getAsJsonObject("range").getAsJsonObject("start")
+                reorder(start["line"].asInt, start["character"].asInt)
+            }
+        }
+    }
+
+    /** Applies the server's reorder code action for the record named at the position. */
+    private fun reorder(line: Int, character: Int) {
+        val editor = editor?.takeUnless { it.isDisposed } ?: return
+        val document = editor.document
+        val file = FileDocumentManager.getInstance().getFile(document) ?: return
+        val server = AbiExplorerLspSupport.server(project) ?: return
+        val uri = server.descriptor.getFileUri(file)
+        val position = Position(line, character)
+        val params = CodeActionParams(
+            TextDocumentIdentifier(uri),
+            Range(position, position),
+            CodeActionContext(emptyList(), listOf(CodeActionKind.RefactorRewrite)),
+        )
+        scope.launch {
+            val actions = server.sendRequest { it.textDocumentService.codeAction(params) } ?: return@launch
+            val action = actions.firstOrNull { it.isRight && it.right.title.startsWith("Reorder members") }?.right
+            val edits = action?.edit?.changes?.get(uri) ?: return@launch
+            UIUtil.invokeLaterIfNeeded {
+                WriteCommandAction.runWriteCommandAction(project, "Reorder Members", null, Runnable {
+                    // From the end, so each edit's offsets still hold when it is applied.
+                    for (edit in edits.sortedByDescending { it.range.start.line }) {
+                        val start = edit.range.start
+                        val end = edit.range.end
+                        if (end.line >= document.lineCount) continue
+                        document.replaceString(
+                            document.getLineStartOffset(start.line) + start.character,
+                            document.getLineStartOffset(end.line) + end.character,
+                            edit.newText,
+                        )
+                    }
+                })
+            }
         }
     }
 
