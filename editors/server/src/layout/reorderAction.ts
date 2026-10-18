@@ -76,9 +76,8 @@ export function reorderAction(record: RecordView, lines: readonly string[]): Reo
           },
         ];
   });
-  const saved = formatSizeShort(record.sizeBits - tighter.sizeBits);
   return {
-    title: `Reorder ${record.name}'s members by alignment (${formatSizeShort(tighter.sizeBits)}, ${saved} less)`,
+    title: `Reorder members by alignment (${formatSizeShort(record.sizeBits)} → ${formatSizeShort(tighter.sizeBits)})`,
     edits,
   };
 }

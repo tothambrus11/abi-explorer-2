@@ -50,7 +50,7 @@ describe('reorderAction', () => {
       '};',
     ];
     const action = reorderAction(packet([1, 3, 5]), lines)!;
-    expect(action.title).toBe("Reorder Packet's members by alignment (8 B, 4 B less)");
+    expect(action.title).toBe('Reorder members by alignment (12 B → 8 B)');
     expect(apply(lines, action)).toEqual([
       'struct Packet {',
       '  int length;',

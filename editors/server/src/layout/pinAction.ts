@@ -63,7 +63,7 @@ export function pinAction(
       ? { line: after, character: 0 }
       : { line: extent.end.line, character: close.length };
   return {
-    title: `Pin ${name}'s layout with static_assert (${formatSizeShort(record.sizeBits)}, align ${record.alignBits / 8})`,
+    title: `Pin layout with static_assert (${formatSizeShort(record.sizeBits)}, align ${record.alignBits / 8})`,
     edit: {
       range: { start: at, end: at },
       newText: after < lines.length ? text : `\n${text.replace(/\n$/, '')}`,

@@ -102,12 +102,10 @@ test('hovers, inlay hints and the layout view', async ({ page }) => {
   await page.mouse.move(0, 0);
   await goToLine(page, 9, 10);
   await page.keyboard.press('Control+.');
-  await expect(
-    page.getByText("Reorder Packet's members by alignment (32 B, 8 B less)"),
-  ).toBeVisible({ timeout: 15_000 });
-  await expect(
-    page.getByText("Pin Packet's layout with static_assert (40 B, align 8)"),
-  ).toBeVisible();
+  await expect(page.getByText('Reorder members by alignment (40 B → 32 B)')).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.getByText('Pin layout with static_assert (40 B, align 8)')).toBeVisible();
   await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-code-actions.png') });
   await page.keyboard.press('Escape');
 

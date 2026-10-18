@@ -171,7 +171,7 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     fs.writeFileSync(project.path('packet.cpp'), text);
     await session.open(uri);
     const [action] = await session.codeActions(uri, { line: 2, character: 4 });
-    expect(action?.title).toBe("Reorder Packet's members by alignment (8 B, 4 B less)");
+    expect(action?.title).toBe('Reorder members by alignment (12 B → 8 B)');
     const edits = action!.edit!.changes![uri]!;
     const lines = text.split('\n');
     for (const edit of edits) lines[edit.range.start.line] = edit.newText;
@@ -179,7 +179,7 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     expect((await session.layout(uri)).records[0]!.sizeBits / 8).toBe(8);
     const after = await session.codeActions(uri, { line: 2, character: 4 });
     expect(after.map((action) => action.title)).toEqual([
-      "Pin Packet's layout with static_assert (8 B, align 4)",
+      'Pin layout with static_assert (8 B, align 4)',
     ]);
   });
 

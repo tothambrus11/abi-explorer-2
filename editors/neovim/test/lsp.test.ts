@@ -109,8 +109,8 @@ describe.skipIf(!nvim || !hasLocalEngine || !hasCompiler)('Neovim with the serve
 
   it('offers both code actions', () => {
     expect(session.actions).toEqual([
-      "Reorder Packet's members by alignment (32 B, 8 B less)",
-      "Pin Packet's layout with static_assert (40 B, align 8)",
+      'Reorder members by alignment (40 B → 32 B)',
+      'Pin layout with static_assert (40 B, align 8)',
     ]);
   });
 
