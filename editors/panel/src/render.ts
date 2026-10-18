@@ -17,15 +17,12 @@ import {
   memberColor,
   memberLetter,
   recordSummary,
-  reorderNote,
 } from '@abi-explorer/shared/layoutModel';
 
 export interface PanelActions {
   reveal(range: Range): void;
   /** Puts text on the clipboard; the host does it, a webview may not. */
   copy(text: string): void;
-  /** Reorders the members of the record named at `range`; absent where the host cannot. */
-  reorder?: (range: Range) => void;
 }
 
 export interface PanelState {
@@ -105,8 +102,6 @@ function recordDetails(
   const details = element('div', 'record-details');
   const bases = baseList(record);
   if (bases) details.append(element('p', 'summary', `Bases: ${bases}`));
-  const reorder = reorderNote(record);
-  if (reorder) details.append(element('p', 'summary', reorder));
   const map = byteMap(record, actions);
   if (map) details.append(map);
   details.append(memberTable(record, actions));
@@ -122,17 +117,6 @@ function recordDetails(
       actions.copy(text);
     });
     details.append(copy);
-  }
-  if (reorder && record.reorderable && actions.reorder && record.nameRange) {
-    const { nameRange } = record;
-    const { reorder: reorderMembers } = actions;
-    const button = element('button', 'reorder', 'Reorder members');
-    button.type = 'button';
-    button.title = 'Move the member declarations into the order the note names';
-    button.addEventListener('click', () => {
-      reorderMembers(nameRange);
-    });
-    details.append(button);
   }
   const highlight = (index: number | null) => {
     for (const row of details.querySelectorAll<HTMLElement>('tr[data-member]')) {

@@ -33,11 +33,6 @@ window.addEventListener('message', (event: MessageEvent<HostMessage>) => {
       copy: (text) => {
         post({ type: 'copy', text });
       },
-      ...(event.data.canReorder && {
-        reorder: (range) => {
-          post({ type: 'reorder', range });
-        },
-      }),
     });
   }
 });

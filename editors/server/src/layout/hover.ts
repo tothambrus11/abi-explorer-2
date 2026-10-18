@@ -7,7 +7,6 @@ import {
   byteOwners,
   contextNotes,
   recordSummary,
-  reorderNote,
 } from '@abi-explorer/shared/layoutModel';
 import { formatOffset, formatSizeShort } from '@abi-explorer/shared/format';
 import { svgDataUri, svgMap } from './svgMap.ts';
@@ -26,8 +25,6 @@ export function recordHover(
   const sections = [`**${record.kind} ${escape(record.name)}** · ${recordSummary(record)}`];
   const bases = baseList(record);
   if (bases) sections.push(`Bases: ${escape(bases)}`);
-  const reorder = reorderNote(record);
-  if (reorder) sections.push(escape(reorder));
   // Clients without images often render tables as raw pipes; columns read anywhere.
   // A record too large to map has no image, and its members still need a table.
   const svg = options.images ? svgMap(record, { table: true }) : null;

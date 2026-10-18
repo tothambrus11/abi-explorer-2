@@ -14,8 +14,10 @@ require('abi-explorer').setup()
 
 - `K` on a struct or member name shows its byte map and member table, and so does `K` on any use
   of a struct, library types included (`std::string`).
+- A struct whose member order wastes space gets a warning (`vim.diagnostic`) saying how small
+  another order would make it.
 - `vim.lsp.buf.code_action()` (`gra`) on a struct offers to pin its layout with `static_assert`,
-  and, where its member order wastes space, to reorder its members by alignment.
+  and, on one with that warning, to reorder its members by alignment.
 - `:AbiLayout` toggles a split with the layout of the struct at the cursor; the member at the
   cursor is marked `▶` and its bytes and letter are filled, while the others show in colour. Colours match the other
   editors (`termguicolors`); override the `AbiExplorerMember1`…`8`, `AbiExplorerMemberFaded1`…`8`,

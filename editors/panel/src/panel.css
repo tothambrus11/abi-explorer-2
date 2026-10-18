@@ -213,8 +213,7 @@ body {
   opacity: 0.55;
 }
 
-.copy,
-.reorder {
+.copy {
   margin-top: 8px;
   padding: 2px 8px;
   border: 1px solid var(--ae-border);
@@ -225,12 +224,7 @@ body {
   cursor: pointer;
 }
 
-.copy + .reorder {
-  margin-left: 6px;
-}
-
-.copy:hover,
-.reorder:hover {
+.copy:hover {
   color: var(--ae-foreground);
   background: var(--ae-hover);
 }

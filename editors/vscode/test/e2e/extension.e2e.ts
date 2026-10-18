@@ -72,7 +72,6 @@ test('hovers, code actions and the layout view', async ({ page }) => {
   const hover = page.locator('.monaco-hover:visible');
   await expect(hover).toContainText('struct Packet', { timeout: 15_000 });
   await expect(hover).toContainText('9 B padding');
-  await expect(hover).toContainText('the members would fit in 32 B, 8 B less');
   await expect(hover.locator('img')).toBeVisible();
   await page.waitForTimeout(500);
   await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-record-hover.png') });
@@ -91,8 +90,9 @@ test('hovers, code actions and the layout view', async ({ page }) => {
   await expect(hover).toContainText('class std::vector<int', { timeout: 15_000 });
   await expect(hover).toContainText('24 B · align 8');
 
-  // The refactorings on Packet.
+  // Packet's wasted space is a warning on its name, and reordering is its quick fix.
   await page.mouse.move(0, 0);
+  await expect(page.locator('.squiggly-warning').first()).toBeVisible({ timeout: 30_000 });
   await goToLine(page, 9, 10);
   await page.keyboard.press('Control+.');
   await expect(page.getByText('Reorder members by alignment (40 B → 32 B)')).toBeVisible({
@@ -100,16 +100,14 @@ test('hovers, code actions and the layout view', async ({ page }) => {
   });
   await expect(page.getByText('Pin layout with static_assert')).toBeVisible();
   await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-code-actions.png') });
-  await page.keyboard.press('Escape');
-
-  // The view's button reorders Packet's members in the file.
-  await view.getByRole('button', { name: 'Reorder members' }).click();
+  await page.getByText('Reorder members by alignment (40 B → 32 B)').click();
   const packetSize = view
     .locator('.record')
     .filter({ has: view.locator('.record-name', { hasText: /^Packet$/ }) })
     .locator('.record-size');
   await expect(packetSize).toHaveText('32 B · align 8 · 1 B padding', { timeout: 30_000 });
   await expect(page.locator('.view-lines')).not.toContainText('B · align');
+  await expect(page.locator('.squiggly-warning')).toHaveCount(0);
 
   // Another target, chosen from the list: Packet as 32-bit Arm lays it out.
   await page.keyboard.press('Control+Shift+P');

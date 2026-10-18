@@ -155,16 +155,20 @@ export function tighterOrder(record: RecordView): { order: number[]; sizeBits: n
   return { order: order.map(({ index }) => index), sizeBits: size };
 }
 
-/** `Ordered as b, a, c, the members would fit in 16 B, 8 B less.`, or null (see `tighterOrder`). */
-export function reorderNote(record: RecordView): string | null {
+/**
+ * The server's warning on a record whose member order wastes space:
+ * `Packet would take 32 B instead of 40 B with its members ordered as b, a, c.`,
+ * or null (see `tighterOrder`).
+ */
+export function reorderWarning(record: RecordView): string | null {
   const tighter = tighterOrder(record);
   if (!tighter) return null;
   // The order itself while it is short enough to read in one line.
   const how =
     tighter.order.length <= 6
-      ? `Ordered as ${tighter.order.map((index) => record.members[index]!.label).join(', ')}`
-      : 'Ordered by alignment';
-  return `${how}, the members would fit in ${formatSizeShort(tighter.sizeBits)}, ${formatSizeShort(record.sizeBits - tighter.sizeBits)} less.`;
+      ? `ordered as ${tighter.order.map((index) => record.members[index]!.label).join(', ')}`
+      : 'ordered by alignment';
+  return `${record.name} would take ${formatSizeShort(tighter.sizeBits)} instead of ${formatSizeShort(record.sizeBits)} with its members ${how}.`;
 }
 
 function roundUp(bits: number, alignBits: number): number {

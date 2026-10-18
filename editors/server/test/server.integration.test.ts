@@ -207,13 +207,25 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     expect(records.map((record) => record.name)).toEqual(['Box<int>']);
   });
 
-  it('offers to reorder a record whose order wastes space', async () => {
+  it('warns about a record whose order wastes space, with the reorder as its fix', async () => {
     const uri = project.uri('packet.cpp');
     const text = 'struct Packet {\n  char type;\n  int length;\n  short checksum;\n};\n';
     fs.writeFileSync(project.path('packet.cpp'), text);
     await session.open(uri);
+    const [warning] = session.diagnostics(uri);
+    expect(warning).toMatchObject({
+      severity: 2,
+      source: 'abi-explorer',
+      code: 'reorder',
+      range: { start: { line: 0, character: 7 }, end: { line: 0, character: 13 } },
+      message:
+        'Packet would take 8 B instead of 12 B with its members ordered as length, checksum, type.',
+    });
     const [action] = await session.codeActions(uri, { line: 2, character: 4 });
     expect(action?.title).toBe('Reorder members by alignment (12 B → 8 B)');
+    expect(action?.kind).toBe('quickfix');
+    expect(action?.isPreferred).toBe(true);
+    expect(action?.diagnostics).toEqual([warning]);
     const edits = action!.edit!.changes![uri]!;
     const lines = text.split('\n');
     for (const edit of edits) lines[edit.range.start.line] = edit.newText;
@@ -221,6 +233,7 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     expect((await session.layout(uri)).records[0]!.sizeBits / 8).toBe(8);
     const after = await session.codeActions(uri, { line: 2, character: 4 });
     expect(after.map((action) => action.title)).toEqual(['Pin layout with static_assert']);
+    expect(session.diagnostics(uri)).toEqual([]);
   });
 
   it('pins a layout with assertions that hold, in C and C++', async () => {

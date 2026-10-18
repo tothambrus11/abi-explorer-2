@@ -117,8 +117,6 @@ export interface RecordView {
   bases: BaseView[];
   /** The byte map and member table in monospace text, when `includeText` was asked for. */
   text?: string;
-  /** Set when the reorder code action is offered for this record. */
-  reorderable?: boolean;
 }
 
 /**

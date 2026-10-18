@@ -126,33 +126,6 @@ describe('renderPanel', () => {
     );
   });
 
-  it('offers to reorder a record the server can reorder, where the host can', () => {
-    const loose = {
-      ...record(
-        3,
-        'Loose',
-        [member('a', 0, 1, 31), member('b', 4, 4, 32), member('c', 8, 1, 33)],
-        12,
-        6,
-      ),
-      reorderable: true,
-    };
-    const selected = result({ records: [loose], selection: { recordId: 3, memberIndex: null } });
-    const reorder = vi.fn();
-    renderPanel(root, selected, state, { reveal, copy, reorder });
-    root.querySelector<HTMLButtonElement>('button[title^="Move the member"]')!.click();
-    expect(reorder).toHaveBeenCalledWith(at(30));
-    // Not without the host's say, nor for a record the server cannot reorder.
-    renderPanel(root, selected, state, { reveal, copy });
-    expect(texts('button')).not.toContain('Reorder members');
-    const fixed = result({
-      records: [{ ...loose, reorderable: false }],
-      selection: selected.selection,
-    });
-    renderPanel(root, fixed, state, { reveal, copy, reorder });
-    expect(texts('button')).not.toContain('Reorder members');
-  });
-
   it('offers no copy without text', () => {
     renderPanel(root, result(), state, { reveal, copy });
     expect(root.querySelector('button.copy')).toBeNull();

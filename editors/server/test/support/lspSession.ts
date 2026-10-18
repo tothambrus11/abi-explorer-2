@@ -9,7 +9,7 @@ import {
   StreamMessageWriter,
   type MessageConnection,
 } from 'vscode-jsonrpc/node';
-import type { CodeAction, Hover } from 'vscode-languageserver-protocol';
+import type { CodeAction, Diagnostic, Hover } from 'vscode-languageserver-protocol';
 import {
   layoutRequest,
   layoutsChangedNotification,
@@ -25,6 +25,7 @@ export class LspSession {
   private readonly connection: MessageConnection;
   private readonly versions = new Map<string, number>();
   private readonly analyzed = new Map<string, () => void>();
+  private readonly published = new Map<string, Diagnostic[]>();
 
   private constructor(process: ChildProcess) {
     this.process = process;
@@ -35,6 +36,12 @@ export class LspSession {
     this.connection.onNotification(layoutsChangedNotification, ({ uri }: { uri: string }) => {
       this.analyzed.get(uri)?.();
     });
+    this.connection.onNotification(
+      'textDocument/publishDiagnostics',
+      ({ uri, diagnostics }: { uri: string; diagnostics: Diagnostic[] }) => {
+        this.published.set(uri, diagnostics);
+      },
+    );
     this.connection.onRequest('window/workDoneProgress/create', () => null);
     this.connection.listen();
   }
@@ -55,6 +62,11 @@ export class LspSession {
     });
     await session.connection.sendNotification('initialized', {});
     return session;
+  }
+
+  /** The diagnostics last published for a file; the server sends them before announcing new layouts. */
+  diagnostics(uri: string): Diagnostic[] {
+    return this.published.get(uri) ?? [];
   }
 
   /** Opens a file and resolves once its first analysis is in. */
@@ -92,7 +104,8 @@ export class LspSession {
     return this.connection.sendRequest('textDocument/codeAction', {
       textDocument: { uri },
       range: { start: position, end: position },
-      context: { diagnostics: [] },
+      // As an editor sends them: the file's warnings, which the server matches to its fixes.
+      context: { diagnostics: this.diagnostics(uri) },
     });
   }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { byteOwners, reorderNote } from '@abi-explorer/shared/layoutModel';
+import { byteOwners, reorderWarning } from '@abi-explorer/shared/layoutModel';
 import { formatOffset, formatSize, formatSizeShort } from '@abi-explorer/shared/format';
 import { memberHover, recordHover } from '../../src/layout/hover.ts';
 import { svgMap } from '../../src/layout/svgMap.ts';
@@ -194,12 +194,13 @@ describe('hovers', () => {
   });
 });
 
-describe('reorderNote', () => {
+describe('reorderWarning', () => {
   it('says how much ordering the members by alignment would save', () => {
-    expect(reorderNote(packet)).toBe(
-      'Ordered as length, checksum, type, the members would fit in 8 B, 4 B less.',
+    expect(reorderWarning(packet)).toBe(
+      'Packet would take 8 B instead of 12 B with its members ordered as length, checksum, type.',
     );
-    expect(recordHover(packet, context, { images: false })).toContain('would fit in 8 B');
+    // A warning on the name, not part of the hover.
+    expect(recordHover(packet, context, { images: false })).not.toContain('8 B instead');
   });
 
   it('says nothing when the order is already the tightest', () => {
@@ -213,17 +214,17 @@ describe('reorderNote', () => {
         member('type', 6, 1, 'char'),
       ],
     };
-    expect(reorderNote(tight)).toBeNull();
+    expect(reorderWarning(tight)).toBeNull();
   });
 
   it('leaves unions, bit-fields, flexible arrays and bases alone', () => {
-    expect(reorderNote({ ...packet, kind: 'union' })).toBeNull();
+    expect(reorderWarning({ ...packet, kind: 'union' })).toBeNull();
     const bits = { ...member('flag', 0, 0, 'bool'), kind: 'bitfield' as const, sizeBits: 1 };
-    expect(reorderNote({ ...packet, members: [bits, ...packet.members.slice(1)] })).toBeNull();
+    expect(reorderWarning({ ...packet, members: [bits, ...packet.members.slice(1)] })).toBeNull();
     const flexible = { ...member('data', 12, 0, 'int[]'), alignBits: 32 };
-    expect(reorderNote({ ...packet, members: [...packet.members, flexible] })).toBeNull();
+    expect(reorderWarning({ ...packet, members: [...packet.members, flexible] })).toBeNull();
     const base = { ...member('Base', 0, 1, 'Base'), kind: 'base' as const };
-    expect(reorderNote({ ...packet, members: [base, ...packet.members.slice(1)] })).toBeNull();
+    expect(reorderWarning({ ...packet, members: [base, ...packet.members.slice(1)] })).toBeNull();
   });
 
   it('says nothing where its rules do not reproduce the layout, as with alignas on a member', () => {
@@ -235,7 +236,7 @@ describe('reorderNote', () => {
       paddingBytes: 14,
       members: [member('x', 0, 1, 'char'), member('y', 8, 1, 'char')],
     };
-    expect(reorderNote(overAligned)).toBeNull();
+    expect(reorderWarning(overAligned)).toBeNull();
   });
 
   it('aligns members no further than a packed record allows', () => {
@@ -247,7 +248,9 @@ describe('reorderNote', () => {
       paddingBytes: 2,
       members: [member('a', 0, 1, 'char'), member('b', 2, 4, 'int'), member('c', 6, 1, 'char')],
     };
-    expect(reorderNote(packed)).toBe('Ordered as b, a, c, the members would fit in 6 B, 2 B less.');
+    expect(reorderWarning(packed)).toBe(
+      'Packet would take 6 B instead of 8 B with its members ordered as b, a, c.',
+    );
   });
 });
 

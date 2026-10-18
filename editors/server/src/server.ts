@@ -25,12 +25,12 @@ import { ToolchainProber } from './compile/toolchain.ts';
 import { EngineClient } from './engine/engineClient.ts';
 import { ensureEngineFiles } from './engine/engineFiles.ts';
 import { createPathMap } from './engine/pathMap.ts';
+import { DIAGNOSTIC_SOURCE, layoutDiagnostics, REORDER_CODE } from './layout/diagnostics.ts';
 import { memberHover, recordHover } from './layout/hover.ts';
 import { typeNameAt } from './layout/typeNameAt.ts';
 import { pinAction } from './layout/pinAction.ts';
 import { reorderAction } from './layout/reorderAction.ts';
 import { textLayout } from './layout/textLayout.ts';
-import { reorderNote } from '@abi-explorer/shared/layoutModel';
 import packageJson from '../package.json' with { type: 'json' };
 import {
   compileCommandsNotification,
@@ -101,7 +101,9 @@ export function startServer(connection: Connection, options: ServerOptions): voi
       capabilities: {
         textDocumentSync: TextDocumentSyncKind.Incremental,
         hoverProvider: true,
-        codeActionProvider: { codeActionKinds: [CodeActionKind.RefactorRewrite] },
+        codeActionProvider: {
+          codeActionKinds: [CodeActionKind.QuickFix, CodeActionKind.Refactor],
+        },
       },
       serverInfo: { name: 'abi-explorer-lsp', version: packageJson.version },
     };
@@ -110,12 +112,20 @@ export function startServer(connection: Connection, options: ServerOptions): voi
   const announce = (analysis: Analysis) => {
     if (analysis.kind === 'failed') connection.console.warn(`${analysis.uri}: ${analysis.message}`);
     const uri = analysis.kind === 'analyzed' ? analysis.document.uri : analysis.uri;
+    // A failed analysis keeps the last warnings, as it keeps the last layouts.
+    if (analysis.kind === 'analyzed') {
+      const { version, records } = analysis.document;
+      void connection.sendDiagnostics({ uri, version, diagnostics: layoutDiagnostics(records) });
+    }
     void connection.sendNotification(layoutsChangedNotification, { uri });
   };
 
   documents.onDidOpen(({ document }) => void analyzer?.analyze(document));
   documents.onDidChangeContent(({ document }) => analyzer?.schedule(document));
-  documents.onDidClose(({ document }) => analyzer?.forget(document.uri));
+  documents.onDidClose(({ document }) => {
+    analyzer?.forget(document.uri);
+    void connection.sendDiagnostics({ uri: document.uri, diagnostics: [] });
+  });
 
   connection.onHover(async ({ textDocument, position }): Promise<Hover | null> => {
     const document = documents.get(textDocument.uri);
@@ -146,7 +156,7 @@ export function startServer(connection: Connection, options: ServerOptions): voi
   connection.onCodeAction(({ textDocument, range, context }): CodeAction[] => {
     const offered = (kind: string) =>
       !context.only || context.only.some((wanted) => kind.startsWith(wanted));
-    if (!offered(CodeActionKind.RefactorRewrite) && !offered(CodeActionKind.Refactor)) return [];
+    if (!offered(CodeActionKind.QuickFix) && !offered(CodeActionKind.Refactor)) return [];
     const document = documents.get(textDocument.uri);
     const analysis = analyzer?.kept(textDocument.uri);
     // Edits by stale positions would land in the wrong place: only on the analysed text.
@@ -161,11 +171,20 @@ export function startServer(connection: Connection, options: ServerOptions): voi
     const hit = innermostRecordAt(records, range.start);
     if (!hit) return [];
     const actions: CodeAction[] = [];
-    const reorder = offered(CodeActionKind.RefactorRewrite) && reorderAction(hit.record, lines);
+    // The fix for the record's warning.
+    const reorder = offered(CodeActionKind.QuickFix) && reorderAction(hit.record, lines);
     if (reorder) {
+      const warnings = context.diagnostics.filter(
+        (diagnostic) =>
+          diagnostic.source === DIAGNOSTIC_SOURCE &&
+          diagnostic.code === REORDER_CODE &&
+          diagnostic.range.start.line === hit.record.nameRange?.start.line,
+      );
       actions.push({
         title: reorder.title,
-        kind: CodeActionKind.RefactorRewrite,
+        kind: CodeActionKind.QuickFix,
+        ...(warnings.length > 0 && { diagnostics: warnings }),
+        isPreferred: true,
         edit: { changes: { [textDocument.uri]: reorder.edits } },
       });
     }
@@ -207,8 +226,6 @@ export function startServer(connection: Connection, options: ServerOptions): voi
     const { records, context } = analysis.document;
     const hit = params.position ? innermostRecordAt(records, params.position) : null;
     const failure = analyzer.failure(document.uri, document.version);
-    // As the code action is: only where the analysed text is the current one.
-    const current = analysis.document.version === document.version;
     return {
       state: analysis.document.version === document.version || failure ? 'ready' : 'analyzing',
       message: failure
@@ -218,14 +235,8 @@ export function startServer(connection: Connection, options: ServerOptions): voi
           : null,
       records: records.map((record) => ({
         ...record,
-        ...(current && reorderAction(record, analysis.document.lines) && { reorderable: true }),
         ...(params.includeText && {
-          text: [
-            textLayout(record, record.id === hit?.record.id ? hit.memberIndex : null),
-            reorderNote(record),
-          ]
-            .filter(Boolean)
-            .join('\n\n'),
+          text: textLayout(record, record.id === hit?.record.id ? hit.memberIndex : null),
         }),
       })),
       selection: hit && { recordId: hit.record.id, memberIndex: hit.memberIndex },
