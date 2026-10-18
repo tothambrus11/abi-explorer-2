@@ -11,6 +11,7 @@ npm install -g abi-explorer-lsp
 require('abi-explorer').setup({
   inlay_hints = true,             -- `40 B · align 8 · 7 B padding` after each struct name
   lsp = { init_options = { inlayHints = 'members' } }, -- also `@4 · 4 B` after each member
+  -- lsp = { init_options = { target = 'armv7-unknown-linux-gnueabihf' } }, -- another target's layouts
 })
 ```
 

@@ -13,9 +13,9 @@ export interface EngineRequest {
   triple: string;
   flags: string[];
   /** '' turns off the engine's own `-resource-dir`/`-nostdinc` handling. */
-  resourceDir: string;
+  resourceDir?: string;
   /** '' turns off the engine's bundled libc++ and musl. */
-  sysroot: string;
+  sysroot?: string;
   includeSystemRecords: boolean;
 }
 

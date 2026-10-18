@@ -19,3 +19,4 @@ The layout engine (clang compiled to WebAssembly, about 50 MB) is downloaded onc
 | `abiExplorer.compileCommandsDir` | | Where `compile_commands.json` is, when it is not found by searching |
 | `abiExplorer.allowedCompilers` | `[]` | Globs of compilers inside the workspace that may be run |
 | `abiExplorer.fallbackFlags` | `[]` | Flags for files no compile command covers |
+| `abiExplorer.target` | | Lay structs out for another target, such as `armv7-unknown-linux-gnueabihf`, with the engine's bundled headers; **ABI Explorer: Choose Target…** picks one |

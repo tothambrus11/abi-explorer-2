@@ -53,3 +53,42 @@ export function buildEngineRequest(inputs: RequestInputs): EngineRequest {
     includeSystemRecords: true,
   };
 }
+
+/**
+ * The request for laying the document out for another target than the
+ * project's: its own flags, less those that pick or tune a target or its
+ * headers, over the engine's bundled libc++ and musl.
+ */
+export function buildCrossTargetRequest(inputs: RequestInputs): EngineRequest {
+  const flags: string[] = [];
+  const own = inputs.command.flags;
+  for (let index = 0; index < own.length; index++) {
+    const flag = own[index]!;
+    if (TARGET_OPTIONS_WITH_VALUE.has(flag)) {
+      index++;
+      continue;
+    }
+    const tunesTarget =
+      (flag.startsWith('-m') && !/^-m(no-)?ms-bitfields$/.test(flag)) ||
+      /^(--target=|--sysroot=|--gcc-toolchain=|-resource-dir=|-nostdinc|-nostdlib)/.test(flag);
+    if (!tunesTarget) flags.push(flag);
+  }
+  return {
+    source: inputs.text,
+    filename: inputs.pathMap.toGuest(inputs.file),
+    lang: inputs.language,
+    triple: inputs.toolchain.triple,
+    flags: mapPathOptions(flags, (value) => inputs.pathMap.toGuest(value)),
+    includeSystemRecords: true,
+  };
+}
+
+const TARGET_OPTIONS_WITH_VALUE = new Set([
+  '-target',
+  '--target',
+  '-isysroot',
+  '--sysroot',
+  '-resource-dir',
+  '--gcc-toolchain',
+  '-arch',
+]);

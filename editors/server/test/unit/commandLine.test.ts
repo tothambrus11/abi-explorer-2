@@ -5,6 +5,8 @@ import {
   prepareCommand,
   translateMsvcFlags,
 } from '../../src/compile/commandLine.ts';
+import { buildCrossTargetRequest } from '../../src/compile/engineRequest.ts';
+import { createPathMap } from '../../src/engine/pathMap.ts';
 
 describe('prepareCommand', () => {
   it('drops wrappers, the input and outputs, and makes paths absolute', () => {
@@ -162,5 +164,38 @@ describe('splitCommandLine', () => {
     expect(
       splitCommandLine('cl.exe /I"C:\\Program Files\\inc" /DQ=\\"q\\" C:\\src\\a.cpp', 'win32'),
     ).toEqual(['cl.exe', '/IC:\\Program Files\\inc', '/DQ="q"', 'C:\\src\\a.cpp']);
+  });
+});
+
+describe('buildCrossTargetRequest', () => {
+  it("keeps the project's flags except those that pick or tune a target or its headers", () => {
+    const request = buildCrossTargetRequest({
+      file: '/project/main.cpp',
+      text: '',
+      language: 'c++',
+      command: {
+        compiler: 'clang++',
+        driver: 'gnu',
+        flags: [
+          ...['-I/project/include', '-DNDEBUG', '-std=c++20', '-mms-bitfields'],
+          ...['--target=x86_64-linux-gnu', '-target', 'x86_64-linux-gnu', '-m64', '-march=native'],
+          ...['--sysroot=/opt/sdk', '-isysroot', '/opt/sdk', '-nostdinc++', '-fpack-struct=2'],
+        ],
+        language: 'c++',
+      },
+      toolchain: { triple: 'armv7-none-eabi', systemIncludes: [], msvcVersion: null },
+      pathMap: createPathMap('linux'),
+    });
+    expect(request.triple).toBe('armv7-none-eabi');
+    // Paths as the engine sees the host's files.
+    expect(request.flags).toEqual([
+      '-I/host/project/include',
+      '-DNDEBUG',
+      '-std=c++20',
+      '-mms-bitfields',
+      '-fpack-struct=2',
+    ]);
+    // The engine's own headers, not the host's.
+    expect(request.sysroot).toBeUndefined();
   });
 });

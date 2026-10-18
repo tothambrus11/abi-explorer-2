@@ -35,6 +35,7 @@ function analyzer(
       style: 'posix',
       fallbackFlags: [],
       probePolicy: { projectFolders: [], allowedCompilers: [] },
+      target: null,
       debounceMs: 50,
     },
     onAnalyzed: (analysis) => announced.push(analysis),

@@ -95,6 +95,7 @@ export function startServer(connection: Connection, options: ServerOptions): voi
         style,
         fallbackFlags: settings.fallbackFlags ?? [],
         probePolicy: { projectFolders, allowedCompilers: settings.allowedCompilers ?? [] },
+        target: settings.target?.trim() ? settings.target.trim() : null,
         debounceMs: 400,
       },
       onAnalyzed: (analysis) => {

@@ -36,6 +36,12 @@ export interface InitializationOptions {
   allowedCompilers?: string[];
   /** Flags for files no compile command covers. */
   fallbackFlags?: string[];
+  /**
+   * A target triple to lay files out for instead of the project's own, such as
+   * `armv7-none-eabi`, against the engine's bundled C and C++ headers. The
+   * project's -I, -D and -std flags still apply.
+   */
+  target?: string | undefined;
 }
 
 /** One entry of a compilation database, `command` already split. */

@@ -110,6 +110,15 @@ test('hovers, inlay hints and the layout view', async ({ page }) => {
   ).toBeVisible();
   await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-code-actions.png') });
   await page.keyboard.press('Escape');
+
+  // Another target, chosen from the list: Packet as 32-bit Arm lays it out.
+  await page.keyboard.press('Control+Shift+P');
+  await page.keyboard.type('ABI Explorer: Choose Target');
+  await page.keyboard.press('Enter');
+  await page.getByRole('option', { name: /armv7-unknown-linux-gnueabihf/ }).click();
+  await expect(page.locator('.view-lines')).toContainText('24 B · align 4 · 5 B padding', {
+    timeout: 60_000,
+  });
 });
 
 async function openFile(page: Page, name: string): Promise<void> {

@@ -55,6 +55,11 @@
         "category": "ABI Explorer"
       },
       {
+        "command": "abiExplorer.chooseTarget",
+        "title": "Choose Target…",
+        "category": "ABI Explorer"
+      },
+      {
         "command": "abiExplorer.restartServer",
         "title": "Restart Server",
         "category": "ABI Explorer"
@@ -98,6 +103,11 @@
           },
           "default": [],
           "description": "Flags for files no compile command covers, such as [\"-std=c++20\", \"-Iinclude\"]."
+        },
+        "abiExplorer.target": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "A target triple to lay structs out for instead of the project's own, such as `armv7-unknown-linux-gnueabihf` or `x86_64-pc-windows-msvc`, using the engine's bundled C and C++ headers. The project's `-I`, `-D` and `-std` flags still apply. Empty uses the project's own target. **ABI Explorer: Choose Target…** picks one from a list."
         }
       }
     }

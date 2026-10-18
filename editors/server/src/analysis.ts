@@ -15,7 +15,7 @@ import {
   type PreparedCommand,
 } from './compile/commandLine.ts';
 import type { CompileCommandFinder, FoundCommand } from './compile/compileCommandFinder.ts';
-import { buildEngineRequest } from './compile/engineRequest.ts';
+import { buildCrossTargetRequest, buildEngineRequest } from './compile/engineRequest.ts';
 import {
   ProbeRefusedError,
   type ProbePolicy,
@@ -54,6 +54,8 @@ export interface AnalyzerSettings {
   style: PathStyle;
   fallbackFlags: readonly string[];
   probePolicy: ProbePolicy;
+  /** Lay out for this triple, with the engine's own headers, instead of the project's target. */
+  target: string | null;
   debounceMs: number;
 }
 
@@ -177,15 +179,19 @@ export class Analyzer {
       const found = this.findCommand(file);
       const command = prepareCommand(found.command, this.dependencies.settings.style);
       const language = languageFor(file, command, found);
-      const toolchain = await this.probe(command, language, found);
-      const request = buildEngineRequest({
+      const { target } = this.dependencies.settings;
+      const toolchain = target
+        ? { triple: target, systemIncludes: [], msvcVersion: null, warning: null }
+        : await this.probe(command, language, found);
+      const inputs = {
         file,
         text,
         language,
         command,
         toolchain,
         pathMap: this.dependencies.pathMap,
-      });
+      };
+      const request = target ? buildCrossTargetRequest(inputs) : buildEngineRequest(inputs);
       // The engine takes one request at a time; one for an outdated version would only delay the next.
       if (this.superseded(uri, version)) {
         return { kind: 'failed', uri, version, message: 'superseded by a newer edit' };
@@ -213,7 +219,7 @@ export class Analyzer {
             triple: response.target?.triple ?? toolchain.triple,
             cxxAbi: response.target?.cxxAbi ?? 'unknown',
             clangVersion: response.clangVersion,
-            commandSource: describeOrigin(found),
+            commandSource: describeOrigin(found) + (target ? ' · target set in settings' : ''),
             commandInferred: found.borrowedFrom !== null,
             ...errorSummary(response.diagnostics),
             warning: toolchain.warning,

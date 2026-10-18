@@ -16,6 +16,7 @@ export function initializationOptions(cacheDirectory: string): InitializationOpt
       borrowedCompileCommandsDir(),
     allowedCompilers: settings.get<string[]>('allowedCompilers', []),
     fallbackFlags: settings.get<string[]>('fallbackFlags', []),
+    target: settings.get<string>('target', '').trim() || undefined,
   };
 }
 

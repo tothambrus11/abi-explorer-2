@@ -234,6 +234,28 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
 });
 
 /** sizeof and offsetof as g++ computes them, for the fixture's records. */
+describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp with a target set', () => {
+  it('lays the project out for that target, with the project flags that still apply', async () => {
+    const project = copyFixtureProject();
+    const session = await LspSession.start(project.uri(''), {
+      enginePath: LOCAL_ENGINE,
+      target: 'armv7-unknown-linux-gnueabihf',
+    });
+    try {
+      await session.open(project.uri('main.cpp'));
+      const { records, context } = await session.layout(project.uri('main.cpp'));
+      // A 32-bit target: 4-byte pointers, so a 12-byte std::vector and 4-byte alignment.
+      const packet = records.find((record) => record.name === 'Packet')!;
+      expect([packet.sizeBits / 8, packet.alignBits / 8]).toEqual([24, 4]);
+      expect(context).toMatchObject({ triple: 'armv7-unknown-linux-gnueabihf', errorCount: 0 });
+      expect(context?.commandSource).toContain('target set in settings');
+    } finally {
+      await session.stop();
+      project.remove();
+    }
+  });
+});
+
 function expectedLayouts(project: FixtureProject): Record<string, number> {
   const probe = path.join(project.root, 'probe.cpp');
   fs.writeFileSync(

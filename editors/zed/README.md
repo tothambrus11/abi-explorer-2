@@ -20,5 +20,9 @@ The extension installs `abi-explorer-lsp` from npm with Zed's own Node.js. To ru
 }
 ```
 
+To see layouts for another target than the project's, with the engine's bundled headers, set
+`"initialization_options": { "target": "armv7-unknown-linux-gnueabihf" }` under
+`lsp.abi-explorer-lsp` in Zed's settings.
+
 Develop with `zed: install dev extension` on this directory (needs the `wasm32-wasip2` Rust
 target).
