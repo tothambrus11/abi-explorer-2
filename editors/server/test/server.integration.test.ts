@@ -236,6 +236,32 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     expect(session.diagnostics(uri)).toEqual([]);
   });
 
+  it('keeps an order meant as it is, without the warning', async () => {
+    const uri = project.uri('wire.cpp');
+    const text =
+      'namespace net {\ntemplate <typename T>\nstruct Wire {\n  char tag;\n  T value;\n  char end;\n};\nWire<int> wire;\n}\n';
+    fs.writeFileSync(project.path('wire.cpp'), text);
+    await session.open(uri);
+    expect(session.diagnostics(uri)).toHaveLength(1);
+    const actions = await session.codeActions(uri, { line: 3, character: 4 });
+    const keep = actions.find((action) => action.title === 'Keep this member order')!;
+    expect(keep.kind).toBe('quickfix');
+    const [edit] = keep.edit!.changes![uri]!;
+    expect(edit).toEqual({
+      range: { start: { line: 1, character: 0 }, end: { line: 1, character: 0 } },
+      newText: '// abi-explorer: keep order\n',
+    });
+    const lines = text.split('\n');
+    lines.splice(1, 0, edit!.newText.trimEnd());
+    await session.change(uri, lines.join('\n'));
+    expect(session.diagnostics(uri)).toEqual([]);
+    // The reorder stays on offer, as a refactoring rather than a fix.
+    const after = await session.codeActions(uri, { line: 4, character: 4 });
+    expect(after.map((action) => [action.title, action.kind])).toEqual([
+      ['Reorder members by alignment (12 B → 8 B)', 'refactor.rewrite'],
+    ]);
+  });
+
   it('pins a layout with assertions that hold, in C and C++', async () => {
     for (const [file, text] of [
       ['pinned.cpp', '#include <cstddef>\nstruct S {\n  char c;\n  double d;\n};\n'],

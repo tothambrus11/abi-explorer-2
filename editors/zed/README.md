@@ -2,7 +2,8 @@
 
 Hovers on struct and member names, and on any use of a struct (`std::string` too), show the byte
 map and member table, with the struct's size, alignment and padding. A struct whose member order wastes space gets a warning saying how
-small another order would make it. On a struct, the code actions menu (`Ctrl+.`) offers to pin its
+small another order would make it; `// abi-explorer: keep order` above a struct, which the
+warning's other code action writes, says the order is meant. On a struct, the code actions menu (`Ctrl+.`) offers to pin its
 layout with `static_assert`, and, on one with that warning, to reorder its members by alignment. Zed has no extension panels, so there
 is no side view.
 

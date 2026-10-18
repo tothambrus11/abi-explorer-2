@@ -8,7 +8,9 @@ CLion 2025.3 or newer. Struct layouts from the project's own compiler and flags:
   instead of the project's own (`armv7-unknown-linux-gnueabihf`, say).
 - A **warning** on a struct whose member order wastes space, saying how small another order
   would make it; its fix, **Reorder members by alignment** (`Alt+Enter`), moves the member
-  lines into that order. **Pin layout with static_assert** is offered on any struct.
+  lines into that order. A struct laid out on purpose keeps its order with
+  `// abi-explorer: keep order` above it, which **Keep this member order** writes.
+  **Pin layout with static_assert** is offered on any struct.
 - **Struct Layout** tool window, following the caret: click a member to jump to it, or copy the
   layout as text.
 

@@ -117,9 +117,10 @@ describe.skipIf(!nvim || !hasLocalEngine || !hasCompiler)('Neovim with the serve
     expect(session.hintCount).toBe(0);
   });
 
-  it('offers both code actions', () => {
+  it('offers the code actions', () => {
     expect(session.actions).toEqual([
       'Reorder members by alignment (40 B → 32 B)',
+      'Keep this member order',
       'Pin layout with static_assert',
     ]);
   });

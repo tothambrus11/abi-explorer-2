@@ -25,7 +25,12 @@ import { ToolchainProber } from './compile/toolchain.ts';
 import { EngineClient } from './engine/engineClient.ts';
 import { ensureEngineFiles } from './engine/engineFiles.ts';
 import { createPathMap } from './engine/pathMap.ts';
-import { DIAGNOSTIC_SOURCE, layoutDiagnostics, REORDER_CODE } from './layout/diagnostics.ts';
+import {
+  DIAGNOSTIC_SOURCE,
+  keepOrderEdit,
+  layoutDiagnostics,
+  REORDER_CODE,
+} from './layout/diagnostics.ts';
 import { memberHover, recordHover } from './layout/hover.ts';
 import { typeNameAt } from './layout/typeNameAt.ts';
 import { pinAction } from './layout/pinAction.ts';
@@ -114,8 +119,12 @@ export function startServer(connection: Connection, options: ServerOptions): voi
     const uri = analysis.kind === 'analyzed' ? analysis.document.uri : analysis.uri;
     // A failed analysis keeps the last warnings, as it keeps the last layouts.
     if (analysis.kind === 'analyzed') {
-      const { version, records } = analysis.document;
-      void connection.sendDiagnostics({ uri, version, diagnostics: layoutDiagnostics(records) });
+      const { version, records, lines } = analysis.document;
+      void connection.sendDiagnostics({
+        uri,
+        version,
+        diagnostics: layoutDiagnostics(records, lines),
+      });
     }
     void connection.sendNotification(layoutsChangedNotification, { uri });
   };
@@ -171,21 +180,37 @@ export function startServer(connection: Connection, options: ServerOptions): voi
     const hit = innermostRecordAt(records, range.start);
     if (!hit) return [];
     const actions: CodeAction[] = [];
-    // The fix for the record's warning.
-    const reorder = offered(CodeActionKind.QuickFix) && reorderAction(hit.record, lines);
-    if (reorder) {
-      const warnings = context.diagnostics.filter(
+    // The editor's copies of the record's warning, which the fixes name.
+    const warnings = (record: RecordView) =>
+      context.diagnostics.filter(
         (diagnostic) =>
           diagnostic.source === DIAGNOSTIC_SOURCE &&
           diagnostic.code === REORDER_CODE &&
-          diagnostic.range.start.line === hit.record.nameRange?.start.line,
+          diagnostic.range.start.line === record.nameRange?.start.line,
       );
+    // Whether the record has the warning: its order wastes space and is not kept on purpose.
+    const warningAt = (record: RecordView) => layoutDiagnostics([record], lines).length > 0;
+    // The fix for the record's warning.
+    // A fix while the record has the warning; a plain refactoring once its order is kept.
+    const warned = warningAt(hit.record);
+    const reorderKind = warned ? CodeActionKind.QuickFix : CodeActionKind.RefactorRewrite;
+    const reorder = offered(reorderKind) && reorderAction(hit.record, lines);
+    if (reorder) {
       actions.push({
         title: reorder.title,
-        kind: CodeActionKind.QuickFix,
-        ...(warnings.length > 0 && { diagnostics: warnings }),
-        isPreferred: true,
+        kind: reorderKind,
+        ...(warned && { diagnostics: warnings(hit.record), isPreferred: true }),
         edit: { changes: { [textDocument.uri]: reorder.edits } },
+      });
+    }
+    // The warning's other fix: this order is meant.
+    const keep = offered(CodeActionKind.QuickFix) && warned && keepOrderEdit(hit.record, lines);
+    if (keep) {
+      actions.push({
+        title: 'Keep this member order',
+        kind: CodeActionKind.QuickFix,
+        diagnostics: warnings(hit.record),
+        edit: { changes: { [textDocument.uri]: [keep] } },
       });
     }
     const pin = offered(CodeActionKind.Refactor) && pinAction(hit.record, lines, language);
