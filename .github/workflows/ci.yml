@@ -87,7 +87,7 @@ jobs:
 
   # The editor plugins (editors/): the shared language server, the panel and
   # the VS Code extension, type-checked, formatted and tested against the real
-  # engine; the Neovim colours run in a real Neovim.
+  # engine; the Neovim plugin runs in a real Neovim against them.
   editors:
     runs-on: ubuntu-latest
     defaults:

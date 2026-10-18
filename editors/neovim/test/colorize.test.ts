@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { memberColor, PADDING_COLOR } from '@abi-explorer/shared/layoutModel';
+import { findOnPath } from './findOnPath.ts';
 
 const plugin = path.join(import.meta.dirname, '..');
 const source = fs.readFileSync(path.join(plugin, 'lua/abi-explorer/init.lua'), 'utf8');
@@ -70,11 +71,3 @@ describe('Neovim colours', () => {
     expect(at(2)).toEqual([]);
   });
 });
-
-function findOnPath(name: string): string | undefined {
-  for (const directory of (process.env.PATH ?? '').split(path.delimiter)) {
-    const candidate = path.join(directory, name);
-    if (fs.existsSync(candidate)) return candidate;
-  }
-  return undefined;
-}
