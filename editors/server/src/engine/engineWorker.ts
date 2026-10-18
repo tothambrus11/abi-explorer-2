@@ -24,7 +24,7 @@ export interface WorkerRequest {
 }
 export type WorkerReply =
   | { kind: 'ready'; clangVersion: string }
-  | { kind: 'response'; id: number; response: EngineResponse }
+  | { kind: 'response'; id: number; response: EngineResponse; memoryBytes: number }
   | { kind: 'error'; id: number | null; message: string };
 
 const port = parentPort!;
@@ -38,7 +38,9 @@ try {
   post({ kind: 'ready', clangVersion: engine.clangVersion });
   port.on('message', ({ id, request }: WorkerRequest) => {
     try {
-      post({ kind: 'response', id, response: engine.query(request) });
+      const response = engine.query(request);
+      // The wasm heap only grows; it is outside V8's heap, so it shows as external.
+      post({ kind: 'response', id, response, memoryBytes: process.memoryUsage().external });
     } catch (error) {
       post({ kind: 'error', id, message: String(error) });
       process.exit(1);

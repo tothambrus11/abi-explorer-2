@@ -3,7 +3,9 @@
 // Requests are answered in order, one at a time; the analysis layer decides
 // which ones are worth sending. A worker that dies (an engine trap, or a
 // translation unit that exhausted the wasm heap) fails the request it was on
-// and is replaced on the next one.
+// and is replaced on the next one. So is one whose memory has grown past
+// RECYCLE_BYTES, once it has answered what it was sent: the released engine
+// keeps every translation unit it parses, and a fresh one costs a second or two.
 
 import { Worker } from 'node:worker_threads';
 import type { EngineFiles } from './engineFiles.ts';
@@ -18,6 +20,9 @@ import type { EngineRequest, EngineResponse } from './engineTypes.ts';
  */
 const QUERY_TIMEOUT_MS = 120_000;
 
+/** About five translation units that include much of the standard library. */
+const RECYCLE_BYTES = 2 ** 30;
+
 interface Pending {
   resolve(response: EngineResponse): void;
   reject(error: Error): void;
@@ -29,6 +34,7 @@ export class EngineClient {
   private readonly pending = new Map<number, Pending>();
   private nextId = 1;
   private watchdog: NodeJS.Timeout | undefined;
+  private retiring = false;
   private readonly workerUrl: URL;
   private readonly files: () => Promise<EngineFiles>;
   private readonly mounts: readonly Mount[];
@@ -66,12 +72,16 @@ export class EngineClient {
     const data: EngineWorkerData = { files, mounts: [...this.mounts] };
     const worker = new Worker(this.workerUrl, { workerData: data });
     this.worker = worker;
+    this.retiring = false;
 
     await new Promise<void>((resolve, reject) => {
       worker.on('message', (reply: WorkerReply) => {
         if (reply.kind === 'ready') resolve();
-        else if (reply.kind === 'response') this.settle(reply.id)?.resolve(reply.response);
-        else if (reply.id === null) reject(new Error(reply.message));
+        else if (reply.kind === 'response') {
+          this.retiring ||= reply.memoryBytes > RECYCLE_BYTES;
+          this.settle(reply.id)?.resolve(reply.response);
+          if (this.retiring && this.pending.size === 0) this.retire();
+        } else if (reply.id === null) reject(new Error(reply.message));
         else this.settle(reply.id)?.reject(new Error(reply.message));
       });
       worker.on('error', reject);
@@ -83,6 +93,15 @@ export class EngineClient {
         reject(new Error('the engine stopped while loading'));
       });
     });
+  }
+
+  /** Lets the worker go; the next query starts a fresh one. */
+  private retire(): void {
+    const worker = this.worker;
+    this.worker = null;
+    this.ready = null;
+    this.retiring = false;
+    void worker?.terminate();
   }
 
   /** Restarts the clock for the query now being answered, or stops it when none is left. */
