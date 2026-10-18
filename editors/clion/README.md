@@ -1,0 +1,17 @@
+# ABI Explorer for CLion
+
+CLion 2025.3 or newer. Struct layouts from the project's own compiler and flags:
+
+- **Quick documentation** (hover, or `F1`/`Ctrl+Q`) on a struct or member name: its size,
+  alignment, padding, byte map and member table.
+- **Inlay hints** after each struct name: `40 B · align 8 · 9 B padding`.
+- **Struct Layout** tool window, following the caret: click a member to jump to it, or copy the
+  layout as text.
+
+Each file's compiler and switches come from CLion's project model (CMake, Makefile, compilation
+database and the rest), so no `compile_commands.json` is needed. The language server runs on the
+machine's Node.js 20 or newer, or on Node.js downloaded once when there is none.
+
+Build with `npm run build` in `editors/` (the plugin bundles `server/dist` and `panel/dist`), then
+`./gradlew buildPlugin` here; the plugin is in `build/distributions/`. `./gradlew -p core test`
+tests the IDE-free logic.
