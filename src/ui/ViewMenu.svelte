@@ -11,11 +11,21 @@
   // One icon rather than two: resetting the arrangement is a thing to do to
   // the view, and a bar of icons that each open one small thing is a bar
   // nobody reads. It is a button in here, beside what it undoes.
+  //
+  // On a phone the theme and the examples are here too: the top bar has no
+  // room for the two-part theme control it carries on a wider screen, and the
+  // tab strip none for a select beside the tabs. Both are choices about what
+  // is on screen, which is what this panel is.
   import LayoutTemplate from '@lucide/svelte/icons/layout-template';
   import X from '@lucide/svelte/icons/x';
   import Plus from '@lucide/svelte/icons/plus';
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
+  import Sun from '@lucide/svelte/icons/sun';
+  import Moon from '@lucide/svelte/icons/moon';
+  import Palette from '@lucide/svelte/icons/palette';
   import { store } from '$state/store.svelte';
+  import { theme } from '$state/theme.svelte';
+  import Examples from './Examples.svelte';
   import { LANGUAGE_NAMES } from '$core/options';
   import { MAX_BUFFERS, MAX_BUFFER_NAME } from '$core/url-state';
   import { KINDS, KIND_TITLES, type PanelKind } from './panels';
@@ -53,6 +63,13 @@
   }
   function onKey(e: KeyboardEvent) {
     if (e.key === 'Escape') open = false;
+  }
+  const light = $derived(theme.all.filter((t) => t.mode === 'light'));
+  const dark = $derived(theme.all.filter((t) => t.mode === 'dark'));
+  function openEditor() {
+    theme.editingId = theme.current.id;
+    theme.editorOpen = true;
+    open = false;
   }
   function rename(index: number, e: Event) {
     const value = (e.currentTarget as HTMLInputElement).value.replace(/\s+/g, ' ').trim();
@@ -161,6 +178,46 @@
           >A closed panel is only hidden; its source keeps its code and settings.</span
         >
       </div>
+      {#if store.narrow}
+        <div class="foot extras">
+          <Examples
+            pick={(i: number) => {
+              store.active.loadExample(i);
+              open = false;
+            }}
+          />
+          <div class="theme-row">
+            <button
+              class="icon-btn"
+              type="button"
+              aria-label="Toggle light/dark theme"
+              use:tooltip={theme.mode === 'dark' ? 'Switch to light' : 'Switch to dark'}
+              onclick={() => {
+                theme.toggleMode();
+              }}
+            >
+              {#if theme.mode === 'dark'}<Sun size={16} />{:else}<Moon size={16} />{/if}
+            </button>
+            <select
+              class="input small"
+              aria-label="Theme"
+              value={theme.current.id}
+              onchange={(e) => {
+                theme.select(e.currentTarget.value);
+              }}
+            >
+              {#each [['Light', light], ['Dark', dark]] as const as [label, list] (label)}
+                <optgroup {label}>
+                  {#each list as t (t.id)}<option value={t.id}>{t.name}</option>{/each}
+                </optgroup>
+              {/each}
+            </select>
+            <button class="btn small add" type="button" onclick={openEditor}
+              ><Palette size={13} /> Customize</button
+            >
+          </div>
+        </div>
+      {/if}
     </div>
   {/if}
 </div>
@@ -273,5 +330,22 @@
   .note {
     color: var(--text-muted);
     font-size: 11.5px;
+  }
+  /* The two things a phone has nowhere else to put: the examples, and the
+     theme. A line each; the selects take the width. */
+  .extras {
+    align-items: stretch;
+  }
+  .extras :global(.example) {
+    max-width: none;
+  }
+  .theme-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .theme-row select {
+    flex: 1;
+    min-width: 0;
   }
 </style>

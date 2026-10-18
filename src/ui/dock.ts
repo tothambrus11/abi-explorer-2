@@ -812,6 +812,9 @@ export function mountDock(container: HTMLElement, session: Session): Dock {
   // Stored and published at once: a link asked for before anything is moved
   // must carry the arrangement as it is, and the change events start below.
   save();
+  // Nothing above this line was the visitor's doing, the focus a link's
+  // arrangement decided included: the history starts here.
+  session.beginHistory();
 
   // Persist (debounced), and keep the group labels true.
   let saveTimer: ReturnType<typeof setTimeout> | null = null;

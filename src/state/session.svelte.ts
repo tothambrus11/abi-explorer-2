@@ -297,6 +297,25 @@ export class Session {
     return true;
   }
 
+  /**
+   * The visit begins here: whatever is on screen now is the oldest state.
+   *
+   * Called by the dock once it has applied an arrangement, which is the last
+   * thing that changes the state without anyone asking for it: a link's
+   * arrangement says which tab was in front, and the dock puts that source in
+   * focus as it applies it. The recorder sees a focus change as deliberate, so
+   * without this, opening a link that fronts any source but the first offered
+   * an undo back to the first before the visitor had done anything — a state
+   * they had never been in.
+   *
+   * Safe whichever way the two race: called before `start`, the recorder's
+   * first run then matches the present and records nothing; called after, it
+   * clears what the correction put there.
+   */
+  beginHistory(): void {
+    this.history.reset(this.snapshot());
+  }
+
   /** Everything a link carries: what to compile, how, and what to be looking at. */
   private shareState(): ShareState {
     const state: ShareState = {

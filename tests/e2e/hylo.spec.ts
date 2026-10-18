@@ -209,7 +209,7 @@ test.describe('Hylo', () => {
 
     // And what they wrote is one step back, since the language and the buffer
     // changed together.
-    await page.locator('#undo').click();
+    await page.keyboard.press('ControlOrMeta+z');
     await expect(page.locator('.monaco-editor')).toContainText('struct Mine');
   });
 

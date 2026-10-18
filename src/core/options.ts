@@ -117,6 +117,23 @@ export function isAllowedFlag(flag: string): boolean {
 }
 
 /**
+ * How far a source's options are from the defaults.
+ *
+ * What the "more options" mark counts, and what the chip that stands for a
+ * whole query repeats where the row has no width for the mark itself.
+ */
+export function changedOptionCount(o: CompileOptions): number {
+  return (
+    (o.pack ? 1 : 0) +
+    (o.msBitfields ? 1 : 0) +
+    (o.shortEnums ? 1 : 0) +
+    (o.shortWchar ? 1 : 0) +
+    (o.warnPadded ? 1 : 0) +
+    (o.extraFlags.trim() ? 1 : 0)
+  );
+}
+
+/**
  * Splits free-form flag text into the accepted tokens and the refused ones.
  *
  * - Total: any text splits, including the empty string (two empty lists).

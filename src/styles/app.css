@@ -81,6 +81,63 @@ a {
   outline-offset: 1px;
 }
 
+/* One field, one chip: the language, the standard, the target, and the single
+   chip that stands for all three where a row has no width for them. Defined
+   here rather than in the component that draws most of them, because a row of
+   chips that nearly match reads as a mistake. Named `field-chip` rather than
+   `chip`, which the results already spend on a record's tab and on a member's
+   colour swatch. */
+.field-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+  /* A row sets one height for every control on it; this is the fallback for a
+     chip used anywhere else. */
+  height: var(--field-h, 28px);
+  box-sizing: border-box;
+  padding: 0 5px 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-1);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12.5px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.field-chip:hover {
+  border-color: var(--accent);
+}
+.field-chip.open {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+.field-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.field-chip .t {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.field-chip.mono .t {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+.field-chip .caret {
+  color: var(--text-muted);
+  flex: none;
+}
+/* How far this source is from the defaults, on the chip that stands for the
+   whole query; the same mark the options themselves carry. */
+.field-chip .count {
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--warn-ink);
+}
+
 /* Themed tooltip (use:tooltip action and the grid/table tooltip) */
 /* What is stacked over what, in one place:
      999   dockview's own overlays, the floating theme editor among them

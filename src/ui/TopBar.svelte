@@ -1,23 +1,19 @@
 <script lang="ts">
-  // The app's header: name, undo/redo, theme, and a way back to the default
-  // layout.
+  // The app's header: name, theme (on a screen with room for it), and a way
+  // back to the default layout.
   //
-  // `session` is what undo and redo act on — the history is over every
-  // source and lives in memory only. `dock` is for the sources menu and the
-  // way back to the default arrangement.
+  // Undo and redo have no buttons: they are the keyboard's (see
+  // `Session.start`), which is where a reader already looks for them.
+  // `session` is what the name resets and Share encodes; `dock` is for the
+  // sources menu and the way back to the default arrangement.
   import ThemeMenu from './ThemeMenu.svelte';
   import ViewMenu from './ViewMenu.svelte';
   import { store } from '$state/store.svelte';
   import type { Dock } from './dock';
-  import Undo from '@lucide/svelte/icons/undo';
-  import Redo from '@lucide/svelte/icons/redo';
   import type { Session } from '$state/session.svelte';
   const { session, dock }: { session: Session; dock: Dock | null } = $props();
   import { tooltip } from './tooltip';
   let copied = $state<'idle' | 'ok' | 'fail'>('idle');
-  /** What to call the platform's modifier in a tooltip. */
-  const mod =
-    typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+';
   async function share() {
     try {
       // Encode the current state now: the address bar lags behind (debounced).
@@ -48,30 +44,6 @@
     <img class="brand-mark" src="/icons/icon.svg" alt="" width="20" height="20" />
     <h1>ABI Explorer</h1>
   </a>
-  <!-- Beside the title rather than among the actions on the right: these undo
-       what you just did, so they belong where the eye already is. -->
-  <div class="history">
-    <button
-      id="undo"
-      class="icon-btn"
-      onclick={() => {
-        session.undo();
-      }}
-      disabled={!session.history.canUndo}
-      aria-label="Undo"
-      use:tooltip={`Undo (${mod}Z)`}><Undo size={16} /></button
-    >
-    <button
-      id="redo"
-      class="icon-btn"
-      onclick={() => {
-        session.redo();
-      }}
-      disabled={!session.history.canRedo}
-      aria-label="Redo"
-      use:tooltip={`Redo (${mod}⇧Z)`}><Redo size={16} /></button
-    >
-  </div>
   <div class="actions">
     <!-- First in the cluster, and text rather than an icon: it is the one
          thing here that is not a control of the page. -->
@@ -90,7 +62,9 @@
         }}>Update available: reload</button
       >
     {/if}
-    <ThemeMenu />
+    <!-- On a phone the bar has no room for a two-part control; the theme is
+         chosen from inside the view panel instead. -->
+    {#if !store.narrow}<ThemeMenu />{/if}
     <a
       class="icon-btn"
       href="https://github.com/tothambrus11/abi-explorer-2"
@@ -124,21 +98,6 @@
 </header>
 
 <style>
-  /* Beside the title, not adrift between it and the actions: the bar is
-     `space-between`, so a third child would otherwise be pushed to the middle.
-     `margin-right: auto` gives it the slack instead, keeping it left. */
-  .history {
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    margin-left: 4px;
-    margin-right: auto;
-  }
-  .history button[disabled] {
-    opacity: 0.4;
-    cursor: default;
-  }
-
   .topbar {
     display: flex;
     align-items: center;
@@ -198,8 +157,9 @@
   /* One row, always. The brand and the actions are two flex items in a
      wrapping bar, so on a phone the actions dropped to a line of their own:
      44px of a 844px-tall screen spent on a second row that had room beside
-     the title. The wordmark goes instead. The mark next to it says the same
-     thing, and the page title says it in the tab. */
+     the title. Where the whole name does not fit beside the actions, the
+     wordmark goes and the mark stays: it says the same thing, and the page
+     title says it in the tab. The name is never cut down to a part of it. */
   @media (max-width: 760px) {
     .topbar {
       padding: 6px 10px;
@@ -210,15 +170,11 @@
       gap: 6px;
     }
     h1 {
-      font-size: 0;
-    }
-    h1::after {
-      content: 'ABI';
       font-size: 15px;
-      font-weight: 650;
+      white-space: nowrap;
     }
   }
-  @media (max-width: 420px) {
+  @media (max-width: 440px) {
     h1 {
       display: none;
     }

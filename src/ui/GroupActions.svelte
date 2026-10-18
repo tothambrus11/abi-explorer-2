@@ -7,12 +7,14 @@
   // phone was a fifth of the editor's height spent on a select that is
   // pressed once a visit. The tab bar has the room, and it is where the
   // reader is already looking when they think about what to open.
+  //
+  // Except on a phone, where the strip's room is the tabs' and a select
+  // beside them crowded out the source they name. There the examples are in
+  // the view panel instead; see `ViewMenu`.
   import type { DockviewGroupPanel } from 'dockview';
   import { store, type Source } from '$state/store.svelte';
-  import { EXAMPLES } from '$core/targets';
-  import { LANGUAGE_NAMES, type Language } from '$core/options';
   import { parsePanelId } from './panels';
-  import { tooltip } from './tooltip';
+  import Examples from './Examples.svelte';
 
   const { group }: { group: DockviewGroupPanel } = $props();
 
@@ -35,47 +37,15 @@
     const id = panel ? parsePanelId(panel.id)?.sourceId : undefined;
     return id === undefined ? null : (store.sources.find((s) => s.id === id) ?? null);
   }
-
-  /**
-   * The examples, grouped by the language they are written in.
-   *
-   * Grouped rather than filtered to the selected language: an example is an
-   * explicit act, and one written in a language you are not in is still one you
-   * might want. Filtering hid every C++ example from someone in C, which is
-   * where most visitors start. Loading one switches to its language, because
-   * that is the language it is an example of.
-   */
-  const grouped = (['c', 'c++', 'hylo'] as const satisfies readonly Language[])
-    .map((lang) => ({
-      lang,
-      label: LANGUAGE_NAMES[lang],
-      items: EXAMPLES.map((ex, i) => ({ ex, i })).filter((e) => e.ex.lang === lang),
-    }))
-    .filter((g) => g.items.length > 0);
-
-  function loadExample(e: Event) {
-    const sel = e.currentTarget as HTMLSelectElement;
-    const source = target();
-    if (sel.value !== '' && source) source.loadExample(Number(sel.value));
-    sel.value = '';
-  }
 </script>
 
-{#if visible}
+{#if visible && !store.narrow}
   <div class="actions">
-    <select
-      class="input small example"
-      aria-label="Load an example"
-      onchange={loadExample}
-      use:tooltip={'Load an example (replaces the code)'}
-    >
-      <option value="">Examples…</option>
-      {#each grouped as g (g.lang)}
-        <optgroup label={g.label}>
-          {#each g.items as e (e.ex.name)}<option value={e.i}>{e.ex.name}</option>{/each}
-        </optgroup>
-      {/each}
-    </select>
+    <Examples
+      pick={(i: number) => {
+        target()?.loadExample(i);
+      }}
+    />
   </div>
 {/if}
 
@@ -87,7 +57,9 @@
     height: 100%;
     padding: 0 6px 0 4px;
   }
-  .example {
-    max-width: 9em;
+  /* Never more of the screen than this: the strip is for the tabs, and a
+     select that grows with the longest example's name pushed them out. */
+  .actions :global(.example) {
+    max-width: min(9em, 40vw);
   }
 </style>

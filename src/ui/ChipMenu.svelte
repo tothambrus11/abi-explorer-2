@@ -149,7 +149,7 @@
 
 <button
   {id}
-  class="chip"
+  class="field-chip"
   class:mono
   class:open
   type="button"
@@ -219,49 +219,8 @@
 {/if}
 
 <style>
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    min-width: 0;
-    max-width: 100%;
-    /* The row sets one height for every control on it; this is the fallback
-       for a chip used anywhere else. */
-    height: var(--field-h, 28px);
-    box-sizing: border-box;
-    padding: 0 5px 0 9px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--surface-1);
-    color: var(--text-primary);
-    font: inherit;
-    font-size: 12.5px;
-    white-space: nowrap;
-    cursor: pointer;
-  }
-  .chip:hover {
-    border-color: var(--accent);
-  }
-  .chip.open {
-    border-color: var(--accent);
-    background: color-mix(in srgb, var(--accent) 10%, transparent);
-  }
-  .chip:focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 1px;
-  }
-  .chip .t {
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  .chip.mono .t {
-    font-family: var(--font-mono);
-    font-size: 11.5px;
-  }
-  .chip :global(.caret) {
-    color: var(--text-muted);
-    flex: none;
-  }
+  /* The chip itself is `.field-chip` in app.css: `Controls.svelte` draws one
+     beside these, and one look cannot live in two places. */
 
   /* The menu is moved to the document by `anchored`, so it is styled globally
      rather than through this component's scope. */
