@@ -146,7 +146,8 @@ body {
 .byte.dimmed,
 tr.dimmed .chip {
   color: var(--member-color);
-  background: color-mix(in srgb, var(--member-color) 15%, transparent);
+  /* FADED_OPACITY in layoutModel.ts, as the hover images fade. */
+  background: color-mix(in srgb, var(--member-color) 35%, transparent);
 }
 
 .members {
