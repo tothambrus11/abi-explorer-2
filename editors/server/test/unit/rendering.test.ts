@@ -198,7 +198,7 @@ describe('hovers', () => {
 describe('reorderNote', () => {
   it('says how much ordering the members by alignment would save', () => {
     expect(reorderNote(packet)).toBe(
-      'Ordered by alignment, the members would fit in 8 B, 4 B less.',
+      'Ordered as length, checksum, type, the members would fit in 8 B, 4 B less.',
     );
     expect(recordHover(packet, context, { images: false })).toContain('would fit in 8 B');
   });
@@ -248,9 +248,7 @@ describe('reorderNote', () => {
       paddingBytes: 2,
       members: [member('a', 0, 1, 'char'), member('b', 2, 4, 'int'), member('c', 6, 1, 'char')],
     };
-    expect(reorderNote(packed)).toBe(
-      'Ordered by alignment, the members would fit in 6 B, 2 B less.',
-    );
+    expect(reorderNote(packed)).toBe('Ordered as b, a, c, the members would fit in 6 B, 2 B less.');
   });
 });
 

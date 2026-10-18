@@ -106,7 +106,7 @@ export function recordSummary(record: RecordView): string {
 }
 
 /**
- * `Ordered by alignment, the members would fit in 16 B, 8 B less.`, or null
+ * `Ordered as b, a, c, the members would fit in 16 B, 8 B less.`, or null
  * when the order already costs nothing, or the record is not a plain list of
  * fields (bases, a vtable pointer, bit-fields and unions are laid out by rules
  * a reorder does not simply change).
@@ -146,9 +146,15 @@ export function reorderNote(record: RecordView): string | null {
     current.size === record.sizeBits &&
     current.offsets.every((offset, index) => offset === fields[index]!.offsetBits);
   if (!reproduced) return null;
-  const { size } = place([...fields].sort((a, b) => alignOf(b) - alignOf(a)));
+  const order = [...fields].sort((a, b) => alignOf(b) - alignOf(a));
+  const { size } = place(order);
   if (size >= record.sizeBits) return null;
-  return `Ordered by alignment, the members would fit in ${formatSizeShort(size)}, ${formatSizeShort(record.sizeBits - size)} less.`;
+  // The order itself while it is short enough to read in one line.
+  const how =
+    order.length <= 6
+      ? `Ordered as ${order.map((field) => field.label).join(', ')}`
+      : 'Ordered by alignment';
+  return `${how}, the members would fit in ${formatSizeShort(size)}, ${formatSizeShort(record.sizeBits - size)} less.`;
 }
 
 function roundUp(bits: number, alignBits: number): number {

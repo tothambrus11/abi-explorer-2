@@ -27,7 +27,7 @@ export function recordHover(
   const bases = baseList(record);
   if (bases) sections.push(`Bases: ${escape(bases)}`);
   const reorder = reorderNote(record);
-  if (reorder) sections.push(reorder);
+  if (reorder) sections.push(escape(reorder));
   // Clients without images often render tables as raw pipes; columns read anywhere.
   // A record too large to map has no image, and its members still need a table.
   const svg = options.images ? svgMap(record, { table: true }) : null;
