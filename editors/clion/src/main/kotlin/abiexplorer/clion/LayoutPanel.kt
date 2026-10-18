@@ -29,6 +29,7 @@ import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.jcef.JBCefApp
 import com.intellij.ui.jcef.JBCefBrowser
+import com.intellij.ui.jcef.JBCefBrowserBase
 import com.intellij.ui.jcef.JBCefJSQuery
 import com.intellij.util.Alarm
 import com.intellij.util.ui.NamedColorUtil
@@ -63,7 +64,7 @@ class LayoutToolWindowFactory : ToolWindowFactory, DumbAware {
 /** The shared layout panel (editors/panel) in JCEF, following the caret like the VS Code view. */
 class LayoutPanel(private val project: Project) : Disposable {
     private val browser = JBCefBrowser()
-    private val fromPage = JBCefJSQuery.create(browser)
+    private val fromPage = JBCefJSQuery.create(browser as JBCefBrowserBase)
     private val alarm = Alarm(Alarm.ThreadToUse.SWING_THREAD, this)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 

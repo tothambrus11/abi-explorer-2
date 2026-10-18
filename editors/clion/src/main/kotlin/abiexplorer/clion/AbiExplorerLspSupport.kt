@@ -9,10 +9,12 @@ import com.intellij.openapi.project.ProjectManager
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.platform.lsp.api.Lsp4jClient
 import com.intellij.platform.lsp.api.LspServer
+import com.intellij.platform.lsp.api.LspServerListener
 import com.intellij.platform.lsp.api.LspServerManager
 import com.intellij.platform.lsp.api.LspServerNotificationsHandler
 import com.intellij.platform.lsp.api.LspServerSupportProvider
 import com.intellij.platform.lsp.api.ProjectWideLspServerDescriptor
+import org.eclipse.lsp4j.InitializeResult
 import org.eclipse.lsp4j.services.LanguageServer
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -82,4 +84,11 @@ class AbiExplorerServerDescriptor(project: Project, private val runtime: ServerR
     override val lsp4jServerClass: Class<out LanguageServer> = AbiExplorerServer::class.java
 
     override fun createLsp4jClient(handler: LspServerNotificationsHandler): Lsp4jClient = AbiExplorerClient(handler, project)
+
+    // A (re)started server knows nothing of the project model yet.
+    override val lspServerListener: LspServerListener = object : LspServerListener {
+        override fun serverInitialized(params: InitializeResult) {
+            WorkspaceCompileCommands.push(project)
+        }
+    }
 }

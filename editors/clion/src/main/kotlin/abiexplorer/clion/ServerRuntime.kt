@@ -11,6 +11,7 @@ import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.util.io.Decompressor
 import com.intellij.util.io.HttpRequests
+import com.intellij.util.system.CpuArch
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
@@ -77,7 +78,7 @@ class ServerRuntime(private val node: Path, private val script: Path) {
                 SystemInfo.isMac -> "mac"
                 else -> "linux"
             },
-            arch = if (SystemInfo.isAarch64) "arm64" else "x64",
+            arch = if (CpuArch.isArm64()) "arm64" else "x64",
         )
 
         private fun downloadedNode(): Path = home.resolve("node").resolve(distribution().executable)
