@@ -118,7 +118,12 @@ export function reorderNote(record: RecordView): string | null {
   const fields = [...record.members].sort((a, b) => a.offsetBits - b.offsetBits);
   let end = 0;
   for (const field of fields) {
-    const whole = field.offsetBits % 8 === 0 && field.sizeBits % 8 === 0 && field.alignBits > 0;
+    // A flexible array member (size 0) has to stay last.
+    const whole =
+      field.offsetBits % 8 === 0 &&
+      field.sizeBits % 8 === 0 &&
+      field.sizeBits > 0 &&
+      field.alignBits > 0;
     // Members sharing bytes are an anonymous union's.
     if (field.kind !== 'field' || !whole || field.offsetBits < end) return null;
     end = field.offsetBits + field.sizeBits;

@@ -217,10 +217,12 @@ describe('reorderNote', () => {
     expect(reorderNote(tight)).toBeNull();
   });
 
-  it('leaves unions, bit-fields and bases alone', () => {
+  it('leaves unions, bit-fields, flexible arrays and bases alone', () => {
     expect(reorderNote({ ...packet, kind: 'union' })).toBeNull();
     const bits = { ...member('flag', 0, 0, 'bool'), kind: 'bitfield' as const, sizeBits: 1 };
     expect(reorderNote({ ...packet, members: [bits, ...packet.members.slice(1)] })).toBeNull();
+    const flexible = { ...member('data', 12, 0, 'int[]'), alignBits: 32 };
+    expect(reorderNote({ ...packet, members: [...packet.members, flexible] })).toBeNull();
     const base = { ...member('Base', 0, 1, 'Base'), kind: 'base' as const };
     expect(reorderNote({ ...packet, members: [base, ...packet.members.slice(1)] })).toBeNull();
   });
