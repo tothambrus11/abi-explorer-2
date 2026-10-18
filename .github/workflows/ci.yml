@@ -15,6 +15,9 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # `npm run lint` reaches editors/, whose types come from its own packages.
+      - run: npm ci
+        working-directory: editors
       # 47 MB from a GitHub release, pinned in the fetch tool, so key the
       # cache on that tool: change the version, get a new key, download once.
       - uses: actions/cache@v4
@@ -139,6 +142,12 @@ jobs:
         working-directory: editors/clion
       - run: ./gradlew buildPlugin
         working-directory: editors/clion
+      # TEMPORARY: where this CLion keeps the classes the plugin imports.
+      - if: failure()
+        run: |
+          find ~/.gradle/caches -name '*.jar' -path '*clion*' 2>/dev/null | while read -r jar; do
+            unzip -l "$jar" 2>/dev/null | grep -E 'CidrCompilerSwitches|/OCCompilerSettings\.class' | sed "s|^|$(basename "$jar"): |"
+          done
       - run: rustup target add wasm32-wasip2 && cargo build --release --target wasm32-wasip2
         working-directory: editors/zed
       - uses: actions/upload-artifact@v7
