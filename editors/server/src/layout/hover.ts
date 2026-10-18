@@ -25,13 +25,10 @@ export function recordHover(
   const sections = [`**${record.kind} ${escape(record.name)}** · ${recordSummary(record)}`];
   const bases = baseList(record);
   if (bases) sections.push(`Bases: ${escape(bases)}`);
-  if (options.images) {
-    const svg = svgMap(record, { table: true });
-    if (svg) sections.push(image(record, svg));
-  } else {
-    // Clients without images often render tables as raw pipes; columns read anywhere.
-    sections.push(codeBlock(textLayout(record)));
-  }
+  // Clients without images often render tables as raw pipes; columns read anywhere.
+  // A record too large to map has no image, and its members still need a table.
+  const svg = options.images ? svgMap(record, { table: true }) : null;
+  sections.push(svg ? image(record, svg) : codeBlock(textLayout(record)));
   sections.push(footnote(context));
   return sections.join('\n\n');
 }

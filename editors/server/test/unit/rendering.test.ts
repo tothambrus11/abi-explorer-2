@@ -181,6 +181,13 @@ describe('hovers', () => {
     expect(markdown).toContain('may be incomplete · line 3: expected ;');
   });
 
+  it('lists the members of a record too large to map, even for image clients', () => {
+    const huge = { ...packet, name: 'Huge', sizeBits: 4096 * 8, paddingBytes: 4086 };
+    const markdown = recordHover(huge, context, { images: true });
+    expect(markdown).not.toContain('data:image');
+    expect(markdown).toContain('```text\n a  type');
+  });
+
   it('escapes template arguments', () => {
     expect(recordHover({ ...packet, name: 'Pair<int*>' }, context, { images: false })).toContain(
       '**struct Pair\\<int\\*\\>**',
