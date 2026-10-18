@@ -69,6 +69,26 @@ describe('pinAction', () => {
     expect(action.edit.newText).toMatch(/^\n {2}static_assert\(sizeof.*\n.*alignment"\);$/);
   });
 
+  it("leaves out offsets it could not name from outside: a class's private members", () => {
+    const withPrivate = [
+      '#include <cstddef>',
+      '  struct Packet {',
+      '  private:',
+      '    char type;',
+      '  };',
+      '',
+    ];
+    const shifted = { ...packet, nameRange: range(1, 9, 1, 15), extent: range(1, 2, 4, 3) };
+    expect(pinAction(shifted, withPrivate, 'c++')!.edit.newText).not.toContain('offsetof');
+    expect(
+      pinAction({ ...shifted, kind: 'class' }, ['#include <cstddef>', ...lines.slice(1)], 'c++')!
+        .edit.newText,
+    ).not.toContain('offsetof');
+    expect(
+      pinAction(shifted, ['#include <cstddef>', ...lines.slice(1)], 'c++')!.edit.newText,
+    ).toContain('offsetof');
+  });
+
   it('is not offered for an instantiation or a definition that declares a variable', () => {
     expect(pinAction({ ...packet, name: 'Pair<int>' }, lines, 'c++')).toBeNull();
     const withVariable = [...lines.slice(0, 4), '  } packet;', '}'];

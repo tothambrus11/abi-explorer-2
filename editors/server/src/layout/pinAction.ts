@@ -43,7 +43,10 @@ export function pinAction(
 
   const hasOffsetof = lines.some((line) => /^\s*#\s*include\s*<(cstddef|stddef\.h)>/.test(line));
   const plain = record.members.every((member) => member.kind === 'field');
-  if (hasOffsetof && plain && record.kind !== 'union') {
+  // Outside the class, offsetof can name only public members.
+  const body = lines.slice(extent.start.line, extent.end.line + 1).join('\n');
+  const open = record.kind === 'struct' && !/\b(private|protected)\s*:/.test(body);
+  if (hasOffsetof && plain && open) {
     for (const member of record.members) {
       if (!/^\w+$/.test(member.label) || member.offsetBits % 8 !== 0) continue;
       text += assert(
