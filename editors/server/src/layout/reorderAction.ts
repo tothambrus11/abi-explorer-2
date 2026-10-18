@@ -27,10 +27,12 @@ export function reorderAction(record: RecordView, lines: readonly string[]): Reo
   // Each member moves with the comment lines right above it.
   const blocks = new Map<number, { start: number; end: number }>();
   let previousEnd = -1;
+  const labels = record.members.map((member) => member.label);
   for (const line of slots) {
     const code = withoutComment(lines[line] ?? '');
     if (
       !code.endsWith(';') ||
+      initializerUsesAnother(code, labels) ||
       hasTopLevelComma(code) ||
       /\b(struct|class|union|enum)\b[^;]*\{/.test(code)
     ) {
@@ -99,6 +101,18 @@ const ACCESS = /^(public|private|protected)\s*:$/;
 function withoutComment(line: string): string {
   const code = line.replace(/\/\/.*$/, '').trim();
   return /^\/\*.*\*\/$/.test(code) ? '' : code;
+}
+
+/**
+ * `double area = width * height;`: members are initialised in declaration order,
+ * so moving one could read another before it is set.
+ */
+function initializerUsesAnother(code: string, labels: readonly string[]): boolean {
+  const initializer = /(=|\{)(.*)$/.exec(code.replace(/<[^<>]*>/g, ''))?.[2];
+  return (
+    initializer !== undefined &&
+    labels.some((label) => /^\w+$/.test(label) && new RegExp(`\\b${label}\\b`).test(initializer))
+  );
 }
 
 /** `int x, y;` declares two members; `std::map<int, int> m;` declares one. */

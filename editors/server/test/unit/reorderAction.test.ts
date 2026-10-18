@@ -139,6 +139,13 @@ describe('reorderAction', () => {
         [1, 3, 5],
       ),
     ).toBe(false);
+    // A default initializer that reads another member, which might not be set yet.
+    expect(
+      offered(lines('  char type;', '  int length = 4;', '  short checksum = length;'), [1, 2, 3]),
+    ).toBe(false);
+    expect(
+      offered(lines('  char type{};', '  int length = 4;', '  short checksum{2};'), [1, 2, 3]),
+    ).toBe(true);
     // Template arguments are not declarators.
     expect(
       offered(
