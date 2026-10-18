@@ -1,29 +1,38 @@
 // Hover text: markdown that every client renders, with the byte map as an
 // image for clients that asked for one and as monospace text for the rest.
 
-import type { AnalysisContext, RecordView } from '../protocol.ts';
-import { byteOwners, layoutRows, memberLetter, type LayoutRow } from './layoutModel.ts';
-import { formatOffset, formatSize } from './format.ts';
+import type { AnalysisContext, RecordView } from '@abi-explorer/shared/protocol';
+import {
+  baseList,
+  byteOwners,
+  contextNotes,
+  layoutRows,
+  memberLetter,
+  type LayoutRow,
+} from '@abi-explorer/shared/layoutModel';
+import { formatOffset, formatSize } from '@abi-explorer/shared/format';
 import { svgDataUri, svgMap } from './svgMap.ts';
-import { textLayout, textMap } from './textMap.ts';
+import { textLayout, textMap } from './textLayout.ts';
 
 export interface HoverOptions {
   images: boolean;
 }
 
-export function recordHover(record: RecordView, context: AnalysisContext, options: HoverOptions): string {
-  const summary = [`**${record.kind} ${escape(record.name)}**`, formatSize(record.sizeBits), `align ${record.alignBits / 8}`];
+export function recordHover(
+  record: RecordView,
+  context: AnalysisContext,
+  options: HoverOptions,
+): string {
+  const summary = [
+    `**${record.kind} ${escape(record.name)}**`,
+    formatSize(record.sizeBits),
+    `align ${record.alignBits / 8}`,
+  ];
   if (record.paddingBytes) summary.push(`${formatSize(record.paddingBytes * 8)} padding`);
 
   const sections = [summary.join(' · ')];
-  if (record.bases.length > 0) {
-    sections.push(
-      'Bases: ' +
-        record.bases
-          .map((base) => `\`${base.name}\` at ${formatOffset(base.offsetBits)}${base.isVirtual ? ' (virtual)' : ''}`)
-          .join(', '),
-    );
-  }
+  const bases = baseList(record);
+  if (bases) sections.push(`Bases: ${escape(bases)}`);
   if (options.images) {
     const map = drawMap(record, null, options);
     if (map) sections.push(map);
@@ -59,7 +68,11 @@ export function memberHover(
   return sections.join('\n\n');
 }
 
-function drawMap(record: RecordView, highlighted: number | null, options: HoverOptions): string | null {
+function drawMap(
+  record: RecordView,
+  highlighted: number | null,
+  options: HoverOptions,
+): string | null {
   if (options.images) {
     const svg = svgMap(record, highlighted);
     return svg && `![${escape(record.name)} layout](${svgDataUri(svg)})`;
@@ -74,7 +87,8 @@ function codeBlock(text: string): string {
 
 function memberTable(record: RecordView): string {
   const cells = (row: LayoutRow): string[] => {
-    if (row.kind === 'padding') return ['`·`', '*padding*', formatOffset(row.offsetBits), formatSize(row.sizeBits), ''];
+    if (row.kind === 'padding')
+      return ['`·`', '*padding*', formatOffset(row.offsetBits), formatSize(row.sizeBits), ''];
     const member = record.members[row.memberIndex]!;
     return [
       `\`${memberLetter(row.memberIndex)}\``,
@@ -103,15 +117,14 @@ function paddingBefore(record: RecordView, memberIndex: number): number {
 }
 
 function footnote(context: AnalysisContext): string {
-  const notes = [context.triple, context.commandSource];
-  if (context.commandInferred) notes.push('flags borrowed from a neighbouring file');
-  if (context.errorCount > 0) {
-    notes.push(`${context.errorCount} ${context.errorCount === 1 ? 'error' : 'errors'} in this file, so layouts may be incomplete`);
-  }
-  return `*${notes.join(' · ')}*`;
+  return `*${escape(contextNotes(context).join(' · '))}*`;
 }
 
-/** Markdown-escapes a name: template arguments and `*` must not turn into markup. */
+/**
+ * Markdown-escapes text such as a name: template arguments and `*` must not
+ * turn into markup. Underscores inside words cannot start emphasis, so they are
+ * left alone; clients that show markdown as text (Neovim) would show the `\`.
+ */
 function escape(text: string): string {
-  return text.replace(/[\\`*_[\]<>|]/g, '\\$&');
+  return text.replace(/[\\`*[\]<>|]|(?<!\w)_|_(?!\w)/g, '\\$&');
 }

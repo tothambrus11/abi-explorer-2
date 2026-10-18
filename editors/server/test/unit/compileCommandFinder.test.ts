@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { CompileCommandFinder } from '../../src/compile/compilationDatabase.ts';
+import { CompileCommandFinder } from '../../src/compile/compileCommandFinder.ts';
 
 let root: string;
 
@@ -13,9 +13,21 @@ beforeEach(() => {
   fs.writeFileSync(
     path.join(root, 'build', 'compile_commands.json'),
     JSON.stringify([
-      { directory: path.join(root, 'build'), file: '../src/main.cpp', command: 'c++ -DMAIN -c ../src/main.cpp' },
-      { directory: path.join(root, 'build'), file: '../src/net/socket.cpp', arguments: ['c++', '-DNET', '-c', '../src/net/socket.cpp'] },
-      { directory: path.join(root, 'build'), file: '../src/net/socket_c.c', arguments: ['cc', '-DC', '-c', '../src/net/socket_c.c'] },
+      {
+        directory: path.join(root, 'build'),
+        file: '../src/main.cpp',
+        command: 'c++ -DMAIN -c ../src/main.cpp',
+      },
+      {
+        directory: path.join(root, 'build'),
+        file: '../src/net/socket.cpp',
+        arguments: ['c++', '-DNET', '-c', '../src/net/socket.cpp'],
+      },
+      {
+        directory: path.join(root, 'build'),
+        file: '../src/net/socket_c.c',
+        arguments: ['cc', '-DC', '-c', '../src/net/socket_c.c'],
+      },
     ]),
   );
 });
@@ -45,8 +57,13 @@ describe('CompileCommandFinder', () => {
 
   it('prefers an exact pushed command, and the database over a borrowed pushed one', () => {
     const finder = new CompileCommandFinder({ style: 'posix' });
-    finder.setPushedCommands('CMake Tools', [{ directory: root, file: 'src/main.cpp', arguments: ['c++', '-DPUSHED', 'src/main.cpp'] }]);
-    expect(finder.find(file('src/main.cpp'))!.origin).toEqual({ kind: 'pushed', label: 'CMake Tools' });
+    finder.setPushedCommands('CMake Tools', [
+      { directory: root, file: 'src/main.cpp', arguments: ['c++', '-DPUSHED', 'src/main.cpp'] },
+    ]);
+    expect(finder.find(file('src/main.cpp'))!.origin).toEqual({
+      kind: 'pushed',
+      label: 'CMake Tools',
+    });
     expect(finder.find(file('src/net/socket.cpp'))!.origin.kind).toBe('compile_commands.json');
   });
 
@@ -54,7 +71,12 @@ describe('CompileCommandFinder', () => {
     fs.rmSync(path.join(root, 'build'), { recursive: true });
     fs.writeFileSync(path.join(root, 'compile_flags.txt'), '-std=c++17\n-Iinclude\n');
     const found = new CompileCommandFinder({ style: 'posix' }).find(file('src/net/x.cpp'));
-    expect(found!.command.arguments).toEqual(['c++', '-std=c++17', '-Iinclude', file('src/net/x.cpp')]);
+    expect(found!.command.arguments).toEqual([
+      'c++',
+      '-std=c++17',
+      '-Iinclude',
+      file('src/net/x.cpp'),
+    ]);
   });
 
   it('notices a regenerated database', async () => {

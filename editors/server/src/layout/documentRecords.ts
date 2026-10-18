@@ -6,8 +6,8 @@
 // record's direct members rather than every scalar inside them. Everything
 // past this file works with `RecordView`.
 
-import type { MemberView, Range, RecordView } from '../protocol.ts';
-import type { Location, RecordLayout, RenderNode, SourceRange } from '../engine/wire.ts';
+import type { MemberView, Range, RecordView } from '@abi-explorer/shared/protocol';
+import type { Location, RecordLayout, RenderNode, SourceRange } from '../engine/engineTypes.ts';
 
 export interface DocumentCoordinates {
   /** The document's path as the engine was given it. */
@@ -16,7 +16,10 @@ export interface DocumentCoordinates {
   text: string;
 }
 
-export function recordViewsFor(records: readonly RecordLayout[], document: DocumentCoordinates): RecordView[] {
+export function recordsInDocument(
+  records: readonly RecordLayout[],
+  document: DocumentCoordinates,
+): RecordView[] {
   const lines = document.text.split(/\r?\n/);
   const recordsById = new Map(records.map((record) => [record.id, record]));
   const inDocument = (location: Location | null): location is Location =>
@@ -56,7 +59,13 @@ export function recordViewsFor(records: readonly RecordLayout[], document: Docum
           alignBits: group.alignBits,
           // A base specifier's range has no file of its own: it is in the record's.
           nameRange:
-            location === null ? null : 'file' in location ? (inDocument(location) ? rangeOf(location, lines) : null) : extentOf(location, lines),
+            location === null
+              ? null
+              : 'file' in location
+                ? inDocument(location)
+                  ? rangeOf(location, lines)
+                  : null
+                : extentOf(location, lines),
         });
       }
     };
@@ -73,7 +82,6 @@ export function recordViewsFor(records: readonly RecordLayout[], document: Docum
         nameRange: rangeOf(record.location, lines),
         extent: record.range ? extentOf(record.range, lines) : null,
         members,
-        paddingRuns: record.render.paddingRuns,
         bases: record.bases.map((base) => ({
           name: base.typeSpelling,
           offsetBits: base.offsetBits,
@@ -103,7 +111,10 @@ function rangeOf(location: Location, lines: readonly string[]): Range {
 function extentOf(range: SourceRange, lines: readonly string[]): Range {
   return {
     start: { line: range.line - 1, character: characterAt(lines[range.line - 1] ?? '', range.col) },
-    end: { line: range.endLine - 1, character: characterAt(lines[range.endLine - 1] ?? '', range.endCol) },
+    end: {
+      line: range.endLine - 1,
+      character: characterAt(lines[range.endLine - 1] ?? '', range.endCol),
+    },
   };
 }
 

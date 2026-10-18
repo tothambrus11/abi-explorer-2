@@ -13,7 +13,8 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { languageOfFile, splitCommandLine, type CompileCommand, type PathStyle } from './commandLine.ts';
+import { splitCommandLine } from '@abi-explorer/shared/splitCommandLine';
+import { languageOfFile, type CompileCommand, type PathStyle } from './commandLine.ts';
 
 export type CommandOrigin =
   | { kind: 'pushed'; label: string }
@@ -43,20 +44,24 @@ class Database {
   constructor(origin: CommandOrigin, commands: readonly CompileCommand[], style: PathStyle) {
     this.origin = origin;
     this.style = style;
-    for (const command of commands) this.byFile.set(this.key(command.file, command.directory), command);
+    for (const command of commands)
+      this.byFile.set(this.key(command.file, command.directory), command);
   }
 
   lookup(file: string): FoundCommand | null {
     const exact = this.byFile.get(this.key(file));
     if (exact) return { command: exact, origin: this.origin, borrowedFrom: null };
     const nearest = this.nearest(file);
-    return nearest ? { command: this.borrow(nearest, file), origin: this.origin, borrowedFrom: nearest.file } : null;
+    return nearest
+      ? { command: this.borrow(nearest, file), origin: this.origin, borrowedFrom: nearest.file }
+      : null;
   }
 
   /** The other file's command, compiling `file` instead. */
   private borrow(command: CompileCommand, file: string): CompileCommand {
     const input = this.key(command.file, command.directory);
-    const isInput = (arg: string) => !arg.startsWith('-') && this.key(arg, command.directory) === input;
+    const isInput = (arg: string) =>
+      !arg.startsWith('-') && this.key(arg, command.directory) === input;
     return {
       directory: command.directory,
       file,
@@ -91,7 +96,7 @@ class Database {
 
 const RECHECK_INTERVAL_MS = 2_000;
 
-export interface CompilationDatabaseOptions {
+export interface CompileCommandFinderOptions {
   style: PathStyle;
   /** Look here instead of searching ancestors, like clangd's `--compile-commands-dir`. */
   compileCommandsDir?: string | undefined;
@@ -104,16 +109,22 @@ export class CompileCommandFinder {
    * `stamp` holds the candidate files' modification times, so an edited or
    * newly generated database is picked up without the editor having to say so.
    */
-  private readonly databases = new Map<string, { database: Database | null; stamp: string; checkedAt: number }>();
+  private readonly databases = new Map<
+    string,
+    { database: Database | null; stamp: string; checkedAt: number }
+  >();
 
-  private readonly options: CompilationDatabaseOptions;
+  private readonly options: CompileCommandFinderOptions;
 
-  constructor(options: CompilationDatabaseOptions) {
+  constructor(options: CompileCommandFinderOptions) {
     this.options = options;
   }
 
   setPushedCommands(label: string, commands: readonly CompileCommand[]): void {
-    this.pushed = commands.length > 0 ? new Database({ kind: 'pushed', label }, commands, this.options.style) : null;
+    this.pushed =
+      commands.length > 0
+        ? new Database({ kind: 'pushed', label }, commands, this.options.style)
+        : null;
   }
 
   find(file: string): FoundCommand | null {

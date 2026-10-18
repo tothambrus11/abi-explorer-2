@@ -1,6 +1,6 @@
 package abiexplorer.core
 
-/** The IDE's look, as the panel's `--ae-*` CSS variables (see the view's view.css). */
+/** The IDE's look, as the panel's `--ae-*` CSS variables (see editors/panel/src/panel.css). */
 data class PanelTheme(
     val foreground: String,
     val muted: String,

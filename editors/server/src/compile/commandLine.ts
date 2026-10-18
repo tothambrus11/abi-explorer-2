@@ -7,9 +7,10 @@
 // `CommandMangler`; this is the subset that matters for parsing declarations.
 
 import path from 'node:path';
-import type { CompileCommand } from '../protocol.ts';
+import type { CompileCommand } from '@abi-explorer/shared/protocol';
+import type { PathStyle } from '@abi-explorer/shared/splitCommandLine';
 
-export type { CompileCommand };
+export type { CompileCommand, PathStyle };
 
 export type Language = 'c' | 'c++';
 export type DriverKind = 'gnu' | 'msvc';
@@ -23,8 +24,6 @@ export interface PreparedCommand {
   /** Set when the command says (`-x`, `/TP`); otherwise the caller decides from the file. */
   language: Language | null;
 }
-
-export type PathStyle = 'posix' | 'win32';
 
 const WRAPPERS = new Set(['ccache', 'sccache', 'distcc', 'icecc', 'buildcache']);
 
@@ -63,9 +62,7 @@ export function prepareCommand(command: CompileCommand, style: PathStyle): Prepa
   const compiler = args[0] ?? 'cc';
   const rest = args.slice(1);
   const driver: DriverKind =
-    ['cl', 'clang-cl'].includes(programName(compiler)) || rest.includes('--driver-mode=cl')
-      ? 'msvc'
-      : 'gnu';
+    isMsvcDriver(compiler) || rest.includes('--driver-mode=cl') ? 'msvc' : 'gnu';
 
   const inputFile = paths.resolve(command.directory, command.file);
   const isInput = (arg: string) =>
@@ -89,6 +86,11 @@ export function prepareCommand(command: CompileCommand, style: PathStyle): Prepa
   };
 }
 
+/** `cl.exe`, `clang-cl`, and versioned names such as Debian's `clang-cl-18`. */
+export function isMsvcDriver(program: string): boolean {
+  return /^(cl|clang-cl(-[\d.]+)?)$/.test(programName(program));
+}
+
 /** `cc`, `g++-13` and `C:\VC\bin\cl.exe` as `cc`, `g++-13` and `cl`. */
 export function programName(program: string): string {
   return path.win32
@@ -101,7 +103,22 @@ export function programName(program: string): string {
 export function languageOfFile(file: string): Language | null {
   const extension = path.extname(file).toLowerCase();
   if (extension === '.c') return 'c';
-  if (['.cc', '.cpp', '.cxx', '.c++', '.cp', '.hpp', '.hh', '.hxx', '.h++', '.ipp', '.tpp', '.cu'].includes(extension)) {
+  if (
+    [
+      '.cc',
+      '.cpp',
+      '.cxx',
+      '.c++',
+      '.cp',
+      '.hpp',
+      '.hh',
+      '.hxx',
+      '.h++',
+      '.ipp',
+      '.tpp',
+      '.cu',
+    ].includes(extension)
+  ) {
     return 'c++';
   }
   return null;
@@ -126,7 +143,10 @@ export function mapPathOptions(flags: readonly string[], map: (value: string) =>
     // Longest first: `-isystem/x` must not be read as `-I` + `system/x`.
     const joined = [...PATH_OPTIONS]
       .sort((a, b) => b.length - a.length)
-      .find((option) => option !== '--sysroot' && flag.startsWith(option) && flag.length > option.length);
+      .find(
+        (option) =>
+          option !== '--sysroot' && flag.startsWith(option) && flag.length > option.length,
+      );
     out.push(joined ? joined + map(flag.slice(joined.length)) : flag);
   }
   return out;
@@ -152,7 +172,12 @@ function stripGnuFlags(args: readonly string[]): string[] {
 function languageFromXFlag(flags: readonly string[]): Language | null {
   let language: Language | null = null;
   for (let i = 0; i < flags.length; i++) {
-    const value = flags[i] === '-x' ? flags[i + 1] : flags[i]!.startsWith('-x') ? flags[i]!.slice(2) : undefined;
+    const value =
+      flags[i] === '-x'
+        ? flags[i + 1]
+        : flags[i]!.startsWith('-x')
+          ? flags[i]!.slice(2)
+          : undefined;
     if (value === 'c' || value === 'c-header') language = 'c';
     else if (value === 'c++' || value === 'c++-header') language = 'c++';
   }
@@ -188,8 +213,8 @@ export function translateMsvcFlags(args: readonly string[]): {
     else if ((value = valueOf('imsvc')) !== undefined) flags.push('-isystem', value);
     else if ((value = valueOf('FI')) !== undefined) flags.push('-include', value);
     else if (option.startsWith('std:')) {
-      // `/std:c++20`, `/std:c17`, `/std:c++latest`: GNU spelling but for `latest`.
-      flags.push('-std=' + option.slice(4).replace('latest', '2c'));
+      const standard = msvcStandard(option.slice(4));
+      if (standard) flags.push(`-std=${standard}`);
     } else if (/^Zp\d*$/.test(option)) flags.push(`-fpack-struct=${option.slice(2) || '1'}`);
     else if (/^vd[012]$/.test(option)) flags.push('-Xclang', `-vtordisp-mode=${option.slice(2)}`);
     else if (option === 'vms') flags.push('-Xclang', '-fms-memptr-rep=single');
@@ -197,6 +222,8 @@ export function translateMsvcFlags(args: readonly string[]): {
     else if (option === 'vmv' || option === 'vmg') flags.push('-Xclang', '-fms-memptr-rep=virtual');
     else if (option === 'J') flags.push('-funsigned-char');
     else if (option === 'Zc:wchar_t-') flags.push('-fno-wchar');
+    // clang-cl takes these GNU spellings for the target; they change every layout.
+    else if (raw.startsWith('--target=') || raw === '-m32' || raw === '-m64') flags.push(raw);
     else if (option === 'TC') language = 'c';
     else if (option === 'TP') language = 'c++';
     else if ((value = valueOf('I')) !== undefined) flags.push('-I', value);
@@ -206,85 +233,11 @@ export function translateMsvcFlags(args: readonly string[]): {
   return { flags, language };
 }
 
-/**
- * Splits a `command` string from compile_commands.json into arguments.
- *
- * Two grammars, as clang's JSONCompilationDatabase has: a POSIX shell's quoting
- * and backslash escapes, or Windows' `CommandLineToArgvW` rules, where a
- * backslash is a path separator unless it precedes a quote.
- */
-export function splitCommandLine(command: string, style: PathStyle): string[] {
-  return style === 'win32' ? splitWindows(command) : splitPosix(command);
-}
-
-function splitPosix(command: string): string[] {
-  const args: string[] = [];
-  let current = '';
-  let inArg = false;
-  let quote: '"' | "'" | null = null;
-  for (let i = 0; i < command.length; i++) {
-    const c = command[i]!;
-    if (quote === "'") {
-      if (c === "'") quote = null;
-      else current += c;
-    } else if (c === '\\' && i + 1 < command.length) {
-      const next = command[++i]!;
-      if (quote === '"' && !'"\\$`'.includes(next)) current += '\\';
-      current += next;
-      inArg = true;
-    } else if (quote === '"') {
-      if (c === '"') quote = null;
-      else current += c;
-    } else if (c === '"' || c === "'") {
-      quote = c;
-      inArg = true;
-    } else if (/\s/.test(c)) {
-      if (inArg) args.push(current);
-      current = '';
-      inArg = false;
-    } else {
-      current += c;
-      inArg = true;
-    }
-  }
-  if (inArg) args.push(current);
-  return args;
-}
-
-function splitWindows(command: string): string[] {
-  const args: string[] = [];
-  let current = '';
-  let inArg = false;
-  let quoted = false;
-  for (let i = 0; i < command.length; i++) {
-    const c = command[i]!;
-    if (c === '\\') {
-      let backslashes = 0;
-      while (command[i] === '\\') {
-        backslashes++;
-        i++;
-      }
-      if (command[i] === '"') {
-        current += '\\'.repeat(Math.floor(backslashes / 2));
-        if (backslashes % 2 === 1) current += '"';
-        else quoted = !quoted;
-      } else {
-        current += '\\'.repeat(backslashes);
-        i--;
-      }
-      inArg = true;
-    } else if (c === '"') {
-      quoted = !quoted;
-      inArg = true;
-    } else if (!quoted && /\s/.test(c)) {
-      if (inArg) args.push(current);
-      current = '';
-      inArg = false;
-    } else {
-      current += c;
-      inArg = true;
-    }
-  }
-  if (inArg) args.push(current);
-  return args;
+/** `/std:` values as `-std=` takes them: `c++latest` is `c++2c`, `c++23preview` is `c++23`. */
+function msvcStandard(value: string): string | null {
+  const standard = value
+    .replace(/preview$/, '')
+    .replace(/^c\+\+latest$/, 'c++2c')
+    .replace(/^clatest$/, 'c2y');
+  return /^(c\+\+|c)\d\w$/.test(standard) ? standard : null;
 }

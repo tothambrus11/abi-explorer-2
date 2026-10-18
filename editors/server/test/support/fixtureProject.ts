@@ -19,7 +19,10 @@ export function copyFixtureProject(): FixtureProject {
   fs.cpSync(FIXTURE, root, { recursive: true });
   fs.mkdirSync(path.join(root, 'build'));
   const template = fs.readFileSync(path.join(root, 'compile_commands.template.json'), 'utf8');
-  fs.writeFileSync(path.join(root, 'build', 'compile_commands.json'), template.replaceAll('${root}', root));
+  fs.writeFileSync(
+    path.join(root, 'build', 'compile_commands.json'),
+    template.replaceAll('${root}', root),
+  );
   fs.rmSync(path.join(root, 'compile_commands.template.json'));
   return {
     root,
@@ -30,5 +33,7 @@ export function copyFixtureProject(): FixtureProject {
 }
 
 /** The engine files the web app fetches with `npm run abi:fetch`; tests that need them skip without. */
-export const LOCAL_ENGINE = process.env['ABI_ENGINE_PATH'] ?? path.join(import.meta.dirname, '..', '..', '..', '..', 'public', 'vendor', 'abi');
+export const LOCAL_ENGINE =
+  process.env['ABI_ENGINE_PATH'] ??
+  path.join(import.meta.dirname, '..', '..', '..', '..', 'public', 'vendor', 'abi');
 export const hasLocalEngine = fs.existsSync(path.join(LOCAL_ENGINE, 'abi_query.wasm'));

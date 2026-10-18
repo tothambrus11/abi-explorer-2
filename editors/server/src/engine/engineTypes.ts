@@ -2,8 +2,9 @@
 //
 // The full contract is clang-abi-wasm's `js/index.d.ts`; the names and units
 // here are copied from it unchanged (sizes and offsets in bits, cross-references
-// by id). Nothing outside `src/engine` and `src/layout/views.ts` should need
-// this file: the rest of the server works with the view types built from it.
+// by id). Only the engine client and the analysis layer (`analysis.ts`,
+// `compile/engineRequest.ts`, `layout/documentRecords.ts`) use these types; the
+// rest of the server works with the view types built from them.
 
 export interface EngineRequest {
   source: string;

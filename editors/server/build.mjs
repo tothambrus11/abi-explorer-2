@@ -13,6 +13,8 @@ await build({
   // `--sourcemap` for debugging; the published package goes without.
   sourcemap: process.argv.includes('--sourcemap') ? 'linked' : false,
   // Some bundled CommonJS dependencies call require(); give ESM output one.
-  banner: { js: "import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);" },
+  banner: {
+    js: "import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);",
+  },
   logLevel: 'warning',
 });

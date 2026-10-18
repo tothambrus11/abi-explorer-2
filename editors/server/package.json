@@ -11,13 +11,6 @@
     "bin",
     "dist"
   ],
-  "exports": {
-    "./protocol": "./src/protocol.ts",
-    "./layoutModel": "./src/layout/layoutModel.ts",
-    "./format": "./src/layout/format.ts",
-    "./commandLine": "./src/compile/commandLine.ts",
-    "./engineFiles": "./src/engine/engineFiles.ts"
-  },
   "engines": {
     "node": ">=20"
   },
@@ -26,6 +19,7 @@
   },
   "devDependencies": {
     "vscode-languageserver": "^10.1.2",
-    "vscode-languageserver-textdocument": "^1.0.12"
+    "vscode-languageserver-textdocument": "^1.0.12",
+    "@abi-explorer/shared": "0.1.0"
   }
 }

@@ -1,10 +1,9 @@
 // The Struct Layout view: the shared panel in a webview, following the caret.
 
 import * as vscode from 'vscode';
-import type { LanguageClient } from 'vscode-languageclient/node';
-import { layoutRequest, type LayoutResult } from 'abi-explorer-lsp/protocol';
-
-type ViewMessage = { type: 'reveal'; range: { start: vscode.Position; end: vscode.Position } };
+import { State, type LanguageClient } from 'vscode-languageclient/node';
+import { layoutRequest, type LayoutResult } from '@abi-explorer/shared/protocol';
+import type { HostMessage, PanelMessage } from '@abi-explorer/layout-panel/messages';
 
 export const LAYOUT_VIEW_ID = 'abiExplorer.layout';
 const CARET_DEBOUNCE_MS = 150;
@@ -13,6 +12,8 @@ export class LayoutPanel implements vscode.WebviewViewProvider {
   private view: vscode.WebviewView | undefined;
   private editor: vscode.TextEditor | undefined;
   private timer: NodeJS.Timeout | undefined;
+  /** Only the newest request's answer is shown; a slow older one is dropped. */
+  private requestNumber = 0;
   private readonly extensionUri: vscode.Uri;
   private readonly client: () => LanguageClient | undefined;
 
@@ -31,10 +32,13 @@ export class LayoutPanel implements vscode.WebviewViewProvider {
 
   resolveWebviewView(view: vscode.WebviewView): void {
     this.view = view;
-    const dist = vscode.Uri.joinPath(this.extensionUri, 'dist', 'view');
+    const dist = vscode.Uri.joinPath(this.extensionUri, 'dist', 'panel');
     view.webview.options = { enableScripts: true, localResourceRoots: [dist] };
     view.webview.html = html(view.webview, dist);
-    view.webview.onDidReceiveMessage((message: ViewMessage) => this.reveal(message));
+    view.webview.onDidReceiveMessage((message: PanelMessage) => {
+      if (message.type === 'ready') this.refresh();
+      else this.reveal(message);
+    });
     view.onDidChangeVisibility(() => this.refresh());
     this.follow(vscode.window.activeTextEditor);
   }
@@ -52,37 +56,68 @@ export class LayoutPanel implements vscode.WebviewViewProvider {
   }
 
   private async update(): Promise<void> {
+    if (!this.view?.visible) return;
+    const number = ++this.requestNumber;
     const client = this.client();
-    if (!this.view?.visible || !this.editor || !client) return;
-    const { document, selection } = this.editor;
-    const result: LayoutResult = await client.sendRequest(layoutRequest, {
-      textDocument: { uri: document.uri.toString() },
-      position: selection.active,
-    });
-    void this.view.webview.postMessage({ type: 'layout', result });
+    const editor = this.editor?.document.isClosed ? undefined : this.editor;
+    let result: LayoutResult;
+    if (!editor) {
+      result = placeholder('Open a C or C++ file to see the layouts of its structs.');
+    } else if (client?.state === State.Starting) {
+      result = placeholder('Starting…', 'analyzing');
+    } else if (client?.state !== State.Running) {
+      result = placeholder(
+        "ABI Explorer's server is not running; the ABI Explorer output says why.",
+      );
+    } else {
+      try {
+        result = await client.sendRequest(layoutRequest, {
+          textDocument: { uri: editor.document.uri.toString() },
+          position: editor.selection.active,
+        });
+      } catch (error) {
+        // A server that is stopping says when it has layouts again; anything else is worth showing.
+        if (client.state !== State.Running) return;
+        result = placeholder(
+          `The layout request failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+    if (number !== this.requestNumber) return;
+    const message: HostMessage = { type: 'layout', result };
+    void this.view.webview.postMessage(message);
   }
 
-  private reveal(message: ViewMessage): void {
-    if (message.type !== 'reveal' || !this.editor) return;
+  private reveal(message: Extract<PanelMessage, { type: 'reveal' }>): void {
+    if (!this.editor || this.editor.document.isClosed) return;
     const { start, end } = message.range;
     const range = new vscode.Range(start.line, start.character, end.line, end.character);
-    void vscode.window.showTextDocument(this.editor.document, { viewColumn: this.editor.viewColumn ?? vscode.ViewColumn.Active, selection: range });
+    void vscode.window.showTextDocument(this.editor.document, {
+      viewColumn: this.editor.viewColumn ?? vscode.ViewColumn.Active,
+      selection: range,
+    });
   }
 }
 
+function placeholder(message: string, state: LayoutResult['state'] = 'unavailable'): LayoutResult {
+  return { state, message, records: [], selection: null, context: null };
+}
+
 function html(webview: vscode.Webview, dist: vscode.Uri): string {
-  const nonce = Array.from({ length: 16 }, () => Math.floor(Math.random() * 36).toString(36)).join('');
+  const nonce = Array.from({ length: 16 }, () => Math.floor(Math.random() * 36).toString(36)).join(
+    '',
+  );
   const asset = (name: string) => webview.asWebviewUri(vscode.Uri.joinPath(dist, name)).toString();
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
-<link rel="stylesheet" href="${asset('view.css')}">
+<link rel="stylesheet" href="${asset('panel.css')}">
 </head>
 <body>
 <div id="root"></div>
-<script nonce="${nonce}" src="${asset('view.js')}"></script>
+<script nonce="${nonce}" src="${asset('panel.js')}"></script>
 </body>
 </html>`;
 }

@@ -90,12 +90,16 @@ export async function ensureEngineFiles(
     // Written beside the target and renamed, so a cancelled download never
     // leaves a truncated file that a later check would have to hash to reject.
     const target = path.join(directory, file.name);
-    fs.writeFileSync(target + '.partial', body);
-    fs.renameSync(target + '.partial', target);
+    // Per process: two editors may download at once, and either copy is good.
+    const partial = `${target}.${process.pid}.partial`;
+    fs.writeFileSync(partial, body);
+    fs.renameSync(partial, target);
     doneBytes += file.bytes;
   }
   return filesIn(directory);
 }
+
+const DOWNLOAD_IDLE_TIMEOUT_MS = 30_000;
 
 function filesIn(directory: string): EngineFiles {
   return {
@@ -118,16 +122,25 @@ async function download(
   fetchImpl: typeof fetch,
   onBytes: (received: number) => void,
 ): Promise<Uint8Array> {
-  const response = await fetchImpl(url);
-  if (!response.ok || !response.body) {
-    throw new Error(`could not download ${url.href}: ${response.status} ${response.statusText}`);
+  // A stalled connection is given up on, so the next analysis tries again.
+  const abort = new AbortController();
+  let idle = setTimeout(() => abort.abort(), DOWNLOAD_IDLE_TIMEOUT_MS);
+  try {
+    const response = await fetchImpl(url, { signal: abort.signal });
+    if (!response.ok || !response.body) {
+      throw new Error(`could not download ${url.href}: ${response.status} ${response.statusText}`);
+    }
+    const chunks: Uint8Array[] = [];
+    let received = 0;
+    for await (const chunk of response.body) {
+      clearTimeout(idle);
+      idle = setTimeout(() => abort.abort(), DOWNLOAD_IDLE_TIMEOUT_MS);
+      chunks.push(chunk);
+      received += chunk.byteLength;
+      onBytes(received);
+    }
+    return Buffer.concat(chunks);
+  } finally {
+    clearTimeout(idle);
   }
-  const chunks: Uint8Array[] = [];
-  let received = 0;
-  for await (const chunk of response.body) {
-    chunks.push(chunk);
-    received += chunk.byteLength;
-    onBytes(received);
-  }
-  return Buffer.concat(chunks);
 }

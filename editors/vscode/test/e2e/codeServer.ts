@@ -5,7 +5,7 @@ import { spawn, execFileSync, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { ENGINE_RELEASE } from 'abi-explorer-lsp/engineFiles';
+import { ENGINE_RELEASE } from '../../../server/src/engine/engineFiles.ts';
 
 export interface CodeServer {
   url: string;
@@ -28,24 +28,42 @@ export async function startCodeServer(options: CodeServerOptions): Promise<CodeS
   const userData = path.join(home, 'user-data');
   const extensions = path.join(home, 'extensions');
   const run = (args: string[]) =>
-    execFileSync(process.execPath, [options.entry, '--user-data-dir', userData, '--extensions-dir', extensions, ...args], {
-      stdio: 'pipe',
-    });
+    execFileSync(
+      process.execPath,
+      [options.entry, '--user-data-dir', userData, '--extensions-dir', extensions, ...args],
+      {
+        stdio: 'pipe',
+      },
+    );
   run(['--install-extension', options.vsix]);
 
-  const cache = path.join(userData, 'User', 'globalStorage', 'tothambrus11.abi-explorer', `clang-abi-wasm-${ENGINE_RELEASE.tag}`);
+  const cache = path.join(
+    userData,
+    'User',
+    'globalStorage',
+    'tothambrus11.abi-explorer',
+    `clang-abi-wasm-${ENGINE_RELEASE.tag}`,
+  );
   fs.mkdirSync(cache, { recursive: true });
-  for (const file of ENGINE_RELEASE.files) fs.copyFileSync(path.join(options.engineDirectory, file.name), path.join(cache, file.name));
-  fs.writeFileSync(path.join(userData, 'User', 'settings.json'), JSON.stringify(options.settings, null, 2));
+  for (const file of ENGINE_RELEASE.files)
+    fs.copyFileSync(path.join(options.engineDirectory, file.name), path.join(cache, file.name));
+  fs.writeFileSync(
+    path.join(userData, 'User', 'settings.json'),
+    JSON.stringify(options.settings, null, 2),
+  );
 
   const server: ChildProcess = spawn(
     process.execPath,
     [
       options.entry,
-      '--user-data-dir', userData,
-      '--extensions-dir', extensions,
-      '--auth', 'none',
-      '--bind-addr', `127.0.0.1:${options.port}`,
+      '--user-data-dir',
+      userData,
+      '--extensions-dir',
+      extensions,
+      '--auth',
+      'none',
+      '--bind-addr',
+      `127.0.0.1:${options.port}`,
       '--disable-telemetry',
       '--disable-update-check',
       '--disable-workspace-trust',

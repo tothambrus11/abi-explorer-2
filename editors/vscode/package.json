@@ -89,7 +89,7 @@
             "type": "string"
           },
           "default": [],
-          "description": "Globs of compilers inside the workspace that may be run to find system headers. Compilers outside the workspace are always allowed."
+          "description": "Globs of compilers that may be run to find system headers even though they are inside the project or its build directories, or not named like a compiler. Other compilers are run only when named like one (gcc, clang, cl and their versions) and outside the project."
         },
         "abiExplorer.fallbackFlags": {
           "type": "array",
@@ -107,10 +107,10 @@
     "package": "node build.mjs && vsce package --no-dependencies --out dist/abi-explorer.vsix"
   },
   "devDependencies": {
-    "@abi-explorer/layout-view": "0.1.0",
+    "@abi-explorer/layout-panel": "0.1.0",
+    "@abi-explorer/shared": "0.1.0",
     "@types/vscode": "^1.95.0",
     "@vscode/vsce": "^3.9.2",
-    "abi-explorer-lsp": "0.1.0",
     "vscode-languageclient": "^10.1.2"
   }
 }

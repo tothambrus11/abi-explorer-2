@@ -3,7 +3,8 @@
 // byte is whose, which letter and colour a member gets, and how the member
 // table reads.
 
-import type { RecordView } from '../protocol.ts';
+import type { AnalysisContext, RecordView } from '@abi-explorer/shared/protocol';
+import { formatOffset, formatSizeShort } from './format.ts';
 
 export type ByteOwner = number | null;
 
@@ -40,7 +41,16 @@ export function bytesPerRow(sizeBytes: number): number {
 export const MAX_MAPPED_BYTES = 512;
 
 // Mid-tone colours, so a map reads on light and dark themes alike.
-const PALETTE = ['#4e79a7', '#f28e2b', '#59a14f', '#b07aa1', '#e15759', '#76b7b2', '#edc948', '#9c755f'];
+const PALETTE = [
+  '#4e79a7',
+  '#f28e2b',
+  '#59a14f',
+  '#b07aa1',
+  '#e15759',
+  '#76b7b2',
+  '#edc948',
+  '#9c755f',
+];
 export const PADDING_COLOR = '#8a8a8a';
 
 /** The colour member `index` is drawn in; the hover image and the panel agree. */
@@ -69,4 +79,43 @@ export function layoutRows(record: RecordView): LayoutRow[] {
   }
   // Stable, so a padding run sorts after a zero-sized member at the same offset.
   return rows.sort((a, b) => a.offsetBits - b.offsetBits);
+}
+
+/** The bytes to draw, or null when there are none or too many to be of use. */
+export function mappedBytes(record: RecordView): ByteOwner[] | null {
+  const owners = byteOwners(record);
+  return owners.length === 0 || owners.length > MAX_MAPPED_BYTES ? null : owners;
+}
+
+/** `40 B · align 8 · 9 B padding`: the inlay hint, and the panel's line for a record. */
+export function recordSummary(record: RecordView): string {
+  const parts = [formatSizeShort(record.sizeBits), `align ${record.alignBits / 8}`];
+  if (record.paddingBytes) parts.push(`${record.paddingBytes} B padding`);
+  return parts.join(' · ');
+}
+
+/** `Shape at 0, Base at 8 (virtual)`, or null without bases. */
+export function baseList(record: RecordView): string | null {
+  if (record.bases.length === 0) return null;
+  return record.bases
+    .map(
+      (base) =>
+        `${base.name} at ${formatOffset(base.offsetBits)}${base.isVirtual ? ' (virtual)' : ''}`,
+    )
+    .join(', ');
+}
+
+/** Where the layouts come from, and anything that makes them less certain. */
+export function contextNotes(context: AnalysisContext): string[] {
+  const notes = [context.triple, context.commandSource];
+  if (context.commandInferred) notes.push('flags borrowed from a neighbouring file');
+  const errors = (count: number) => (count === 1 ? '1 error' : `${count} errors`);
+  if (context.errorCount > 0) {
+    notes.push(`${errors(context.errorCount)} in this file, so layouts may be incomplete`);
+  }
+  if (context.otherErrorCount > 0) {
+    notes.push(`${errors(context.otherErrorCount)} in its headers or flags`);
+  }
+  if (context.warning) notes.push(context.warning);
+  return notes;
 }

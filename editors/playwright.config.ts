@@ -8,6 +8,8 @@ export default defineConfig({
   outputDir: 'test-results',
   use: {
     screenshot: 'only-on-failure',
-    launchOptions: process.env['CHROMIUM_PATH'] ? { executablePath: process.env['CHROMIUM_PATH'] } : {},
+    launchOptions: process.env['CHROMIUM_PATH']
+      ? { executablePath: process.env['CHROMIUM_PATH'] }
+      : {},
   },
 });

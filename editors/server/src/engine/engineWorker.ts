@@ -1,16 +1,17 @@
 // The worker the engine runs in, so the language server keeps answering hovers
 // from its cache while a translation unit is being parsed.
 //
-// Protocol: one `start` message carrying `EngineWorkerData` via `workerData`,
-// then `{id, request}` in and `{id, response}` or `{id, error}` out. After an
-// engine trap the module's state is undefined, so the worker exits and the
-// client starts a fresh one.
+// Protocol: `EngineWorkerData` arrives as `workerData`; the worker replies
+// `{kind: 'ready'}` once loaded, then answers each `{id, request}` with
+// `{kind: 'response', id, response}` or `{kind: 'error', id, message}` (`id`
+// null when loading failed). After an engine trap the module's state is
+// undefined, so the worker exits and the client starts a fresh one.
 
 import { parentPort, workerData } from 'node:worker_threads';
 import { loadEngine } from './engine.ts';
 import type { EngineFiles } from './engineFiles.ts';
 import type { Mount } from './pathMap.ts';
-import type { EngineRequest, EngineResponse } from './wire.ts';
+import type { EngineRequest, EngineResponse } from './engineTypes.ts';
 
 export interface EngineWorkerData {
   files: EngineFiles;

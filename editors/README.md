@@ -6,8 +6,9 @@ flags and target.
 
 | Directory | What it is | Built with |
 |:--|:--|:--|
-| `server/` | `abi-explorer-lsp`, the language server every editor runs: hovers, inlay hints and the `abiExplorer/layout` request ([protocol](server/src/protocol.ts)) | npm, esbuild |
-| `view/` | The layout panel (byte map and member table) shown by VS Code's webview and CLion's tool window | npm, esbuild |
+| `shared/` | What the server and the panel both use: the [protocol](shared/src/protocol.ts), the [layout model](shared/src/layoutModel.ts), size formatting | (source only) |
+| `server/` | `abi-explorer-lsp`, the language server every editor runs: hovers, inlay hints and the `abiExplorer/layout` request | npm, esbuild |
+| `panel/` | The layout panel (byte map and member table) shown by VS Code's webview and CLion's tool window | npm, esbuild |
 | `vscode/` | The VS Code extension: the server, the Struct Layout view, CMake Tools' compile commands | npm, vsce |
 | `zed/` | The Zed extension: runs the server from npm with Zed's Node.js | cargo (`wasm32-wasip2`) |
 | `clion/` | The CLion plugin: the server through the IntelliJ LSP API, the panel in JCEF, CLion's project model | Gradle |
@@ -21,8 +22,9 @@ What is shared, and why:
   compile commands).
 - **The panel** is shared by the two editors that can show a web page. Zed has no panels for
   extensions and Neovim's is text, which the server draws (`includeText`).
-- **`server/src/layout/layoutModel.ts`** is what every drawing agrees on: which byte belongs to
-  which member, its letter and colour, and the member table's rows.
+- **`shared/`** is what every drawing agrees on: which byte belongs to which member, its letter
+  and colour, the member table's rows and the record summary. It is bundled into the server and
+  the panel, never published on its own.
 
 The engine (about 50 MB) is never bundled: the server downloads the pinned release once into the
 user's cache, checking its SHA-256.
@@ -31,10 +33,11 @@ user's cache, checking its SHA-256.
 
 ```sh
 npm install                 # in editors/
-npm run build               # vscode/build.mjs builds server/, then view/, then the extension
+npm run build               # vscode/build.mjs builds server/, then panel/, then the extension
 npm run package -w vscode   # the VSIX, in vscode/dist/
 npm test                    # unit and integration tests (vitest)
 npm run check               # type-check every package
+npm run format:check        # prettier
 ```
 
 The integration tests run the real engine. They use the web app's copy
@@ -49,5 +52,5 @@ CODE_SERVER_ENTRY=…/code-server/out/node/entry.js npx playwright test
 
 Zed and Neovim screenshots come from `scripts/desktop-screenshots.sh` (Xvfb; see its header).
 
-The CLion plugin needs `npm run build` first (it copies `server/dist` and `view/dist`), then
+The CLion plugin needs `npm run build` first (it copies `server/dist` and `panel/dist`), then
 `./gradlew buildPlugin` in `clion/`. Its IDE-free logic tests on its own: `./gradlew -p core test`.

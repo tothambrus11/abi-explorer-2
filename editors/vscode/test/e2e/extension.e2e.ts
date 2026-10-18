@@ -4,7 +4,11 @@
 
 import path from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { copyFixtureProject, LOCAL_ENGINE, type FixtureProject } from '../../../server/test/support/fixtureProject.ts';
+import {
+  copyFixtureProject,
+  LOCAL_ENGINE,
+  type FixtureProject,
+} from '../../../server/test/support/fixtureProject.ts';
 import { startCodeServer, type CodeServer } from './codeServer.ts';
 
 const SCREENSHOTS = path.join(import.meta.dirname, '..', '..', '..', 'screenshots');
@@ -49,7 +53,9 @@ test('hovers, inlay hints and the layout view', async ({ page }) => {
   await openFile(page, 'main.cpp');
 
   // Inlay hints arrive once the first analysis is done.
-  await expect(page.locator('.view-lines')).toContainText('40 B · align 8 · 9 B padding', { timeout: 60_000 });
+  await expect(page.locator('.view-lines')).toContainText('40 B · align 8 · 9 B padding', {
+    timeout: 60_000,
+  });
   await expect(page.locator('.view-lines')).toContainText('64 B · align 8 · 10 B padding');
 
   // The caret inside Packet opens it in the view.
@@ -77,7 +83,9 @@ test('hovers, inlay hints and the layout view', async ({ page }) => {
 
   await page.mouse.move(0, 0);
   await hoverToken(page, 'checksum');
-  await expect(hover).toContainText('Packet::checksum · offset 8 · 2 bytes · align 2', { timeout: 15_000 });
+  await expect(hover).toContainText('Packet::checksum · offset 8 · 2 bytes · align 2', {
+    timeout: 15_000,
+  });
   await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-member-hover.png') });
 });
 
@@ -94,7 +102,8 @@ async function dragSash(page: Page, width: number): Promise<void> {
   await page.mouse.down();
   await page.mouse.move(sidebar.x + width, y, { steps: 5 });
   await page.mouse.up();
-  await page.mouse.move(sidebar.x + width / 2, y);
+  // Off the view, so hovering a member does not stand in for the caret's.
+  await page.mouse.move(sidebar.x + width + 400, y);
 }
 
 async function goToLine(page: Page, line: number, column: number): Promise<void> {
@@ -105,7 +114,10 @@ async function goToLine(page: Page, line: number, column: number): Promise<void>
 }
 
 async function hoverToken(page: Page, token: string): Promise<void> {
-  await page.locator('.view-lines span span', { hasText: new RegExp(`^${token}$`) }).first().hover();
+  await page
+    .locator('.view-lines span span', { hasText: new RegExp(`^${token}$`) })
+    .first()
+    .hover();
 }
 
 /** The webview's document: two iframes deep. */

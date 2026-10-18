@@ -1,17 +1,34 @@
 import { describe, expect, it } from 'vitest';
-import { byteOwners } from '../../src/layout/layoutModel.ts';
-import { formatOffset, formatSize, formatSizeShort } from '../../src/layout/format.ts';
+import { byteOwners } from '@abi-explorer/shared/layoutModel';
+import { formatOffset, formatSize, formatSizeShort } from '@abi-explorer/shared/format';
 import { memberHover, recordHover } from '../../src/layout/hover.ts';
 import { layoutHints } from '../../src/layout/inlayHints.ts';
 import { svgMap } from '../../src/layout/svgMap.ts';
-import { textMap, textMemberTable } from '../../src/layout/textMap.ts';
-import { characterAt } from '../../src/layout/views.ts';
-import type { AnalysisContext, MemberView, RecordView } from '../../src/protocol.ts';
+import { textMap, textMemberTable } from '../../src/layout/textLayout.ts';
+import { characterAt } from '../../src/layout/documentRecords.ts';
+import type { AnalysisContext, MemberView, RecordView } from '@abi-explorer/shared/protocol';
 
-const at = (line: number, start: number, end: number) => ({ start: { line, character: start }, end: { line, character: end } });
+const at = (line: number, start: number, end: number) => ({
+  start: { line, character: start },
+  end: { line, character: end },
+});
 
-function member(label: string, offset: number, size: number, type: string, line: number | null = null): MemberView {
-  return { kind: 'field', label, type, offsetBits: offset * 8, sizeBits: size * 8, alignBits: size * 8, nameRange: line === null ? null : at(line, 4, 4 + label.length) };
+function member(
+  label: string,
+  offset: number,
+  size: number,
+  type: string,
+  line: number | null = null,
+): MemberView {
+  return {
+    kind: 'field',
+    label,
+    type,
+    offsetBits: offset * 8,
+    sizeBits: size * 8,
+    alignBits: size * 8,
+    nameRange: line === null ? null : at(line, 4, 4 + label.length),
+  };
 }
 
 /** `struct Packet { char type; int length; short checksum; };` */
@@ -24,8 +41,11 @@ const packet: RecordView = {
   paddingBytes: 5,
   nameRange: at(0, 7, 13),
   extent: null,
-  members: [member('type', 0, 1, 'char', 1), member('length', 4, 4, 'int', 2), member('checksum', 8, 2, 'short', 3)],
-  paddingRuns: [],
+  members: [
+    member('type', 0, 1, 'char', 1),
+    member('length', 4, 4, 'int', 2),
+    member('checksum', 8, 2, 'short', 3),
+  ],
   bases: [],
 };
 
@@ -36,11 +56,18 @@ const context: AnalysisContext = {
   commandSource: 'compile_commands.json',
   commandInferred: false,
   errorCount: 0,
+  otherErrorCount: 0,
+  warning: null,
 };
 
 describe('format', () => {
   it('writes sizes and offsets', () => {
-    expect([formatSize(8), formatSize(16), formatSize(1), formatSize(3)]).toEqual(['1 byte', '2 bytes', '1 bit', '3 bits']);
+    expect([formatSize(8), formatSize(16), formatSize(1), formatSize(3)]).toEqual([
+      '1 byte',
+      '2 bytes',
+      '1 bit',
+      '3 bits',
+    ]);
     expect([formatSizeShort(32), formatSizeShort(3)]).toEqual(['4 B', '3 bits']);
     expect([formatOffset(64), formatOffset(67)]).toEqual(['8', '8.3']);
   });
@@ -52,7 +79,9 @@ describe('byte maps', () => {
   });
 
   it('draws the text map, and highlights one member', () => {
-    expect(textMap(packet)).toBe(['    0 1 2 3 4 5 6 7', ' 0  a · · · b b b b', ' 8  c c · ·'].join('\n'));
+    expect(textMap(packet)).toBe(
+      ['    0 1 2 3 4 5 6 7', ' 0  a · · · b b b b', ' 8  c c · ·'].join('\n'),
+    );
     expect(textMap(packet, 1)!.split('\n')[1]).toBe(' 0  ░ · · · █ █ █ █');
   });
 
@@ -70,7 +99,9 @@ describe('byte maps', () => {
 describe('hovers', () => {
   it('summarises a record with a markdown member table, padding included, for image clients', () => {
     const markdown = recordHover(packet, context, { images: true });
-    expect(markdown.split('\n')[0]).toBe('**struct Packet** · 12 bytes · align 4 · 5 bytes padding');
+    expect(markdown.split('\n')[0]).toBe(
+      '**struct Packet** · 12 bytes · align 4 · 5 bytes padding',
+    );
     expect(markdown).toContain('| `·` | *padding* | 1 | 3 bytes |  |');
     expect(markdown).toContain('| `c` | checksum | 8 | 2 bytes | `short` |');
     expect(markdown).toContain('*x86_64-linux-gnu · compile_commands.json*');
@@ -80,7 +111,19 @@ describe('hovers', () => {
     const markdown = recordHover(packet, context, { images: false });
     expect(markdown).not.toContain('| Member |');
     expect(markdown).toContain(
-      ['```text', '    0 1 2 3 4 5 6 7', ' 0  a · · · b b b b', ' 8  c c · ·', '', ' a  type       0  1 B  char', ' ·  padding    1  3 B', ' b  length     4  4 B  int', ' c  checksum   8  2 B  short', ' ·  padding   10  2 B', '```'].join('\n'),
+      [
+        '```text',
+        '    0 1 2 3 4 5 6 7',
+        ' 0  a · · · b b b b',
+        ' 8  c c · ·',
+        '',
+        ' a  type       0  1 B  char',
+        ' ·  padding    1  3 B',
+        ' b  length     4  4 B  int',
+        ' c  checksum   8  2 B  short',
+        ' ·  padding   10  2 B',
+        '```',
+      ].join('\n'),
     );
   });
 
@@ -89,28 +132,42 @@ describe('hovers', () => {
   });
 
   it('embeds the map as an image when the editor shows them', () => {
-    expect(recordHover(packet, context, { images: true })).toMatch(/!\[Packet layout\]\(data:image\/svg\+xml;base64,/);
+    expect(recordHover(packet, context, { images: true })).toMatch(
+      /!\[Packet layout\]\(data:image\/svg\+xml;base64,/,
+    );
   });
 
   it('says how much padding precedes a member, and notes inferred flags and errors', () => {
-    const markdown = memberHover(packet, 1, { ...context, commandInferred: true, errorCount: 2 }, { images: false });
+    const markdown = memberHover(
+      packet,
+      1,
+      { ...context, commandInferred: true, errorCount: 2 },
+      { images: false },
+    );
     expect(markdown.split('\n')[0]).toBe('**Packet::length** · offset 4 · 4 bytes · align 4');
     expect(markdown).toContain('3 bytes of padding before it.');
     expect(markdown).toContain('flags borrowed from a neighbouring file · 2 errors in this file');
   });
 
   it('escapes template arguments', () => {
-    expect(recordHover({ ...packet, name: 'Pair<int*>' }, context, { images: false })).toContain('**struct Pair\\<int\\*\\>**');
+    expect(recordHover({ ...packet, name: 'Pair<int*>' }, context, { images: false })).toContain(
+      '**struct Pair\\<int\\*\\>**',
+    );
   });
 });
 
 describe('layoutHints', () => {
   it('puts one hint after each record name', () => {
-    expect(layoutHints([packet], 'records', () => 20)).toEqual([{ position: { line: 0, character: 13 }, label: '12 B · align 4 · 5 B padding' }]);
+    expect(layoutHints([packet], 'records', () => 20)).toEqual([
+      { position: { line: 0, character: 13 }, label: '12 B · align 4 · 5 B padding' },
+    ]);
   });
 
   it('adds member hints at line ends, one per line', () => {
-    const twoOnOneLine = { ...packet, members: [member('x', 0, 4, 'int', 1), member('y', 4, 4, 'int', 1)] };
+    const twoOnOneLine = {
+      ...packet,
+      members: [member('x', 0, 4, 'int', 1), member('y', 4, 4, 'int', 1)],
+    };
     expect(layoutHints([twoOnOneLine], 'members', (line) => line * 10).slice(1)).toEqual([
       { position: { line: 1, character: 10 }, label: '@0 · 4 B, @4 · 4 B' },
     ]);

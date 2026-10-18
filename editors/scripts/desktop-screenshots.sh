@@ -68,7 +68,8 @@ JSON
   sleep 2
   xdotool mousemove 290 385 # `checksum`
   shot 4 zed-member-hover.png
-  pkill -f "$ZED" || true
+  # By name: the command line of this script contains $ZED too.
+  pkill -x zed-editor || true
 fi
 
 if [[ -n ${NVIM:-} ]]; then

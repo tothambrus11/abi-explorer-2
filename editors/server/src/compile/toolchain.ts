@@ -41,8 +41,12 @@ export interface ExecResult {
 export type Exec = (program: string, args: readonly string[]) => Promise<ExecResult>;
 
 export interface ProbePolicy {
-  /** Compilers inside these folders are part of the project and are not run unless allowed. */
-  workspaceFolders: readonly string[];
+  /**
+   * Folders whose contents the project controls: the workspace, and the
+   * directories its compile commands came from. Compilers in them are not run
+   * unless allowed.
+   */
+  projectFolders: readonly string[];
   /** Globs of compilers that may be run anyway, like clangd's `--query-driver`. */
   allowedCompilers: readonly string[];
 }
@@ -50,7 +54,17 @@ export interface ProbePolicy {
 export class ProbeRefusedError extends Error {}
 
 /** Options that change where a GNU-style compiler searches, or for what. */
-const SEARCH_AFFECTING = [/^--target=/, /^-target$/, /^--sysroot/, /^-isysroot$/, /^-stdlib=/, /^-m(32|64|x32)$/, /^-nostdinc/, /^--gcc-toolchain=/, /^--gcc-install-dir=/];
+const SEARCH_AFFECTING = [
+  /^--target=/,
+  /^-target$/,
+  /^--sysroot/,
+  /^-isysroot/,
+  /^-stdlib=/,
+  /^-m(32|64|x32)$/,
+  /^-nostdinc/,
+  /^--gcc-toolchain=/,
+  /^--gcc-install-dir=/,
+];
 const TAKES_VALUE = new Set(['-target', '-isysroot', '--sysroot']);
 
 export class ToolchainProber {
@@ -59,7 +73,11 @@ export class ToolchainProber {
   private readonly env: NodeJS.ProcessEnv;
   private readonly platform: NodeJS.Platform;
 
-  constructor(exec: Exec = runProgram, env: NodeJS.ProcessEnv = process.env, platform: NodeJS.Platform = process.platform) {
+  constructor(
+    exec: Exec = runProgram,
+    env: NodeJS.ProcessEnv = process.env,
+    platform: NodeJS.Platform = process.platform,
+  ) {
     this.exec = exec;
     this.env = env;
     this.platform = platform;
@@ -70,15 +88,23 @@ export class ToolchainProber {
     if (!isProbeAllowed(compiler, policy, this.platform)) {
       return Promise.reject(
         new ProbeRefusedError(
-          `${compiler} is inside the project, so it is not run without being allowed in the allowedCompilers setting`,
+          `${compiler} is not run to find its headers unless allowed in the allowedCompilers setting ` +
+            '(it is inside the project, or is not named like a compiler)',
         ),
       );
     }
-    const args = command.driver === 'msvc' ? [] : searchArguments(command.flags, language);
+    // clang-cl in GNU mode still targets MSVC, and finds Visual Studio's headers itself.
+    const isCl = command.driver === 'msvc' && !/clang/i.test(path.win32.basename(compiler));
+    const args = isCl
+      ? []
+      : [
+          ...(command.driver === 'msvc' ? ['--driver-mode=gcc'] : []),
+          ...searchArguments(command.flags, language),
+        ];
     const key = JSON.stringify([compiler, args]);
     let probe = this.cache.get(key);
     if (!probe) {
-      probe = command.driver === 'msvc' ? this.probeMsvc(compiler) : this.probeGnu(compiler, args);
+      probe = isCl ? this.probeCl(compiler) : this.probeGnu(compiler, args);
       // A failed probe is not remembered: the compiler may be installed later.
       probe.catch(() => this.cache.delete(key));
       this.cache.set(key, probe);
@@ -97,18 +123,18 @@ export class ToolchainProber {
     return {
       triple: withArchitectureFlags(parsed.triple, args),
       systemIncludes: parsed.includes.map((include) =>
-        path.resolve(include.path) === builtinDirectory ? { ...include, kind: 'builtin' as const } : include,
+        path.resolve(include.path) === builtinDirectory
+          ? { ...include, kind: 'builtin' as const }
+          : include,
       ),
       msvcVersion: null,
     };
   }
 
-  private async probeMsvc(compiler: string): Promise<Toolchain> {
-    const isClangCl = path.win32.basename(compiler).toLowerCase().startsWith('clang-cl');
-    const banner = await this.exec(compiler, isClangCl ? ['--version'] : []);
-    const { triple, version } = isClangCl
-      ? { triple: /Target:\s*(\S+)/.exec(banner.stdout)?.[1] ?? 'x86_64-pc-windows-msvc', version: null }
-      : parseClBanner(banner.stderr + banner.stdout);
+  /** cl.exe: its version and target from the banner, its headers from INCLUDE or the Visual Studio around it. */
+  private async probeCl(compiler: string): Promise<Toolchain> {
+    const banner = await this.exec(compiler, []);
+    const { triple, version } = parseClBanner(banner.stderr + banner.stdout);
     const includes = this.env['INCLUDE']
       ? this.env['INCLUDE'].split(';').filter(Boolean)
       : await this.visualStudioIncludes(compiler);
@@ -122,7 +148,10 @@ export class ToolchainProber {
   /** `…\VC\Tools\MSVC\<ver>\bin\Hostx64\x64\cl.exe` → its include folders and the newest Windows SDK's. */
   private async visualStudioIncludes(cl: string): Promise<string[]> {
     const tools = path.win32.resolve(path.win32.dirname(cl), '..', '..', '..');
-    const includes = [path.win32.join(tools, 'include'), path.win32.join(tools, 'atlmfc', 'include')];
+    const includes = [
+      path.win32.join(tools, 'include'),
+      path.win32.join(tools, 'atlmfc', 'include'),
+    ];
     const sdkRoot = await this.windowsSdkRoot();
     if (sdkRoot) {
       const includeRoot = path.win32.join(sdkRoot, 'Include');
@@ -163,7 +192,10 @@ export class ToolchainProber {
   }
 }
 
-export function parseVerboseOutput(stderr: string): { triple: string | null; includes: SystemInclude[] } {
+export function parseVerboseOutput(stderr: string): {
+  triple: string | null;
+  includes: SystemInclude[];
+} {
   const lines = stderr.split(/\r?\n/);
   const triple = lines.map((line) => /^Target:\s*(\S+)/.exec(line)?.[1]).find(Boolean) ?? null;
   const start = lines.findIndex((line) => line.startsWith('#include <...> search starts here:'));
@@ -222,13 +254,57 @@ export function searchArguments(flags: readonly string[], language: Language): s
   return args;
 }
 
-export function isProbeAllowed(compiler: string, policy: ProbePolicy, platform: NodeJS.Platform): boolean {
+/**
+ * A compile command comes from the project, which may be hostile, so whatever
+ * it names is not simply run. A program is probed only when it is named like a
+ * compiler (so `python3` with `-x c++` cannot run a script from the project)
+ * and lies outside the project, both as written and with symlinks resolved;
+ * `allowedCompilers` overrides both checks.
+ */
+export function isProbeAllowed(
+  compiler: string,
+  policy: ProbePolicy,
+  platform: NodeJS.Platform,
+): boolean {
   const paths = platform === 'win32' ? path.win32 : path.posix;
-  const insideProject = policy.workspaceFolders.some((folder) => {
-    const relative = paths.relative(folder, compiler);
-    return relative !== '' && !relative.startsWith('..') && !paths.isAbsolute(relative);
-  });
-  return !insideProject || policy.allowedCompilers.some((glob) => globToRegExp(glob).test(compiler));
+  const real = realPath(compiler);
+  if (
+    policy.allowedCompilers.some((glob) =>
+      [compiler, real].some((candidate) => globToRegExp(glob).test(candidate)),
+    )
+  ) {
+    return true;
+  }
+  const folders = policy.projectFolders.flatMap((folder) => [folder, realPath(folder)]);
+  const insideProject = [compiler, real].some((candidate) =>
+    folders.some((folder) => {
+      const relative = paths.relative(folder, candidate);
+      return relative === '' || (!relative.startsWith('..') && !paths.isAbsolute(relative));
+    }),
+  );
+  return !insideProject && looksLikeCompiler(compiler) && looksLikeCompiler(real);
+}
+
+/**
+ * `cc`, `g++-13`, `clang++`, `aarch64-linux-gnu-gcc`, `clang-cl.exe`, `cl`:
+ * a compiler driver's name, with any target prefix and version suffix.
+ */
+export function looksLikeCompiler(program: string): boolean {
+  const name = path.win32
+    .basename(program)
+    .toLowerCase()
+    .replace(/\.exe$/, '');
+  return /^([\w.]+-)*(cc|c\+\+|gcc|g\+\+|clang|clang\+\+|clang-cl|cl|icx|icpx|icx-cl|icc|icpc)(-[\d.]+)?$/.test(
+    name,
+  );
+}
+
+function realPath(file: string): string {
+  try {
+    return fs.realpathSync(file);
+  } catch {
+    return file;
+  }
 }
 
 function globToRegExp(glob: string): RegExp {
@@ -269,7 +345,11 @@ function safeReaddir(directory: string): string[] {
 /** Runs a program with empty stdin and a timeout, collecting both streams. */
 export function runProgram(program: string, args: readonly string[]): Promise<ExecResult> {
   return new Promise((resolve, reject) => {
-    const child = spawn(program, args, { stdio: ['pipe', 'pipe', 'pipe'], timeout: 15_000, windowsHide: true });
+    const child = spawn(program, args, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      timeout: 15_000,
+      windowsHide: true,
+    });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString()));

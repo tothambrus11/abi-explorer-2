@@ -4,7 +4,7 @@
 
 import { ENGINE_RELEASE } from '../engine/engineFiles.ts';
 import type { PathMap } from '../engine/pathMap.ts';
-import type { EngineRequest } from '../engine/wire.ts';
+import type { EngineRequest } from '../engine/engineTypes.ts';
 import { mapPathOptions, type Language, type PreparedCommand } from './commandLine.ts';
 import type { Toolchain } from './toolchain.ts';
 
@@ -28,9 +28,16 @@ export function buildEngineRequest(inputs: RequestInputs): EngineRequest {
     : [{ path: '', kind: 'builtin' as const }, ...toolchain.systemIncludes];
   for (const include of includes) {
     if (include.kind === 'builtin') flags.push('-isystem', `${ENGINE_RESOURCE_DIRECTORY}/include`);
-    else flags.push(include.kind === 'framework' ? '-iframework' : '-isystem', pathMap.toGuest(include.path));
+    else
+      flags.push(
+        include.kind === 'framework' ? '-iframework' : '-isystem',
+        pathMap.toGuest(include.path),
+      );
   }
-  if (toolchain.msvcVersion && !command.flags.some((flag) => flag.startsWith('-fms-compatibility-version'))) {
+  if (
+    toolchain.msvcVersion &&
+    !command.flags.some((flag) => flag.startsWith('-fms-compatibility-version'))
+  ) {
     flags.push(`-fms-compatibility-version=${toolchain.msvcVersion}`);
   }
   flags.push(...mapPathOptions(command.flags, (value) => pathMap.toGuest(value)));

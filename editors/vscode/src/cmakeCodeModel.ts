@@ -6,10 +6,11 @@
 // `CodeModel.Content`) this reads; it is kept free of `vscode` so it can be
 // tested on its own.
 
-import type { CompileCommand } from 'abi-explorer-lsp/protocol';
+import path from 'node:path';
+import type { CompileCommand } from '@abi-explorer/shared/protocol';
 
 export interface CodeModelContent {
-  configurations: { projects: { targets: CodeModelTarget[] }[] }[];
+  configurations: { projects: { sourceDirectory?: string; targets: CodeModelTarget[] }[] }[];
   toolchains?: Map<string, { path: string }>;
 }
 
@@ -27,23 +28,42 @@ export interface CodeModelFileGroup {
   isGenerated?: boolean;
 }
 
-export function codeModelCommands(model: CodeModelContent, splitFragment: (fragment: string) => string[]): CompileCommand[] {
+/**
+ * `exists` settles what CMake Tools leaves open: a relative source is relative
+ * to its target's directory in some versions and to the project's in others.
+ */
+export function codeModelCommands(
+  model: CodeModelContent,
+  splitFragment: (fragment: string) => string[],
+  exists: (file: string) => boolean,
+): CompileCommand[] {
   const commands: CompileCommand[] = [];
   for (const configuration of model.configurations) {
     for (const project of configuration.projects) {
       for (const target of project.targets) {
-        const directory = target.sourceDirectory;
+        const directory = target.sourceDirectory ?? project.sourceDirectory;
         if (!directory) continue;
+        const resolve = (source: string) => {
+          if (path.isAbsolute(source)) return source;
+          const inTarget = path.resolve(directory, source);
+          return exists(inTarget) || !project.sourceDirectory
+            ? inTarget
+            : path.resolve(project.sourceDirectory, source);
+        };
         for (const group of target.fileGroups ?? []) {
           if (group.language !== 'C' && group.language !== 'CXX') continue;
-          const compiler = model.toolchains?.get(group.language)?.path ?? (group.language === 'C' ? 'cc' : 'c++');
+          const compiler =
+            model.toolchains?.get(group.language)?.path ?? (group.language === 'C' ? 'cc' : 'c++');
           const flags = [
             ...(group.compileCommandFragments ?? []).flatMap(splitFragment),
-            ...(group.includePath ?? []).flatMap((include) => (include.isSystem ? ['-isystem', include.path] : [`-I${include.path}`])),
+            ...(group.includePath ?? []).flatMap((include) =>
+              include.isSystem ? ['-isystem', include.path] : [`-I${include.path}`],
+            ),
             ...(group.defines ?? []).map((define) => `-D${define}`),
           ];
           for (const source of group.sources) {
-            commands.push({ directory, file: source, arguments: [compiler, ...flags, source] });
+            const file = resolve(source);
+            commands.push({ directory, file, arguments: [compiler, ...flags, file] });
           }
         }
       }

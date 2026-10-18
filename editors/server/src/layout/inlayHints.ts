@@ -4,10 +4,9 @@
 // Zed has no panels and Neovim's are text, so this is the one surface every
 // editor shows without the user asking.
 
-import type { Position, RecordView } from '../protocol.ts';
-import { formatOffset, formatSizeShort } from './format.ts';
-
-export type InlayHintsMode = 'records' | 'members' | 'off';
+import type { InlayHintsMode, Position, RecordView } from '@abi-explorer/shared/protocol';
+import { formatOffset, formatSizeShort } from '@abi-explorer/shared/format';
+import { recordSummary } from '@abi-explorer/shared/layoutModel';
 
 export interface LayoutHint {
   position: Position;
@@ -26,9 +25,7 @@ export function layoutHints(
     // Several instantiations of one template share a declaration; one hint is enough.
     if (!record.nameRange || hintedRecordLines.has(record.nameRange.start.line)) continue;
     hintedRecordLines.add(record.nameRange.start.line);
-    const parts = [formatSizeShort(record.sizeBits), `align ${record.alignBits / 8}`];
-    if (record.paddingBytes) parts.push(`${record.paddingBytes} B padding`);
-    hints.push({ position: record.nameRange.end, label: parts.join(' · ') });
+    hints.push({ position: record.nameRange.end, label: recordSummary(record) });
 
     if (mode !== 'members') continue;
     // `int x, y;` declares two members on one line: one hint lists both.

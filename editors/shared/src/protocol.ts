@@ -18,6 +18,9 @@ export interface Range {
   end: Position;
 }
 
+/** Which declarations get an inlay hint. */
+export type InlayHintsMode = 'records' | 'members' | 'off';
+
 export interface InitializationOptions {
   /** Where the engine is downloaded to. Defaults to the user cache directory. */
   cacheDirectory?: string;
@@ -26,7 +29,7 @@ export interface InitializationOptions {
   /** Draw hover byte maps as SVG images (VS Code and Zed render them). */
   hoverImages?: boolean;
   /** Which declarations get an inlay hint. Defaults to `records`. */
-  inlayHints?: 'records' | 'members' | 'off';
+  inlayHints?: InlayHintsMode;
   /** Read compile_commands.json from here instead of searching, like clangd's flag. */
   compileCommandsDir?: string | undefined;
   /** Globs of in-project compilers that may be run to learn their include paths. */
@@ -86,7 +89,12 @@ export interface AnalysisContext {
   commandSource: string;
   /** The flags were borrowed from another file (a header has no command of its own). */
   commandInferred: boolean;
+  /** Errors in the document itself. */
   errorCount: number;
+  /** Errors in its headers or its flags, which can hide declarations just as well. */
+  otherErrorCount: number;
+  /** Something that makes these layouts less trustworthy, such as a compiler that could not be asked. */
+  warning: string | null;
 }
 
 export interface RecordView {
@@ -103,7 +111,6 @@ export interface RecordView {
   /** The whole declaration. */
   extent: Range | null;
   members: MemberView[];
-  paddingRuns: { startBits: number; endBits: number }[];
   bases: BaseView[];
   /** The byte map and member table in monospace text, when `includeText` was asked for. */
   text?: string;

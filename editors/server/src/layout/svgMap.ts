@@ -5,8 +5,14 @@
 // letter, padding hatched. The colours are mid-tone so the image reads on light
 // and dark themes alike; an image cannot follow the editor's theme.
 
-import type { RecordView } from '../protocol.ts';
-import { byteOwners, bytesPerRow, memberColor, memberLetter, MAX_MAPPED_BYTES, PADDING_COLOR } from './layoutModel.ts';
+import type { RecordView } from '@abi-explorer/shared/protocol';
+import {
+  bytesPerRow,
+  mappedBytes,
+  memberColor,
+  memberLetter,
+  PADDING_COLOR,
+} from '@abi-explorer/shared/layoutModel';
 
 const CELL = 22;
 const GAP = 2;
@@ -14,8 +20,8 @@ const LABEL_WIDTH = 34;
 const HEADER_HEIGHT = 16;
 
 export function svgMap(record: RecordView, highlightedMember: number | null = null): string | null {
-  const owners = byteOwners(record);
-  if (owners.length === 0 || owners.length > MAX_MAPPED_BYTES) return null;
+  const owners = mappedBytes(record);
+  if (!owners) return null;
   const perRow = bytesPerRow(owners.length);
   const rows = Math.ceil(owners.length / perRow);
   const width = LABEL_WIDTH + perRow * (CELL + GAP);
@@ -26,7 +32,9 @@ export function svgMap(record: RecordView, highlightedMember: number | null = nu
     `<defs><pattern id="pad" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" fill="${PADDING_COLOR}" fill-opacity="0.15"/><line x1="0" y1="0" x2="0" y2="4" stroke="${PADDING_COLOR}" stroke-width="1.5" stroke-opacity="0.6"/></pattern></defs>`,
   ];
   for (let column = 0; column < perRow; column++) {
-    parts.push(text(LABEL_WIDTH + column * (CELL + GAP) + CELL / 2, 11, String(column), PADDING_COLOR));
+    parts.push(
+      text(LABEL_WIDTH + column * (CELL + GAP) + CELL / 2, 11, String(column), PADDING_COLOR),
+    );
   }
   owners.forEach((owner, byte) => {
     const row = Math.floor(byte / perRow);
@@ -36,7 +44,9 @@ export function svgMap(record: RecordView, highlightedMember: number | null = nu
       parts.push(text(LABEL_WIDTH - 6, y + CELL / 2 + 4, String(byte), PADDING_COLOR, 'end'));
     }
     if (owner === null) {
-      parts.push(`<rect x="${x}" y="${y}" width="${CELL}" height="${CELL}" rx="3" fill="url(#pad)"/>`);
+      parts.push(
+        `<rect x="${x}" y="${y}" width="${CELL}" height="${CELL}" rx="3" fill="url(#pad)"/>`,
+      );
       return;
     }
     const dimmed = highlightedMember !== null && owner !== highlightedMember;

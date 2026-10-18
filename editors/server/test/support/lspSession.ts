@@ -3,7 +3,12 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createMessageConnection, StreamMessageReader, StreamMessageWriter, type MessageConnection } from 'vscode-jsonrpc/node';
+import {
+  createMessageConnection,
+  StreamMessageReader,
+  StreamMessageWriter,
+  type MessageConnection,
+} from 'vscode-jsonrpc/node';
 import type { Hover, InlayHint } from 'vscode-languageserver-protocol';
 import {
   layoutRequest,
@@ -11,7 +16,7 @@ import {
   type InitializationOptions,
   type LayoutResult,
   type Position,
-} from '../../src/protocol.ts';
+} from '@abi-explorer/shared/protocol';
 
 const SERVER_SOURCE = path.join(import.meta.dirname, '..', '..', 'src', 'main.ts');
 
@@ -23,7 +28,10 @@ export class LspSession {
 
   private constructor(process: ChildProcess) {
     this.process = process;
-    this.connection = createMessageConnection(new StreamMessageReader(process.stdout!), new StreamMessageWriter(process.stdin!));
+    this.connection = createMessageConnection(
+      new StreamMessageReader(process.stdout!),
+      new StreamMessageWriter(process.stdin!),
+    );
     this.connection.onNotification(layoutsChangedNotification, ({ uri }: { uri: string }) => {
       this.analyzed.get(uri)?.();
     });
@@ -33,13 +41,18 @@ export class LspSession {
   }
 
   static async start(rootUri: string, options: InitializationOptions): Promise<LspSession> {
-    const child = spawn(process.execPath, [SERVER_SOURCE, '--stdio'], { stdio: ['pipe', 'pipe', 'inherit'] });
+    const child = spawn(process.execPath, [SERVER_SOURCE, '--stdio'], {
+      stdio: ['pipe', 'pipe', 'inherit'],
+    });
     const session = new LspSession(child);
     await session.connection.sendRequest('initialize', {
       processId: process.pid,
       rootUri,
       workspaceFolders: [{ uri: rootUri, name: 'project' }],
-      capabilities: { workspace: { inlayHint: { refreshSupport: true } }, window: { workDoneProgress: true } },
+      capabilities: {
+        workspace: { inlayHint: { refreshSupport: true } },
+        window: { workDoneProgress: true },
+      },
       initializationOptions: options,
     });
     await session.connection.sendNotification('initialized', {});
@@ -51,7 +64,12 @@ export class LspSession {
     const analyzed = this.nextAnalysis(uri);
     this.versions.set(uri, 1);
     await this.connection.sendNotification('textDocument/didOpen', {
-      textDocument: { uri, languageId: uri.endsWith('.c') ? 'c' : 'cpp', version: 1, text: fs.readFileSync(new URL(uri), 'utf8') },
+      textDocument: {
+        uri,
+        languageId: uri.endsWith('.c') ? 'c' : 'cpp',
+        version: 1,
+        text: fs.readFileSync(new URL(uri), 'utf8'),
+      },
     });
     await analyzed;
   }
@@ -80,7 +98,11 @@ export class LspSession {
   }
 
   layout(uri: string, position?: Position, includeText = false): Promise<LayoutResult> {
-    return this.connection.sendRequest(layoutRequest, { textDocument: { uri }, position, includeText });
+    return this.connection.sendRequest(layoutRequest, {
+      textDocument: { uri },
+      position,
+      includeText,
+    });
   }
 
   notify(method: string, params: unknown): Promise<void> {

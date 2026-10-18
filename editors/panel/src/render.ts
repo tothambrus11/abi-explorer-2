@@ -5,34 +5,52 @@
 // result to elements, re-run on every update, and a few listeners that
 // highlight a member's bytes and row together.
 
-import type { LayoutResult, Range, RecordView } from 'abi-explorer-lsp/protocol';
-import { formatOffset, formatSizeShort } from 'abi-explorer-lsp/format';
+import type { LayoutResult, Range, RecordView } from '@abi-explorer/shared/protocol';
+import { formatOffset, formatSizeShort } from '@abi-explorer/shared/format';
 import {
-  byteOwners,
+  baseList,
   bytesPerRow,
+  contextNotes,
   layoutRows,
-  MAX_MAPPED_BYTES,
+  mappedBytes,
   memberColor,
   memberLetter,
-} from 'abi-explorer-lsp/layoutModel';
+  recordSummary,
+} from '@abi-explorer/shared/layoutModel';
 
 export interface PanelActions {
   reveal(range: Range): void;
 }
 
 export interface PanelState {
-  /** The record the user opened by clicking; the caret's record wins when it moves. */
-  openRecordId: number | null;
+  /**
+   * What the user opened (or, with null, closed) by clicking. It holds while
+   * the caret stays in the record it was in then; moving to another hands the
+   * choice back to the caret.
+   */
+  choice: { openRecordId: number | null; caretRecordId: number | null } | null;
 }
 
-export function renderPanel(root: HTMLElement, result: LayoutResult, state: PanelState, actions: PanelActions): void {
-  const openId = result.selection?.recordId ?? state.openRecordId ?? result.records[0]?.id ?? null;
-  state.openRecordId = openId;
+export function renderPanel(
+  root: HTMLElement,
+  result: LayoutResult,
+  state: PanelState,
+  actions: PanelActions,
+): void {
+  const caretRecordId = result.selection?.recordId ?? null;
+  if (state.choice && state.choice.caretRecordId !== caretRecordId) state.choice = null;
+  const openId = state.choice
+    ? state.choice.openRecordId
+    : (caretRecordId ?? result.records[0]?.id ?? null);
   root.replaceChildren();
 
   if (result.records.length === 0) {
     root.append(
-      element('p', 'empty', result.state === 'analyzing' ? 'Analyzing…' : (result.message ?? 'No layouts yet.')),
+      element(
+        'p',
+        'empty',
+        result.message ?? (result.state === 'analyzing' ? 'Analyzing…' : 'No layouts yet.'),
+      ),
     );
     return;
   }
@@ -51,13 +69,15 @@ export function renderPanel(root: HTMLElement, result: LayoutResult, state: Pane
       element('span', 'record-size', recordSummary(record)),
     );
     heading.addEventListener('click', () => {
-      state.openRecordId = isOpen ? null : record.id;
-      if (record.nameRange) actions.reveal(record.nameRange);
-      renderPanel(root, { ...result, selection: null }, state, actions);
+      state.choice = { openRecordId: isOpen ? null : record.id, caretRecordId };
+      // Opening a record also takes the caret there; closing one leaves the caret alone.
+      if (!isOpen && record.nameRange) actions.reveal(record.nameRange);
+      renderPanel(root, result, state, actions);
     });
     item.append(heading);
     if (isOpen) {
-      const memberIndex = result.selection?.recordId === record.id ? result.selection.memberIndex : null;
+      const memberIndex =
+        result.selection?.recordId === record.id ? result.selection.memberIndex : null;
       item.append(recordDetails(record, memberIndex, actions));
     }
     list.append(item);
@@ -65,32 +85,29 @@ export function renderPanel(root: HTMLElement, result: LayoutResult, state: Pane
   root.append(list);
 
   if (result.context) {
-    const notes = [result.context.triple, result.context.commandSource];
-    if (result.context.commandInferred) notes.push('flags borrowed from a neighbouring file');
-    if (result.context.errorCount > 0) notes.push(`${result.context.errorCount} errors, layouts may be incomplete`);
+    const notes = contextNotes(result.context);
     if (result.state === 'analyzing') notes.push('updating…');
     root.append(element('p', 'context', notes.join(' · ')));
   }
 }
 
-function recordSummary(record: RecordView): string {
-  const parts = [formatSizeShort(record.sizeBits), `align ${record.alignBits / 8}`];
-  if (record.paddingBytes) parts.push(`${record.paddingBytes} B padding`);
-  return parts.join(' · ');
-}
-
-function recordDetails(record: RecordView, highlighted: number | null, actions: PanelActions): HTMLElement {
+function recordDetails(
+  record: RecordView,
+  highlighted: number | null,
+  actions: PanelActions,
+): HTMLElement {
   const details = element('div', 'record-details');
-  if (record.bases.length > 0) {
-    const bases = record.bases.map((base) => `${base.name} at ${formatOffset(base.offsetBits)}${base.isVirtual ? ' (virtual)' : ''}`);
-    details.append(element('p', 'summary', `Bases: ${bases.join(', ')}`));
-  }
+  const bases = baseList(record);
+  if (bases) details.append(element('p', 'summary', `Bases: ${bases}`));
   const map = byteMap(record, actions);
   if (map) details.append(map);
   details.append(memberTable(record, actions));
   const highlight = (index: number | null) => {
     for (const node of details.querySelectorAll<HTMLElement>('[data-member]')) {
-      node.classList.toggle('highlighted', index !== null && node.dataset['member'] === String(index));
+      node.classList.toggle(
+        'highlighted',
+        index !== null && node.dataset['member'] === String(index),
+      );
       node.classList.toggle('dimmed', index !== null && node.dataset['member'] !== String(index));
     }
   };
@@ -104,15 +121,16 @@ function recordDetails(record: RecordView, highlighted: number | null, actions: 
 }
 
 function byteMap(record: RecordView, actions: PanelActions): HTMLElement | null {
-  const owners = byteOwners(record);
-  if (owners.length === 0 || owners.length > MAX_MAPPED_BYTES) return null;
+  const owners = mappedBytes(record);
+  if (!owners) return null;
   const perRow = bytesPerRow(owners.length);
   const grid = element('div', 'byte-map');
   grid.style.setProperty('--columns', String(perRow));
   grid.setAttribute('role', 'img');
   grid.setAttribute('aria-label', `${record.name}: ${owners.length} bytes`);
   grid.append(element('span', 'corner'));
-  for (let column = 0; column < perRow; column++) grid.append(element('span', 'column-label', String(column)));
+  for (let column = 0; column < perRow; column++)
+    grid.append(element('span', 'column-label', String(column)));
   owners.forEach((owner, byte) => {
     if (byte % perRow === 0) grid.append(element('span', 'row-label', String(byte)));
     if (owner === null) {
@@ -132,7 +150,12 @@ function byteMap(record: RecordView, actions: PanelActions): HTMLElement | null 
 function memberTable(record: RecordView, actions: PanelActions): HTMLElement {
   const table = element('table', 'members');
   const head = element('tr');
-  for (const [title, className] of [['', ''], ['Member', ''], ['Offset', 'number'], ['Size', 'number']] as const) {
+  for (const [title, className] of [
+    ['', ''],
+    ['Member', ''],
+    ['Offset', 'number'],
+    ['Size', 'number'],
+  ] as const) {
     head.append(element('th', className, title));
   }
   table.createTHead().append(head);
@@ -154,7 +177,8 @@ function memberTable(record: RecordView, actions: PanelActions): HTMLElement {
       // Name and type on one line; a long type is cut short, its tooltip whole.
       const name = element('td', 'member');
       name.append(element('span', 'label', member.label));
-      if (member.type && member.type !== member.label) name.append(element('span', 'type', member.type));
+      if (member.type && member.type !== member.label)
+        name.append(element('span', 'type', member.type));
       name.title = member.type ? `${member.label}: ${member.type}` : member.label;
       tr.append(
         element('td', 'swatch', memberLetter(row.memberIndex)),
@@ -177,7 +201,11 @@ function revealMember(record: RecordView, memberIndex: number, actions: PanelAct
   if (range) actions.reveal(range);
 }
 
-function element<K extends keyof HTMLElementTagNameMap>(tag: K, className = '', text?: string): HTMLElementTagNameMap[K] {
+function element<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  className = '',
+  text?: string,
+): HTMLElementTagNameMap[K] {
   const node = document.createElement(tag);
   if (className) node.className = className;
   if (text !== undefined) node.textContent = text;

@@ -1,7 +1,7 @@
 **
 !dist/extension.cjs
 !dist/server/**
-!dist/view/**
+!dist/panel/**
 !package.json
 !README.md
 !LICENSE

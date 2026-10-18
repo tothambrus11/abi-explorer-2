@@ -8,8 +8,13 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { compileCommandsNotification } from '../src/protocol.ts';
-import { copyFixtureProject, hasLocalEngine, LOCAL_ENGINE, type FixtureProject } from './support/fixtureProject.ts';
+import { compileCommandsNotification } from '@abi-explorer/shared/protocol';
+import {
+  copyFixtureProject,
+  hasLocalEngine,
+  LOCAL_ENGINE,
+  type FixtureProject,
+} from './support/fixtureProject.ts';
 import { LspSession } from './support/lspSession.ts';
 
 const hasCompiler = (() => {
@@ -29,7 +34,10 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
   beforeAll(async () => {
     project = copyFixtureProject();
     compiled = expectedLayouts(project);
-    session = await LspSession.start(project.uri(''), { enginePath: LOCAL_ENGINE, inlayHints: 'records' });
+    session = await LspSession.start(project.uri(''), {
+      enginePath: LOCAL_ENGINE,
+      inlayHints: 'records',
+    });
     await session.open(project.uri('main.cpp'));
   }, 120_000);
 
@@ -45,14 +53,26 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     expect(size('Packet')).toBe(compiled['sizeof(Packet)']);
     expect(size('Pair<double>')).toBe(compiled['sizeof(Pair<double>)']);
     expect(size('Pair<short>')).toBe(compiled['sizeof(Pair<short>)']);
-    const payload = records.find((record) => record.name === 'Packet')!.members.find((m) => m.label === 'payload')!;
+    const payload = records
+      .find((record) => record.name === 'Packet')!
+      .members.find((m) => m.label === 'payload')!;
     expect(payload.offsetBits / 8).toBe(compiled['offsetof(Packet, payload)']);
-    expect(context).toMatchObject({ commandSource: 'compile_commands.json', commandInferred: false, errorCount: 0 });
+    expect(context).toMatchObject({
+      commandSource: 'compile_commands.json',
+      commandInferred: false,
+      errorCount: 0,
+      otherErrorCount: 0,
+    });
   });
 
   it('reports only the records declared in the document', async () => {
     const { records } = await session.layout(project.uri('main.cpp'));
-    expect(records.map((record) => record.name).sort()).toEqual(['Circle', 'Packet', 'Pair<double>', 'Pair<short>']);
+    expect(records.map((record) => record.name).sort()).toEqual([
+      'Circle',
+      'Packet',
+      'Pair<double>',
+      'Pair<short>',
+    ]);
   });
 
   it('hovers a record name with its size, map and members', async () => {
@@ -82,7 +102,9 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
   it('lays out a header with the flags of the source that includes it', async () => {
     await session.open(project.uri('include/shapes.h'));
     const { records, context } = await session.layout(project.uri('include/shapes.h'));
-    expect(records.map((record) => [record.name, record.sizeBits / 8])).toEqual([['Shape', compiled['sizeof(Shape)']]]);
+    expect(records.map((record) => [record.name, record.sizeBits / 8])).toEqual([
+      ['Shape', compiled['sizeof(Shape)']],
+    ]);
     expect(context?.commandInferred).toBe(true);
   });
 
@@ -95,13 +117,24 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
 
   it('re-analyses an edit, and a pushed command wins over the database', async () => {
     const uri = project.uri('sensor.c');
-    await session.change(uri, fs.readFileSync(project.path('sensor.c'), 'utf8').replace('uint32_t value;', 'uint64_t value;'));
+    await session.change(
+      uri,
+      fs
+        .readFileSync(project.path('sensor.c'), 'utf8')
+        .replace('uint32_t value;', 'uint64_t value;'),
+    );
     expect((await session.layout(uri)).records[0]!.sizeBits / 8).toBe(24);
 
     const analyzed = session.nextAnalysis(uri);
     await session.notify(compileCommandsNotification, {
       source: 'CMake Tools',
-      commands: [{ directory: project.root, file: project.path('sensor.c'), arguments: ['cc', '-fpack-struct=1', '-c', 'sensor.c'] }],
+      commands: [
+        {
+          directory: project.root,
+          file: project.path('sensor.c'),
+          arguments: ['cc', '-fpack-struct=1', '-c', 'sensor.c'],
+        },
+      ],
     });
     await analyzed;
     const { records, context } = await session.layout(uri);
@@ -125,6 +158,14 @@ int main() {
 }`,
   );
   const binary = path.join(project.root, 'probe');
-  execFileSync('c++', ['-std=c++20', '-Wno-invalid-offsetof', `-I${project.path('include')}`, `-I${project.root}`, probe, '-o', binary]);
+  execFileSync('c++', [
+    '-std=c++20',
+    '-Wno-invalid-offsetof',
+    `-I${project.path('include')}`,
+    `-I${project.root}`,
+    probe,
+    '-o',
+    binary,
+  ]);
   return JSON.parse(execFileSync(binary, { encoding: 'utf8' })) as Record<string, number>;
 }

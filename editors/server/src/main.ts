@@ -8,5 +8,8 @@ import { startServer } from './server.ts';
 
 const fromSource = import.meta.url.endsWith('.ts');
 startServer(createConnection(ProposedFeatures.all), {
-  engineWorker: new URL(fromSource ? './engine/engineWorker.ts' : './engineWorker.js', import.meta.url),
+  engineWorker: new URL(
+    fromSource ? './engine/engineWorker.ts' : './engineWorker.js',
+    import.meta.url,
+  ),
 });

@@ -13,6 +13,8 @@ struct AbiExplorer {
 }
 
 impl AbiExplorer {
+    /// Installs or updates the package. Offline, an installed copy is used as
+    /// it is; without one, the status shows why the server cannot start.
     fn ensure_package(&mut self, id: &LanguageServerId) -> Result<()> {
         if self.installed {
             return Ok(());
@@ -21,20 +23,26 @@ impl AbiExplorer {
             id,
             &zed::LanguageServerInstallationStatus::CheckingForUpdate,
         );
-        let latest = zed::npm_package_latest_version(PACKAGE)?;
-        if zed::npm_package_installed_version(PACKAGE)?.as_deref() != Some(latest.as_str()) {
-            zed::set_language_server_installation_status(
-                id,
-                &zed::LanguageServerInstallationStatus::Downloading,
-            );
-            zed::npm_install_package(PACKAGE, &latest)?;
-        }
-        zed::set_language_server_installation_status(
-            id,
-            &zed::LanguageServerInstallationStatus::None,
-        );
-        self.installed = true;
-        Ok(())
+        let installed = zed::npm_package_installed_version(PACKAGE)?;
+        let result = match zed::npm_package_latest_version(PACKAGE) {
+            Ok(latest) if installed.as_deref() != Some(latest.as_str()) => {
+                zed::set_language_server_installation_status(
+                    id,
+                    &zed::LanguageServerInstallationStatus::Downloading,
+                );
+                zed::npm_install_package(PACKAGE, &latest)
+            }
+            Ok(_) => Ok(()),
+            Err(_) if installed.is_some() => Ok(()),
+            Err(error) => Err(error),
+        };
+        let status = match &result {
+            Ok(()) => zed::LanguageServerInstallationStatus::None,
+            Err(error) => zed::LanguageServerInstallationStatus::Failed(error.clone()),
+        };
+        zed::set_language_server_installation_status(id, &status);
+        self.installed = result.is_ok();
+        result
     }
 }
 

@@ -3,6 +3,9 @@ package abiexplorer.clion
 import abiexplorer.core.CompileCommand
 import abiexplorer.core.compileCommand
 import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
 import com.intellij.platform.lsp.api.LspServer
@@ -10,9 +13,16 @@ import com.intellij.platform.lsp.api.LspServerManager
 import com.intellij.platform.lsp.api.LspServerManagerListener
 import com.intellij.platform.lsp.api.LspServerState
 import com.intellij.util.concurrency.AppExecutorUtil
+import com.jetbrains.cidr.lang.workspace.OCResolveConfigurations
 import com.jetbrains.cidr.lang.workspace.OCWorkspace
 import com.jetbrains.cidr.lang.workspace.OCWorkspaceListener
 import com.jetbrains.cidr.lang.workspace.compiler.CidrCompilerSwitches
+
+/** Ends with the project, or when the plugin is unloaded: the parent for the plugin's listeners. */
+@Service(Service.Level.PROJECT)
+class PluginLifetime : Disposable {
+    override fun dispose() {}
+}
 
 /** Sends the project model once more whenever a server (re)starts. */
 class PushCompileCommandsOnStart : ProjectActivity {
@@ -23,7 +33,7 @@ class PushCompileCommandsOnStart : ProjectActivity {
                     WorkspaceCompileCommands.push(project)
                 }
             }
-        }, project, true)
+        }, project.service<PluginLifetime>(), true)
     }
 }
 
@@ -49,21 +59,19 @@ class WorkspaceCompileCommands(private val project: Project) : OCWorkspaceListen
         }
 
         private fun collect(project: Project): List<CompileCommand> {
-            val seen = HashSet<String>()
+            val files = OCWorkspace.getInstance(project).configurations.flatMap { it.sources }.distinctBy { it.path }
             val commands = ArrayList<CompileCommand>()
-            // A file in several configurations (Debug, Release) keeps the first, the active one.
-            for (configuration in OCWorkspace.getInstance(project).configurations) {
-                for (file in configuration.sources) {
-                    if (!seen.add(file.path)) continue
-                    val kind = configuration.getDeclaredLanguageKind(file) ?: continue
-                    val settings = configuration.getCompilerSettings(kind, file)
-                    commands += compileCommand(
-                        compiler = settings.compilerExecutable?.path,
-                        workingDirectory = settings.compilerWorkingDir?.path,
-                        switches = settings.compilerSwitches?.getList(CidrCompilerSwitches.Format.RAW).orEmpty(),
-                        file = file.path,
-                    )
-                }
+            for (file in files) {
+                // A file in several configurations (Debug, Release) takes the one selected for it in the editor.
+                val configuration = OCResolveConfigurations.getPreselectedConfiguration(file, project) ?: continue
+                val kind = configuration.getDeclaredLanguageKind(file) ?: continue
+                val settings = configuration.getCompilerSettings(kind, file)
+                commands += compileCommand(
+                    compiler = settings.compilerExecutable?.path,
+                    workingDirectory = settings.compilerWorkingDir?.path,
+                    switches = settings.compilerSwitches?.getList(CidrCompilerSwitches.Format.RAW).orEmpty(),
+                    file = file.path,
+                )
             }
             return commands
         }

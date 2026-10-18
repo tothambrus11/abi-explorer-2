@@ -8,8 +8,10 @@ local M = {}
 local CLIENT_NAME = 'abi_explorer'
 local DEBOUNCE_MS = 150
 
-local split = { buffer = nil, window = nil, source = nil }
-local timer = nil
+local split = { buffer = nil, window = nil }
+local timer = vim.uv.new_timer()
+-- Numbers each layout request, so a slow answer to an older one is dropped.
+local request_number = 0
 
 --- Bits as bytes when whole: `4 B`, else `3 bits`.
 local function size(bits)
@@ -17,6 +19,27 @@ local function size(bits)
     return (bits / 8) .. ' B'
   end
   return bits .. ' bits'
+end
+
+--- Where the layouts come from, and anything that makes them less certain (as hovers say it).
+local function context_line(context)
+  local notes = { context.triple, context.commandSource }
+  if context.commandInferred then
+    table.insert(notes, 'flags borrowed from a neighbouring file')
+  end
+  local function errors(count)
+    return count == 1 and '1 error' or (count .. ' errors')
+  end
+  if context.errorCount > 0 then
+    table.insert(notes, errors(context.errorCount) .. ' in this file, so layouts may be incomplete')
+  end
+  if (context.otherErrorCount or 0) > 0 then
+    table.insert(notes, errors(context.otherErrorCount) .. ' in its headers or flags')
+  end
+  if context.warning and context.warning ~= vim.NIL then
+    table.insert(notes, context.warning)
+  end
+  return table.concat(notes, ' · ')
 end
 
 --- The record's summary line, then the server's text layout: byte map and member table.
@@ -50,15 +73,21 @@ local function refresh()
   if not client then
     return
   end
-  split.source = source
   local params = vim.lsp.util.make_position_params(0, client.offset_encoding)
   params.includeText = true
+  request_number = request_number + 1
+  local number = request_number
   client:request('abiExplorer/layout', params, function(err, result)
-    if err or not result or not vim.api.nvim_buf_is_valid(split.buffer) then
+    if number ~= request_number or not vim.api.nvim_buf_is_valid(split.buffer) then
+      return
+    end
+    if err or not result then
+      show({ 'The layout request failed: ' .. (err and err.message or 'no answer') })
       return
     end
     if #result.records == 0 then
-      show({ result.state == 'analyzing' and 'Analyzing…' or (result.message or 'No layouts.') })
+      local message = result.message ~= vim.NIL and result.message or nil
+      show({ message or (result.state == 'analyzing' and 'Analyzing…' or 'No layouts yet.') })
       return
     end
     -- The record at the cursor; its member there is marked in the text.
@@ -69,19 +98,21 @@ local function refresh()
       end
     end
     local lines = record_lines(record)
-    if result.context then
+    if result.message and result.message ~= vim.NIL then
+      table.insert(lines, 1, result.message)
+      table.insert(lines, 2, '')
+    end
+    if result.context and result.context ~= vim.NIL then
       table.insert(lines, '')
-      table.insert(lines, result.context.triple .. ' · ' .. result.context.commandSource)
+      table.insert(lines, context_line(result.context))
     end
     show(lines)
   end, source)
 end
 
 local function schedule_refresh()
-  if timer then
-    timer:stop()
-  end
-  timer = vim.defer_fn(refresh, DEBOUNCE_MS)
+  timer:stop()
+  timer:start(DEBOUNCE_MS, 0, vim.schedule_wrap(refresh))
 end
 
 --- Opens the layout split, or closes it when open.

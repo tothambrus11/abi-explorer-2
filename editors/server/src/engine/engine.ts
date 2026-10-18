@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url';
 import type { EngineFiles } from './engineFiles.ts';
 import { createHostFs, type EmscriptenFs } from './hostFs.ts';
 import type { Mount } from './pathMap.ts';
-import type { EngineRequest, EngineResponse } from './wire.ts';
+import type { EngineRequest, EngineResponse } from './engineTypes.ts';
 
 export interface Engine {
   readonly clangVersion: string;

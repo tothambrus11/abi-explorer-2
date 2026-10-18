@@ -1,15 +1,29 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { LayoutResult, MemberView, RecordView } from 'abi-explorer-lsp/protocol';
+import type { LayoutResult, MemberView, RecordView } from '@abi-explorer/shared/protocol';
 import { renderPanel, type PanelState } from '../src/render.ts';
 
 const at = (line: number) => ({ start: { line, character: 2 }, end: { line, character: 6 } });
 
 function member(label: string, offset: number, size: number, line: number): MemberView {
-  return { kind: 'field', label, type: 'int', offsetBits: offset * 8, sizeBits: size * 8, alignBits: size * 8, nameRange: at(line) };
+  return {
+    kind: 'field',
+    label,
+    type: 'int',
+    offsetBits: offset * 8,
+    sizeBits: size * 8,
+    alignBits: size * 8,
+    nameRange: at(line),
+  };
 }
 
-function record(id: number, name: string, members: MemberView[], sizeBytes: number, paddingBytes: number): RecordView {
+function record(
+  id: number,
+  name: string,
+  members: MemberView[],
+  sizeBytes: number,
+  paddingBytes: number,
+): RecordView {
   return {
     id,
     kind: 'struct',
@@ -20,7 +34,6 @@ function record(id: number, name: string, members: MemberView[], sizeBytes: numb
     nameRange: at(id * 10),
     extent: null,
     members,
-    paddingRuns: [],
     bases: [],
   };
 }
@@ -34,7 +47,16 @@ function result(overrides: Partial<LayoutResult> = {}): LayoutResult {
     message: null,
     records: [packet, header],
     selection: { recordId: 2, memberIndex: null },
-    context: { triple: 'x86_64-linux-gnu', cxxAbi: 'itanium', clangVersion: '22', commandSource: 'CMake Tools', commandInferred: false, errorCount: 0 },
+    context: {
+      triple: 'x86_64-linux-gnu',
+      cxxAbi: 'itanium',
+      clangVersion: '22',
+      commandSource: 'CMake Tools',
+      commandInferred: false,
+      errorCount: 0,
+      otherErrorCount: 0,
+      warning: null,
+    },
     ...overrides,
   };
 }
@@ -46,11 +68,12 @@ const reveal = vi.fn();
 beforeEach(() => {
   document.body.innerHTML = '<div id="root"></div>';
   root = document.getElementById('root')!;
-  state = { openRecordId: null };
+  state = { choice: null };
   reveal.mockReset();
 });
 
-const texts = (selector: string) => [...root.querySelectorAll(selector)].map((node) => node.textContent);
+const texts = (selector: string) =>
+  [...root.querySelectorAll(selector)].map((node) => node.textContent);
 
 describe('renderPanel', () => {
   it('lists every record and opens the one at the caret', () => {
@@ -82,14 +105,38 @@ describe('renderPanel', () => {
     (root.querySelectorAll('.record-heading')[0] as HTMLElement).click();
     expect(texts('.record.open .record-name')).toEqual(['Packet']);
     expect(reveal).toHaveBeenCalledWith(at(10));
-    renderPanel(root, result({ selection: null }), state, { reveal });
+    // The caret has not moved: the click still stands.
+    renderPanel(root, result(), state, { reveal });
+    expect(texts('.record.open .record-name')).toEqual(['Packet']);
+  });
+
+  it('closes the open record on click, and keeps it closed while the caret stays put', () => {
+    renderPanel(root, result(), state, { reveal });
+    (root.querySelectorAll('.record-heading')[1] as HTMLElement).click();
+    expect(root.querySelectorAll('.record.open')).toHaveLength(0);
+    expect(reveal).not.toHaveBeenCalled();
+    renderPanel(root, result(), state, { reveal });
+    expect(root.querySelectorAll('.record.open')).toHaveLength(0);
+    renderPanel(root, result({ selection: { recordId: 1, memberIndex: null } }), state, { reveal });
     expect(texts('.record.open .record-name')).toEqual(['Packet']);
   });
 
   it('says why there is nothing to show', () => {
-    renderPanel(root, result({ records: [], state: 'unavailable', message: 'No compile command found.', context: null }), state, { reveal });
+    renderPanel(
+      root,
+      result({
+        records: [],
+        state: 'unavailable',
+        message: 'No compile command found.',
+        context: null,
+      }),
+      state,
+      { reveal },
+    );
     expect(texts('.empty')).toEqual(['No compile command found.']);
-    renderPanel(root, result({ records: [], state: 'analyzing', context: null }), state, { reveal });
+    renderPanel(root, result({ records: [], state: 'analyzing', context: null }), state, {
+      reveal,
+    });
     expect(texts('.empty')).toEqual(['Analyzing…']);
   });
 });
