@@ -28,6 +28,7 @@ export function reorderAction(record: RecordView, lines: readonly string[]): Reo
   const blocks = new Map<number, { start: number; end: number }>();
   let previousEnd = -1;
   const labels = record.members.map((member) => member.label);
+  if (record.extent && memberInitializerUsesAnother(record.extent, lines, labels)) return null;
   for (const line of slots) {
     const code = withoutComment(lines[line] ?? '');
     if (
@@ -113,6 +114,22 @@ function initializerUsesAnother(code: string, labels: readonly string[]): boolea
     initializer !== undefined &&
     labels.some((label) => /^\w+$/.test(label) && new RegExp(`\\b${label}\\b`).test(initializer))
   );
+}
+
+/** `S() : a(1), d(a * 2.0) {}` in the record: the same, through a constructor. */
+function memberInitializerUsesAnother(
+  extent: Range,
+  lines: readonly string[],
+  labels: readonly string[],
+): boolean {
+  const body = lines.slice(extent.start.line, extent.end.line + 1).join('\n');
+  const names = new Set(labels.filter((label) => /^\w+$/.test(label)));
+  for (const [, name, argument] of body.matchAll(/\b(\w+)\s*[({]([^(){}]*)[)}]/g)) {
+    if (!names.has(name!)) continue;
+    const words = argument!.match(/\b\w+\b/g) ?? [];
+    if (words.some((word) => word !== name && names.has(word))) return true;
+  }
+  return false;
 }
 
 /** `int x, y;` declares two members; `std::map<int, int> m;` declares one. */

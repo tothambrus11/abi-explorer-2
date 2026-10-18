@@ -21,7 +21,7 @@ function packet(lines: number[]): RecordView {
     alignBits: 32,
     paddingBytes: 5,
     nameRange: null,
-    extent: null,
+    extent: { start: { line: 0, character: 0 }, end: { line: 99, character: 0 } },
     members: [
       field('type', 0, 1, lines[0]!),
       field('length', 4, 4, lines[1]!),
@@ -145,6 +145,28 @@ describe('reorderAction', () => {
     ).toBe(false);
     expect(
       offered(lines('  char type{};', '  int length = 4;', '  short checksum{2};'), [1, 2, 3]),
+    ).toBe(true);
+    expect(
+      offered(
+        lines(
+          '  char type;',
+          '  int length;',
+          '  short checksum;',
+          '  Packet() : type(1), checksum(type) {}',
+        ),
+        [1, 2, 3],
+      ),
+    ).toBe(false);
+    expect(
+      offered(
+        lines(
+          '  char type;',
+          '  int length;',
+          '  short checksum;',
+          '  Packet() : type(1), checksum(2) {}',
+        ),
+        [1, 2, 3],
+      ),
     ).toBe(true);
     // Template arguments are not declarators.
     expect(
