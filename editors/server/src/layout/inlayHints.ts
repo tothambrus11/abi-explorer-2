@@ -1,12 +1,13 @@
 // The always-visible summary: `40 B · align 8 · 7 B padding` after each record's
-// name, and with `members`, `@4 · 4 B` at the end of each member's line.
+// name, and with `members`, `@4 · 4 B · 3 B padding after` at the end of each
+// member's line.
 //
 // Zed has no panels and Neovim's are text, so this is the one surface every
 // editor shows without the user asking.
 
 import type { InlayHintsMode, Position, Range, RecordView } from '@abi-explorer/shared/protocol';
 import { formatOffset, formatSizeShort } from '@abi-explorer/shared/format';
-import { recordSummary } from '@abi-explorer/shared/layoutModel';
+import { layoutRows, recordSummary } from '@abi-explorer/shared/layoutModel';
 
 export interface LayoutHint {
   position: Position;
@@ -31,11 +32,15 @@ export function layoutHints(
     hints.push({ position: record.nameRange.end, label: recordSummary(record) });
 
     if (mode !== 'members') continue;
-    for (const member of record.members) {
+    const paddingAfter = paddingAfterMembers(record);
+    for (const [index, member] of record.members.entries()) {
       // A virtual base is named in another class's base list: its hint would land there.
       if (!member.nameRange || !within(member.nameRange.start, record.extent)) continue;
       const line = member.nameRange.start.line;
-      const label = `@${formatOffset(member.offsetBits)} · ${formatSizeShort(member.sizeBits)}`;
+      const padding = paddingAfter.get(index);
+      const label =
+        `@${formatOffset(member.offsetBits)} · ${formatSizeShort(member.sizeBits)}` +
+        (padding ? ` · ${formatSizeShort(padding)} padding after` : '');
       memberLines.set(line, [...(memberLines.get(line) ?? []), { name: member.label, label }]);
     }
   }
@@ -47,6 +52,26 @@ export function layoutHints(
     hints.push({ position: { line, character: lineLength(line) }, label });
   }
   return hints;
+}
+
+/**
+ * Each padding run, given to the member it follows: the one ending where the
+ * run starts, else (after a bit-field) the last one before it.
+ */
+function paddingAfterMembers(record: RecordView): Map<number, number> {
+  const padding = new Map<number, number>();
+  const ended = new Map<number, number>();
+  let previous: number | null = null;
+  for (const row of layoutRows(record)) {
+    if (row.kind === 'member') {
+      ended.set(row.offsetBits + row.sizeBits, row.memberIndex);
+      previous = row.memberIndex;
+    } else {
+      const owner = ended.get(row.offsetBits) ?? previous;
+      if (owner !== null) padding.set(owner, (padding.get(owner) ?? 0) + row.sizeBits);
+    }
+  }
+  return padding;
 }
 
 function within(position: Position, range: Range | null): boolean {

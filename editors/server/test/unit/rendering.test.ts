@@ -202,13 +202,22 @@ describe('layoutHints', () => {
     ]);
   });
 
+  it('says how much padding follows each member', () => {
+    expect(layoutHints([packet], 'members', () => 30).map((hint) => hint.label)).toEqual([
+      '12 B · align 4 · 5 B padding',
+      '@0 · 1 B · 3 B padding after',
+      '@4 · 4 B',
+      '@8 · 2 B · 2 B padding after',
+    ]);
+  });
+
   it('adds member hints at line ends, one per line', () => {
     const twoOnOneLine = {
       ...packet,
       members: [member('x', 0, 4, 'int', 1), member('y', 4, 4, 'int', 1)],
     };
     expect(layoutHints([twoOnOneLine], 'members', (line) => line * 10).slice(1)).toEqual([
-      { position: { line: 1, character: 10 }, label: 'x @0 · 4 B, y @4 · 4 B' },
+      { position: { line: 1, character: 10 }, label: 'x @0 · 4 B, y @4 · 4 B · 4 B padding after' },
     ]);
   });
 
@@ -219,7 +228,7 @@ describe('layoutHints', () => {
       members: [member('a', 0, 4, 'int', 0), { ...member('Base', 8, 8, 'Base', 7), kind: 'base' }],
     };
     expect(layoutHints([withBase], 'members', () => 50).slice(1)).toEqual([
-      { position: { line: 0, character: 50 }, label: '@0 · 4 B' },
+      { position: { line: 0, character: 50 }, label: '@0 · 4 B · 4 B padding after' },
     ]);
   });
 

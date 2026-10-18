@@ -136,7 +136,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
-          # The IntelliJ Platform download (about 1.5 GB) is most of this job.
+          # Downloading CLion to build against is most of this job.
           cache: gradle
       - run: npm ci && npm run build
         working-directory: editors
