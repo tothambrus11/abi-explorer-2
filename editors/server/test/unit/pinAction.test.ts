@@ -89,9 +89,22 @@ describe('pinAction', () => {
     ).toContain('offsetof');
   });
 
-  it('is not offered for an instantiation or a definition that declares a variable', () => {
+  it('is offered after a definition that declares a variable too, but not for an instantiation', () => {
     expect(pinAction({ ...packet, name: 'Pair<int>' }, lines, 'c++')).toBeNull();
     const withVariable = [...lines.slice(0, 4), '  } packet;', '}'];
-    expect(pinAction(packet, withVariable, 'c++')).toBeNull();
+    expect(pinAction(packet, withVariable, 'c++')?.edit.range.start.line).toBe(5);
+    const continued = [...lines.slice(0, 4), '  } packet = {', '  };'];
+    expect(pinAction(packet, continued, 'c++')).toBeNull();
+  });
+
+  it('names a typedef of an anonymous struct by the typedef, in C too', () => {
+    const typedef = ['typedef struct {', '  char type;', '  int length;', '} Packet;', ''];
+    const anonymous = {
+      ...packet,
+      name: 'Packet',
+      nameRange: range(3, 2, 3, 8),
+      extent: range(0, 8, 3, 1),
+    };
+    expect(pinAction(anonymous, typedef, 'c')!.edit.newText).toContain('sizeof(Packet) == 8');
   });
 });

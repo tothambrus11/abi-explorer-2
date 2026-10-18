@@ -23,7 +23,7 @@ export function recordsInDocument(
   const lines = document.text.split(/\r?\n/);
   const recordsById = new Map(records.map((record) => [record.id, record]));
   return records.flatMap((record): RecordView[] =>
-    record.isAnonymous || record.location?.file !== document.guestPath
+    unnamed(record) || record.location?.file !== document.guestPath
       ? []
       : [recordView(record, recordsById, document.guestPath, lines)],
   );
@@ -48,7 +48,7 @@ export function typeIndex(
     byName.set(key, known === undefined || known === record ? record : null);
   };
   for (const record of records) {
-    if (record.isAnonymous) continue;
+    if (unnamed(record)) continue;
     const printed = record.printedName.replace(/^(struct|class|union|__interface) /, '');
     add(printed, record);
     if (record.qualifiedName) add(record.qualifiedName, record);
@@ -58,7 +58,7 @@ export function typeIndex(
   for (const record of records) {
     for (const group of record.render.groups) {
       const target = group.recordId === null ? undefined : recordsById.get(group.recordId);
-      if (target && !target.isAnonymous) add(group.type.replace(/^const |^volatile /, ''), target);
+      if (target && !unnamed(target)) add(group.type.replace(/^const |^volatile /, ''), target);
     }
   }
   for (const [alias, name] of STANDARD_ALIASES) {
@@ -90,6 +90,35 @@ const STANDARD_ALIASES: [string, string][] = [
   [`std::${string}_view`, `std::basic_string_view<${char}>`],
 ]);
 
+/**
+ * A record with no name to call it by: an anonymous struct or union member.
+ * `typedef struct { … } Pair;` is anonymous too, but clang names it `Pair`.
+ */
+function unnamed(record: RecordLayout): boolean {
+  return (
+    record.isAnonymous && (!record.qualifiedName || record.qualifiedName.includes('(anonymous'))
+  );
+}
+
+/**
+ * Where the record's name is: its tag, or for `typedef struct { … } Pair;` the
+ * typedef name after the closing brace (the engine points at `struct`).
+ */
+function nameRangeOf(record: RecordLayout, lines: readonly string[]): Range {
+  const tagRange = rangeOf(record.location!, lines);
+  if (!record.isAnonymous || !record.range) return tagRange;
+  const extent = extentOf(record.range, lines);
+  const after = (lines[extent.end.line] ?? '').slice(extent.end.character);
+  const typedefName = record.qualifiedName.split('::').at(-1)!;
+  const match = /^(\s*)(\w+)/.exec(after);
+  if (match?.[2] !== typedefName) return tagRange;
+  const start = extent.end.character + match[1]!.length;
+  return {
+    start: { line: extent.end.line, character: start },
+    end: { line: extent.end.line, character: start + typedefName.length },
+  };
+}
+
 /** One record as a view; ranges only for locations in `guestPath`, the file `lines` are of. */
 function recordView(
   record: RecordLayout,
@@ -117,7 +146,7 @@ function recordView(
       }
       const group = record.render.groups[node.ref]!;
       const nested = group.recordId === null ? undefined : recordsById.get(group.recordId);
-      if (group.kind === 'member' && nested?.isAnonymous) {
+      if (group.kind === 'member' && nested && unnamed(nested)) {
         visit(node.children);
         continue;
       }
@@ -151,7 +180,7 @@ function recordView(
     sizeBits: record.sizeBits,
     alignBits: record.alignBits,
     paddingBytes: record.render.paddingBytes,
-    nameRange: here ? rangeOf(record.location!, lines) : null,
+    nameRange: here ? nameRangeOf(record, lines) : null,
     extent: here && record.range ? extentOf(record.range, lines) : null,
     members,
     bases: record.bases.map((base) => ({

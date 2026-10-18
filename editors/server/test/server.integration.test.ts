@@ -154,6 +154,34 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     });
   });
 
+  it('lays out a typedef of an anonymous struct under the typedef name', async () => {
+    const uri = project.uri('typedef.c');
+    const text =
+      '#include <stddef.h>\ntypedef struct {\n  char type;\n  int length;\n} Packet;\nstruct Holder { Packet p; char c; };\n';
+    fs.writeFileSync(project.path('typedef.c'), text);
+    await session.open(uri);
+    const { records } = await session.layout(uri);
+    expect(records.map((record) => record.name)).toEqual(['Packet', 'Holder']);
+    // A member of the typedef's type is one member, not the struct's fields inlined.
+    expect(records[1]!.members.map((member) => member.label)).toEqual(['p', 'c']);
+    expect(records[0]!.nameRange).toEqual({
+      start: { line: 4, character: 2 },
+      end: { line: 4, character: 8 },
+    });
+    const hover = await session.hover(uri, { line: 5, character: 17 });
+    expect((hover!.contents as { value: string }).value).toContain('**struct Packet** · 8 B');
+
+    const pin = (await session.codeActions(uri, { line: 2, character: 3 })).find((action) =>
+      action.title.startsWith('Pin'),
+    );
+    const [edit] = pin!.edit!.changes![uri]!;
+    const lines = text.split('\n');
+    lines.splice(edit!.range.start.line, 0, edit!.newText.trimEnd());
+    await session.change(uri, lines.join('\n'));
+    expect((await session.layout(uri)).context?.errorCount, edit!.newText).toBe(0);
+    expect(edit!.newText).toContain('_Static_assert(offsetof(Packet, length) == 4');
+  });
+
   it('says a template needs a use before it has a layout', async () => {
     const uri = project.uri('box.cpp');
     fs.writeFileSync(project.path('box.cpp'), 'template <class T> struct Box { T t; char c; };\n');
