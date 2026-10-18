@@ -68,6 +68,11 @@ JSON
   sleep 2
   xdotool mousemove 290 385 # `checksum`
   shot 4 zed-member-hover.png
+  xdotool mousemove 900 700 click 1 mousemove 195 313 click 1 # the caret on `Packet`
+  sleep 1
+  xdotool key ctrl+period
+  shot 4 zed-reorder-action.png
+  xdotool key Escape
   # By name: the command line of this script contains $ZED too.
   pkill -x zed-editor || true
 fi
