@@ -127,6 +127,7 @@ export function contextNotes(context: AnalysisContext): string[] {
   if (context.otherErrorCount > 0) {
     notes.push(`${errors(context.otherErrorCount)} in its headers or flags`);
   }
+  if (context.firstError) notes.push(context.firstError);
   if (context.warning) notes.push(context.warning);
   return notes;
 }

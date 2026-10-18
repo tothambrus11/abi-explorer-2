@@ -209,7 +209,7 @@ export class Analyzer {
             clangVersion: response.clangVersion,
             commandSource: describeOrigin(found),
             commandInferred: found.borrowedFrom !== null,
-            ...errorCounts(response.diagnostics),
+            ...errorSummary(response.diagnostics),
             warning: toolchain.warning,
           },
         },
@@ -311,16 +311,35 @@ function describeOrigin(found: FoundCommand): string {
   return found.origin.kind === 'pushed' ? found.origin.label : found.origin.kind;
 }
 
-/** Errors in the document itself, and elsewhere: in its headers, or in the flags. */
-function errorCounts(diagnostics: EngineResponse['diagnostics']): {
+/**
+ * Errors in the document itself, and elsewhere: in its headers, or in the
+ * flags. The first one is spelled out, since a missing include path or an
+ * unknown flag shows up nowhere else.
+ */
+function errorSummary(diagnostics: EngineResponse['diagnostics']): {
   errorCount: number;
   otherErrorCount: number;
+  firstError: string | null;
 } {
   const errors = diagnostics.filter(
     (diagnostic) => diagnostic.severity === 'error' || diagnostic.severity === 'fatal',
   );
   const inFile = errors.filter((diagnostic) => diagnostic.location?.isMainFile).length;
-  return { errorCount: inFile, otherErrorCount: errors.length - inFile };
+  const first = errors.find((diagnostic) => diagnostic.location?.isMainFile) ?? errors[0];
+  return {
+    errorCount: inFile,
+    otherErrorCount: errors.length - inFile,
+    firstError: first ? describeError(first) : null,
+  };
+}
+
+function describeError({ message, location }: EngineResponse['diagnostics'][number]): string {
+  const text = message.length > 120 ? `${message.slice(0, 119)}…` : message;
+  if (!location) return text;
+  const where = location.isMainFile
+    ? `line ${location.line}`
+    : `${path.posix.basename(location.file)}:${location.line}`;
+  return `${where}: ${text}`;
 }
 
 function versionOf(analysis: Analysis): number {

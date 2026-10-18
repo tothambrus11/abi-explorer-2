@@ -93,6 +93,8 @@ export interface AnalysisContext {
   errorCount: number;
   /** Errors in its headers or its flags, which can hide declarations just as well. */
   otherErrorCount: number;
+  /** The first of those errors, where it is and what it says: `line 3: unknown type name 'foo'`. */
+  firstError: string | null;
   /** Something that makes these layouts less trustworthy, such as a compiler that could not be asked. */
   warning: string | null;
 }

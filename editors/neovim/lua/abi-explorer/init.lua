@@ -111,6 +111,9 @@ local function context_line(context)
   if (context.otherErrorCount or 0) > 0 then
     table.insert(notes, errors(context.otherErrorCount) .. ' in its headers or flags')
   end
+  if context.firstError and context.firstError ~= vim.NIL then
+    table.insert(notes, context.firstError)
+  end
   if context.warning and context.warning ~= vim.NIL then
     table.insert(notes, context.warning)
   end

@@ -55,6 +55,7 @@ function result(overrides: Partial<LayoutResult> = {}): LayoutResult {
       commandInferred: false,
       errorCount: 0,
       otherErrorCount: 0,
+      firstError: null,
       warning: null,
     },
     ...overrides,

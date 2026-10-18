@@ -115,6 +115,31 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     expect(records[0]!.text).toContain('0  a · · · b b b b');
   });
 
+  it('keeps the records clang recovers past an error, and says what the error was', async () => {
+    fs.writeFileSync(
+      project.path('broken.cpp'),
+      'struct A { int x; };\nstruct B { undeclared y; };\nstruct C { double d; };\n',
+    );
+    await session.open(project.uri('broken.cpp'));
+    const { records, context } = await session.layout(project.uri('broken.cpp'));
+    expect(records.map((record) => record.name)).toEqual(['A', 'C']);
+    expect(context).toMatchObject({
+      errorCount: 1,
+      firstError: "line 2: unknown type name 'undeclared'",
+    });
+  });
+
+  it('says a template needs a use before it has a layout', async () => {
+    const uri = project.uri('box.cpp');
+    fs.writeFileSync(project.path('box.cpp'), 'template <class T> struct Box { T t; char c; };\n');
+    await session.open(uri);
+    expect((await session.layout(uri)).message).toMatch(/^A template has no layout until/);
+    await session.change(uri, 'template <class T> struct Box { T t; char c; };\nBox<int> box;\n');
+    const { records, message } = await session.layout(uri);
+    expect(message).toBeNull();
+    expect(records.map((record) => record.name)).toEqual(['Box<int>']);
+  });
+
   it('re-analyses an edit, and a pushed command wins over the database', async () => {
     const uri = project.uri('sensor.c');
     await session.change(

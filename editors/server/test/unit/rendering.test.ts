@@ -57,6 +57,7 @@ const context: AnalysisContext = {
   commandInferred: false,
   errorCount: 0,
   otherErrorCount: 0,
+  firstError: null,
   warning: null,
 };
 
@@ -168,7 +169,7 @@ describe('hovers', () => {
     const markdown = memberHover(
       packet,
       1,
-      { ...context, commandInferred: true, errorCount: 2 },
+      { ...context, commandInferred: true, errorCount: 2, firstError: 'line 3: expected ;' },
       { images: false },
     );
     expect(markdown.split('\n')[0]).toBe('**Packet::length** `int` · offset 4 · 4 B · align 4');
@@ -177,6 +178,7 @@ describe('hovers', () => {
       'Bytes 8–9, followed by 2 B of padding.',
     );
     expect(markdown).toContain('flags borrowed from a neighbouring file · 2 errors in this file');
+    expect(markdown).toContain('may be incomplete · line 3: expected ;');
   });
 
   it('escapes template arguments', () => {
