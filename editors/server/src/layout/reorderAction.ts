@@ -23,6 +23,9 @@ export function reorderAction(record: RecordView, lines: readonly string[]): Reo
   const slots = (memberLines as number[]).slice().sort((a, b) => a - b);
   if (new Set(slots).size !== slots.length) return null;
 
+  // Each member moves with the comment lines right above it.
+  const blocks = new Map<number, { start: number; end: number }>();
+  let previousEnd = -1;
   for (const line of slots) {
     const code = withoutComment(lines[line] ?? '');
     if (
@@ -32,24 +35,56 @@ export function reorderAction(record: RecordView, lines: readonly string[]): Reo
     ) {
       return null;
     }
-    // The line holds the whole declaration: the one before it ends another.
-    const previous = withoutComment(lines[line - 1] ?? '');
-    if (!(previous === '' || /[;{]$/.test(previous) || ACCESS.test(previous))) return null;
+    let start = line;
+    while (start - 1 > previousEnd && isComment(lines[start - 1] ?? '')) start--;
+    // The block holds the whole declaration: the line before it ends another.
+    const before = withoutComment(lines[start - 1] ?? '');
+    if (!(before === '' || /[;{}]$/.test(before) || ACCESS.test(before))) return null;
+    blocks.set(start, { start, end: line });
+    previousEnd = line;
   }
-  for (let line = slots[0]!; line <= slots.at(-1)!; line++) {
+  const first = Math.min(...blocks.keys());
+  const last = slots.at(-1)!;
+  for (let line = first; line <= last; line++) {
     const code = withoutComment(lines[line] ?? '');
     if (ACCESS.test(code) || code.startsWith('#')) return null;
   }
 
-  const edits = slots.map((line, slot) => ({
-    range: { start: { line, character: 0 }, end: { line, character: lines[line]!.length } },
-    newText: lines[memberLines[tighter.order[slot]!]!]!,
-  }));
+  // The same lines, the blocks taking each other's places in the tighter order.
+  const byMember = memberLines.map((line) => [...blocks.values()].find((b) => b.end === line)!);
+  const moved: string[] = [];
+  let slot = 0;
+  for (let line = first; line <= last; line++) {
+    const block = blocks.get(line);
+    if (!block) {
+      moved.push(lines[line]!);
+      continue;
+    }
+    const incoming = byMember[tighter.order[slot++]!]!;
+    moved.push(...lines.slice(incoming.start, incoming.end + 1));
+    line = block.end;
+  }
+  const edits = moved.flatMap((text, index) => {
+    const line = first + index;
+    return text === lines[line]
+      ? []
+      : [
+          {
+            range: { start: { line, character: 0 }, end: { line, character: lines[line]!.length } },
+            newText: text,
+          },
+        ];
+  });
   const saved = formatSizeShort(record.sizeBits - tighter.sizeBits);
   return {
     title: `Reorder ${record.name}'s members by alignment (${formatSizeShort(tighter.sizeBits)}, ${saved} less)`,
     edits,
   };
+}
+
+/** A line holding only a comment, or part of a block comment. */
+function isComment(line: string): boolean {
+  return /^\s*(\/\/|\/\*|\*)/.test(line);
 }
 
 const ACCESS = /^(public|private|protected)\s*:$/;

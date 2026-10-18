@@ -38,7 +38,7 @@ function apply(lines: string[], action: NonNullable<ReturnType<typeof reorderAct
 }
 
 describe('reorderAction', () => {
-  it('moves member lines into the tightest order and leaves the rest in place', () => {
+  it('moves members into the tightest order with their comments, and leaves the rest in place', () => {
     const lines = [
       'struct Packet {',
       '  char type;  // the kind',
@@ -55,10 +55,37 @@ describe('reorderAction', () => {
       'struct Packet {',
       '  int length;',
       '',
-      '  short checksum;',
       '  // why checksums',
+      '  short checksum;',
       '  char type;  // the kind',
       '  void reset();',
+      '};',
+    ]);
+  });
+
+  it('takes a doc comment of several lines along, and no comment past a blank line', () => {
+    const lines = [
+      'struct Packet {',
+      '  // Not about type.',
+      '',
+      '  /**',
+      '   * The kind.',
+      '   */',
+      '  char type;',
+      '  int length;',
+      '  short checksum;',
+      '};',
+    ];
+    expect(apply(lines, reorderAction(packet([6, 7, 8]), lines)!)).toEqual([
+      'struct Packet {',
+      '  // Not about type.',
+      '',
+      '  int length;',
+      '  short checksum;',
+      '  /**',
+      '   * The kind.',
+      '   */',
+      '  char type;',
       '};',
     ]);
   });
