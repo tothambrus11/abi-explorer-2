@@ -134,7 +134,8 @@ export function startServer(connection: Connection, options: ServerOptions): voi
     const analyzed = analysis.document;
     if (!lineUnchanged(analyzed, document, position.line)) return null;
 
-    const hit = nameUnder(analyzed.records, position);
+    const hit =
+      nameUnder(analyzed.records, position) ?? nameUnder(analyzed.nestedRecords, position);
     if (!hit) {
       const name = typeNameAt(lineText(document, position.line), position.line, position.character);
       const record = name && analyzed.recordNamed(name.spelling);

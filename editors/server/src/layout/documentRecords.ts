@@ -30,6 +30,30 @@ export function recordsInDocument(
 }
 
 /**
+ * The unnamed types of named members in the document (`struct { … } inner;`),
+ * each named after its member (`Outer::inner`): not records of their own, but
+ * their fields have hovers like any other.
+ */
+export function nestedRecordsInDocument(
+  records: readonly RecordLayout[],
+  document: DocumentCoordinates,
+): RecordView[] {
+  const lines = document.text.split(/\r?\n/);
+  const recordsById = new Map(records.map((record) => [record.id, record]));
+  return records.flatMap((parent): RecordView[] => {
+    if (unnamed(parent) || parent.location?.file !== document.guestPath) return [];
+    return parent.render.groups.flatMap((group): RecordView[] => {
+      const nested = group.recordId === null ? undefined : recordsById.get(group.recordId);
+      if (group.kind !== 'member' || !nested || !unnamed(nested) || !/^\w+$/.test(group.name)) {
+        return [];
+      }
+      const view = recordView(nested, recordsById, document.guestPath, lines);
+      return [{ ...view, name: `${displayName(parent)}::${group.name}`, nameRange: null }];
+    });
+  });
+}
+
+/**
  * The records the translation unit laid out, by the names a document can
  * use for them: `Pair<double>`, `ns::Shape`, `Shape`, and each field's type
  * as written (`std::string`, which clang prints as `std::basic_string<char>`).

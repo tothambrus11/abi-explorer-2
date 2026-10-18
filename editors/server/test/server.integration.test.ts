@@ -199,6 +199,11 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     const members = records[0]!.members;
     expect(members.map((member) => member.label)).toEqual(['inner', 'i', 'f', 'z']);
     expect(members[0]!.type).toBe('struct (unnamed)');
+    // The unnamed type's own fields hover as the member's.
+    const hover = await session.hover(uri, { line: 1, character: 15 });
+    expect((hover?.contents as { value: string }).value).toMatch(
+      /^\*\*Outer::inner::x\*\* `int` · offset 0 · 4 B · align 4/,
+    );
   });
 
   it('says a template needs a use before it has a layout', async () => {

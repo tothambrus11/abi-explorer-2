@@ -24,7 +24,7 @@ import {
 } from './compile/toolchain.ts';
 import type { PathMap } from './engine/pathMap.ts';
 import type { EngineRequest, EngineResponse } from './engine/engineTypes.ts';
-import { recordsInDocument, typeIndex } from './layout/documentRecords.ts';
+import { nestedRecordsInDocument, recordsInDocument, typeIndex } from './layout/documentRecords.ts';
 import type { AnalysisContext, RecordView } from '@abi-explorer/shared/protocol';
 
 export interface AnalyzedDocument {
@@ -35,6 +35,8 @@ export interface AnalyzedDocument {
   /** The language the file was analysed as. */
   language: Language;
   records: RecordView[];
+  /** The unnamed types of named members (`struct { … } inner;`), for their fields' hovers. */
+  nestedRecords: RecordView[];
   /** Any record the translation unit laid out, by a name the document can use for it. */
   recordNamed: (spelling: string) => RecordView | null;
   context: AnalysisContext;
@@ -214,6 +216,10 @@ export class Analyzer {
           lines: text.split(/\r?\n/),
           language,
           records: recordsInDocument(response.records, { guestPath: request.filename, text }),
+          nestedRecords: nestedRecordsInDocument(response.records, {
+            guestPath: request.filename,
+            text,
+          }),
           recordNamed: typeIndex(response.records),
           context: {
             triple: response.target?.triple ?? toolchain.triple,
