@@ -124,7 +124,9 @@ async function download(
 ): Promise<Uint8Array> {
   // A stalled connection is given up on, so the next analysis tries again.
   const abort = new AbortController();
-  let idle = setTimeout(() => abort.abort(), DOWNLOAD_IDLE_TIMEOUT_MS);
+  let idle = setTimeout(() => {
+    abort.abort();
+  }, DOWNLOAD_IDLE_TIMEOUT_MS);
   try {
     const response = await fetchImpl(url, { signal: abort.signal });
     if (!response.ok || !response.body) {
@@ -132,9 +134,11 @@ async function download(
     }
     const chunks: Uint8Array[] = [];
     let received = 0;
-    for await (const chunk of response.body) {
+    for await (const chunk of response.body as AsyncIterable<Uint8Array>) {
       clearTimeout(idle);
-      idle = setTimeout(() => abort.abort(), DOWNLOAD_IDLE_TIMEOUT_MS);
+      idle = setTimeout(() => {
+        abort.abort();
+      }, DOWNLOAD_IDLE_TIMEOUT_MS);
       chunks.push(chunk);
       received += chunk.byteLength;
       onBytes(received);

@@ -44,8 +44,9 @@ class Database {
   constructor(origin: CommandOrigin, commands: readonly CompileCommand[], style: PathStyle) {
     this.origin = origin;
     this.style = style;
-    for (const command of commands)
+    for (const command of commands) {
       this.byFile.set(this.key(command.file, command.directory), command);
+    }
   }
 
   lookup(file: string): FoundCommand | null {

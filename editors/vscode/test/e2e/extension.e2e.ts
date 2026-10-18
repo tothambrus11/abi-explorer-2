@@ -12,12 +12,12 @@ import {
 import { startCodeServer, type CodeServer } from './codeServer.ts';
 
 const SCREENSHOTS = path.join(import.meta.dirname, '..', '..', '..', 'screenshots');
-const CODE_SERVER_ENTRY = process.env['CODE_SERVER_ENTRY'] ?? '';
+const CODE_SERVER_ENTRY = process.env.CODE_SERVER_ENTRY ?? '';
 
 test.skip(!CODE_SERVER_ENTRY, 'set CODE_SERVER_ENTRY to code-server/out/node/entry.js');
 
-let project: FixtureProject;
-let codeServer: CodeServer;
+let project: FixtureProject | undefined;
+let codeServer: CodeServer | undefined;
 
 test.beforeAll(async () => {
   project = copyFixtureProject();
@@ -49,7 +49,7 @@ test.afterAll(() => {
 
 test('hovers, inlay hints and the layout view', async ({ page }) => {
   await page.setViewportSize({ width: 1500, height: 900 });
-  await page.goto(codeServer.url);
+  await page.goto(codeServer!.url);
   await openFile(page, 'main.cpp');
 
   // Inlay hints arrive once the first analysis is done.
@@ -62,7 +62,7 @@ test('hovers, inlay hints and the layout view', async ({ page }) => {
   await goToLine(page, 12, 20);
   await page.getByRole('button', { name: 'Struct Layout Section' }).click();
   // Room for the view: the file tree folded away, the side bar wider.
-  await page.locator('.pane-header', { hasText: path.basename(project.root) }).click();
+  await page.locator('.pane-header', { hasText: path.basename(project!.root) }).click();
   await dragSash(page, 420);
   const view = layoutView(page);
   await expect(view.locator('.record.open .record-name')).toHaveText('Packet', { timeout: 30_000 });

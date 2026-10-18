@@ -135,8 +135,8 @@ export class ToolchainProber {
   private async probeCl(compiler: string): Promise<Toolchain> {
     const banner = await this.exec(compiler, []);
     const { triple, version } = parseClBanner(banner.stderr + banner.stdout);
-    const includes = this.env['INCLUDE']
-      ? this.env['INCLUDE'].split(';').filter(Boolean)
+    const includes = this.env.INCLUDE
+      ? this.env.INCLUDE.split(';').filter(Boolean)
       : await this.visualStudioIncludes(compiler);
     return {
       triple,
@@ -182,7 +182,7 @@ export class ToolchainProber {
     if (compiler.includes('/') || compiler.includes('\\')) return compiler;
     const extensions = this.platform === 'win32' ? ['.exe', ''] : [''];
     const separator = this.platform === 'win32' ? ';' : ':';
-    for (const directory of (this.env['PATH'] ?? '').split(separator).filter(Boolean)) {
+    for (const directory of (this.env.PATH ?? '').split(separator).filter(Boolean)) {
       for (const extension of extensions) {
         const candidate = path.join(directory, compiler + extension);
         if (fs.existsSync(candidate)) return candidate;
@@ -355,7 +355,9 @@ export function runProgram(program: string, args: readonly string[]): Promise<Ex
     child.stdout.on('data', (chunk: Buffer) => (stdout += chunk.toString()));
     child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
     child.on('error', reject);
-    child.on('close', () => resolve({ stdout, stderr }));
+    child.on('close', () => {
+      resolve({ stdout, stderr });
+    });
     child.stdin.end();
   });
 }

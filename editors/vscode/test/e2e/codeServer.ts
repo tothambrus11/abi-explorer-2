@@ -45,8 +45,9 @@ export async function startCodeServer(options: CodeServerOptions): Promise<CodeS
     `clang-abi-wasm-${ENGINE_RELEASE.tag}`,
   );
   fs.mkdirSync(cache, { recursive: true });
-  for (const file of ENGINE_RELEASE.files)
+  for (const file of ENGINE_RELEASE.files) {
     fs.copyFileSync(path.join(options.engineDirectory, file.name), path.join(cache, file.name));
+  }
   fs.writeFileSync(
     path.join(userData, 'User', 'settings.json'),
     JSON.stringify(options.settings, null, 2),
@@ -77,7 +78,9 @@ export async function startCodeServer(options: CodeServerOptions): Promise<CodeS
     };
     server.stdout!.on('data', onData);
     server.stderr!.on('data', onData);
-    server.on('exit', (code) => reject(new Error(`code-server exited with ${code}`)));
+    server.on('exit', (code) => {
+      reject(new Error(`code-server exited with ${code}`));
+    });
   });
   return {
     url: `http://127.0.0.1:${options.port}/?folder=${encodeURIComponent(options.workspace)}`,

@@ -32,7 +32,9 @@ beforeEach(() => {
   );
 });
 
-afterEach(() => fs.rmSync(root, { recursive: true, force: true }));
+afterEach(() => {
+  fs.rmSync(root, { recursive: true, force: true });
+});
 
 const file = (relative: string) => path.join(root, relative);
 
@@ -79,7 +81,7 @@ describe('CompileCommandFinder', () => {
     ]);
   });
 
-  it('notices a regenerated database', async () => {
+  it('notices a regenerated database', () => {
     const finder = new CompileCommandFinder({ style: 'posix' });
     expect(finder.find(file('src/new.cpp'))!.borrowedFrom).not.toBeNull();
     fs.writeFileSync(

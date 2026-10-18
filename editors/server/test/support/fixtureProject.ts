@@ -28,12 +28,14 @@ export function copyFixtureProject(): FixtureProject {
     root,
     path: (relative) => path.join(root, relative),
     uri: (relative) => new URL(`file://${path.join(root, relative)}`).href,
-    remove: () => fs.rmSync(root, { recursive: true, force: true }),
+    remove: () => {
+      fs.rmSync(root, { recursive: true, force: true });
+    },
   };
 }
 
 /** The engine files the web app fetches with `npm run abi:fetch`; tests that need them skip without. */
 export const LOCAL_ENGINE =
-  process.env['ABI_ENGINE_PATH'] ??
+  process.env.ABI_ENGINE_PATH ??
   path.join(import.meta.dirname, '..', '..', '..', '..', 'public', 'vendor', 'abi');
 export const hasLocalEngine = fs.existsSync(path.join(LOCAL_ENGINE, 'abi_query.wasm'));

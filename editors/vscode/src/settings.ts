@@ -33,10 +33,12 @@ function borrowedCompileCommandsDir(): string | undefined {
   // `--compile-commands-dir=build`, or the same as two arguments.
   const clangd = vscode.workspace.getConfiguration('clangd').get<string[]>('arguments', []);
   for (const [index, argument] of clangd.entries()) {
-    if (argument.startsWith('--compile-commands-dir='))
+    if (argument.startsWith('--compile-commands-dir=')) {
       return expandWorkspaceFolder(argument.split('=')[1] ?? '');
-    if (argument === '--compile-commands-dir' && clangd[index + 1])
+    }
+    if (argument === '--compile-commands-dir' && clangd[index + 1]) {
       return expandWorkspaceFolder(clangd[index + 1]!);
+    }
   }
 
   // A path to the file, or (in newer versions) a list of them.

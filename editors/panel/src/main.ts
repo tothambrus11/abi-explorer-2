@@ -15,19 +15,21 @@ declare global {
 
 const post: (message: PanelMessage) => void =
   typeof acquireVsCodeApi === 'function'
-    ? (
-        (api) => (message) =>
-          api.postMessage(message)
-      )(acquireVsCodeApi())
+    ? ((api) => (message) => {
+        api.postMessage(message);
+      })(acquireVsCodeApi())
     : (message) => window.abiExplorerHost?.postMessage(JSON.stringify(message));
 
 const root = document.getElementById('root')!;
 const state: PanelState = { choice: null };
 
 window.addEventListener('message', (event: MessageEvent<HostMessage>) => {
-  if (event.data?.type === 'layout') {
+  // Other extensions' messages can reach a webview too.
+  if ((event.data as HostMessage | undefined)?.type === 'layout') {
     renderPanel(root, event.data.result, state, {
-      reveal: (range) => post({ type: 'reveal', range }),
+      reveal: (range) => {
+        post({ type: 'reveal', range });
+      },
     });
   }
 });

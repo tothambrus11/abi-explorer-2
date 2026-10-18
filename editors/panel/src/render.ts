@@ -104,18 +104,17 @@ function recordDetails(
   details.append(memberTable(record, actions));
   const highlight = (index: number | null) => {
     for (const node of details.querySelectorAll<HTMLElement>('[data-member]')) {
-      node.classList.toggle(
-        'highlighted',
-        index !== null && node.dataset['member'] === String(index),
-      );
-      node.classList.toggle('dimmed', index !== null && node.dataset['member'] !== String(index));
+      node.classList.toggle('highlighted', index !== null && node.dataset.member === String(index));
+      node.classList.toggle('dimmed', index !== null && node.dataset.member !== String(index));
     }
   };
   details.addEventListener('pointerover', (event) => {
     const owner = (event.target as HTMLElement).closest<HTMLElement>('[data-member]');
-    highlight(owner ? Number(owner.dataset['member']) : highlighted);
+    highlight(owner ? Number(owner.dataset.member) : highlighted);
   });
-  details.addEventListener('pointerleave', () => highlight(highlighted));
+  details.addEventListener('pointerleave', () => {
+    highlight(highlighted);
+  });
   highlight(highlighted);
   return details;
 }
@@ -129,8 +128,9 @@ function byteMap(record: RecordView, actions: PanelActions): HTMLElement | null 
   grid.setAttribute('role', 'img');
   grid.setAttribute('aria-label', `${record.name}: ${owners.length} bytes`);
   grid.append(element('span', 'corner'));
-  for (let column = 0; column < perRow; column++)
+  for (let column = 0; column < perRow; column++) {
     grid.append(element('span', 'column-label', String(column)));
+  }
   owners.forEach((owner, byte) => {
     if (byte % perRow === 0) grid.append(element('span', 'row-label', String(byte)));
     if (owner === null) {
@@ -138,10 +138,12 @@ function byteMap(record: RecordView, actions: PanelActions): HTMLElement | null 
       return;
     }
     const cell = element('span', 'byte', memberLetter(owner));
-    cell.dataset['member'] = String(owner);
+    cell.dataset.member = String(owner);
     cell.style.setProperty('--member-color', memberColor(owner));
     cell.title = `${record.members[owner]!.label} · byte ${byte}`;
-    cell.addEventListener('click', () => revealMember(record, owner, actions));
+    cell.addEventListener('click', () => {
+      revealMember(record, owner, actions);
+    });
     grid.append(cell);
   });
   return grid;
@@ -172,13 +174,14 @@ function memberTable(record: RecordView, actions: PanelActions): HTMLElement {
       );
     } else {
       const member = record.members[row.memberIndex]!;
-      tr.dataset['member'] = String(row.memberIndex);
+      tr.dataset.member = String(row.memberIndex);
       tr.style.setProperty('--member-color', memberColor(row.memberIndex));
       // Name and type on one line; a long type is cut short, its tooltip whole.
       const name = element('td', 'member');
       name.append(element('span', 'label', member.label));
-      if (member.type && member.type !== member.label)
+      if (member.type && member.type !== member.label) {
         name.append(element('span', 'type', member.type));
+      }
       name.title = member.type ? `${member.label}: ${member.type}` : member.label;
       tr.append(
         element('td', 'swatch', memberLetter(row.memberIndex)),
@@ -188,7 +191,9 @@ function memberTable(record: RecordView, actions: PanelActions): HTMLElement {
       );
       if (member.nameRange) {
         tr.classList.add('clickable');
-        tr.addEventListener('click', () => revealMember(record, row.memberIndex, actions));
+        tr.addEventListener('click', () => {
+          revealMember(record, row.memberIndex, actions);
+        });
       }
     }
     body.append(tr);

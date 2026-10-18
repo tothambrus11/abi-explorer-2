@@ -183,16 +183,18 @@ export class Analyzer {
         pathMap: this.dependencies.pathMap,
       });
       // The engine takes one request at a time; one for an outdated version would only delay the next.
-      if (this.superseded(uri, version))
+      if (this.superseded(uri, version)) {
         return { kind: 'failed', uri, version, message: 'superseded by a newer edit' };
+      }
       const response = await this.dependencies.engine.query(request);
-      if (!response.ok)
+      if (!response.ok) {
         return {
           kind: 'failed',
           uri,
           version,
           message: response.error ?? 'the engine rejected the request',
         };
+      }
 
       return {
         kind: 'analyzed',
@@ -267,7 +269,7 @@ export class Analyzer {
     const { style, fallbackFlags } = this.dependencies.settings;
     const compiler =
       style === 'win32'
-        ? process.env['INCLUDE']
+        ? process.env.INCLUDE
           ? 'cl'
           : 'clang'
         : languageOfFile(file) === 'c'

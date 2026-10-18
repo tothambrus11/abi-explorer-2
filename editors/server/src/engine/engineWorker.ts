@@ -18,7 +18,10 @@ export interface EngineWorkerData {
   mounts: Mount[];
 }
 
-export type WorkerRequest = { id: number; request: EngineRequest };
+export interface WorkerRequest {
+  id: number;
+  request: EngineRequest;
+}
 export type WorkerReply =
   | { kind: 'ready'; clangVersion: string }
   | { kind: 'response'; id: number; response: EngineResponse }
@@ -26,7 +29,9 @@ export type WorkerReply =
 
 const port = parentPort!;
 const { files, mounts } = workerData as EngineWorkerData;
-const post = (reply: WorkerReply) => port.postMessage(reply);
+const post = (reply: WorkerReply) => {
+  port.postMessage(reply);
+};
 
 try {
   const engine = await loadEngine(files, mounts);

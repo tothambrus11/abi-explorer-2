@@ -79,8 +79,13 @@ function memberPlacement(record: RecordView, memberIndex: number): string {
   const owners = byteOwners(record);
   const paddingRun = (from: number, step: number) => {
     let count = 0;
-    for (let byte = from; byte >= 0 && byte < owners.length && owners[byte] === null; byte += step)
+    for (
+      let byte = from;
+      byte >= 0 && byte < owners.length && owners[byte] === null;
+      byte += step
+    ) {
       count++;
+    }
     return count;
   };
   const before = paddingRun(first - 1, -1);

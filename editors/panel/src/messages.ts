@@ -5,7 +5,10 @@
 import type { LayoutResult, Range } from '@abi-explorer/shared/protocol';
 
 /** Host to panel. */
-export type HostMessage = { type: 'layout'; result: LayoutResult };
+export interface HostMessage {
+  type: 'layout';
+  result: LayoutResult;
+}
 
 /** Panel to host: loaded and listening (send the layout again), or a click on a name. */
 export type PanelMessage = { type: 'ready' } | { type: 'reveal'; range: Range };

@@ -6,11 +6,8 @@ import { createPathMap } from '../../src/engine/pathMap.ts';
 import type { EngineRequest, EngineResponse } from '../../src/engine/engineTypes.ts';
 
 function analyzer(
-  probe: ToolchainProber['probe'] = async () => ({
-    triple: 'x86_64-linux-gnu',
-    systemIncludes: [],
-    msvcVersion: null,
-  }),
+  probe: ToolchainProber['probe'] = () =>
+    Promise.resolve({ triple: 'x86_64-linux-gnu', systemIncludes: [], msvcVersion: null }),
 ) {
   const queries: EngineRequest[] = [];
   const announced: Analysis[] = [];
@@ -20,8 +17,9 @@ function analyzer(
       query: async (request) => {
         queries.push(request);
         await new Promise((resolve) => setTimeout(resolve, 20));
-        if (engine.failing)
+        if (engine.failing) {
           return { ok: false, error: 'out of memory' } as unknown as EngineResponse;
+        }
         return {
           ok: true,
           records: [],
@@ -69,15 +67,14 @@ describe('Analyzer', () => {
   });
 
   it('falls back to the bundled headers when the compiler cannot be run, and says so', async () => {
-    const { instance } = analyzer(async () => {
-      throw new Error('spawn cc ENOENT');
-    });
+    const { instance } = analyzer(() => Promise.reject(new Error('spawn cc ENOENT')));
     const analysis = await instance.analyze(document(1));
     expect(analysis.kind).toBe('analyzed');
-    if (analysis.kind === 'analyzed')
+    if (analysis.kind === 'analyzed') {
       expect(analysis.document.context.warning).toMatch(
         /could not be asked for its headers \(spawn cc ENOENT\)/,
       );
+    }
   });
 
   it('keeps the layouts that worked when a later version fails, and does not retry it', async () => {

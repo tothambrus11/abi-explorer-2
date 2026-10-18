@@ -96,7 +96,7 @@ describe('renderPanel', () => {
 
   it('reveals a member when its row is clicked', () => {
     renderPanel(root, result({ selection: { recordId: 1, memberIndex: null } }), state, { reveal });
-    (root.querySelector('tr[data-member="1"]') as HTMLElement).click();
+    root.querySelector<HTMLElement>('tr[data-member="1"]')!.click();
     expect(reveal).toHaveBeenCalledWith(at(12));
   });
 

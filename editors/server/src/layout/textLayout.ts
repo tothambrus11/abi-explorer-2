@@ -59,8 +59,9 @@ export function textMemberTable(
   highlightedMember: number | null = null,
 ): string {
   const rows = layoutRows(record).map((row) => {
-    if (row.kind === 'padding')
+    if (row.kind === 'padding') {
       return [' ', '·', 'padding', formatOffset(row.offsetBits), formatSizeShort(row.sizeBits), ''];
+    }
     const member = record.members[row.memberIndex]!;
     return [
       row.memberIndex === highlightedMember ? '▶' : ' ',

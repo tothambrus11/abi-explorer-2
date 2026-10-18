@@ -75,9 +75,9 @@ export function startServer(connection: Connection, options: ServerOptions): voi
       pathMap.mounts,
     );
     // Older clients send only `rootUri`.
-    const projectFolders = (
-      params.workspaceFolders ?? (params.rootUri ? [{ uri: params.rootUri }] : [])
-    )
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    const rootUri = params.rootUri;
+    const projectFolders = (params.workspaceFolders ?? (rootUri ? [{ uri: rootUri }] : []))
       .filter((folder) => folder.uri.startsWith('file:'))
       .map((folder) => fileURLToPath(folder.uri));
     analyzer = new Analyzer({
@@ -91,7 +91,9 @@ export function startServer(connection: Connection, options: ServerOptions): voi
         probePolicy: { projectFolders, allowedCompilers: settings.allowedCompilers ?? [] },
         debounceMs: 400,
       },
-      onAnalyzed: (analysis) => announce(analysis),
+      onAnalyzed: (analysis) => {
+        announce(analysis);
+      },
     });
 
     return {
@@ -161,8 +163,9 @@ export function startServer(connection: Connection, options: ServerOptions): voi
       };
     }
     const analysis = await analyzer.waitForAnalysis(document, FIRST_ANALYSIS_WAIT_MS);
-    if (!analysis)
+    if (!analysis) {
       return { state: 'analyzing', message: null, records: [], selection: null, context: null };
+    }
     if (analysis.kind === 'failed') {
       return {
         state: 'unavailable',
@@ -211,14 +214,16 @@ function nameUnder(
   const named = records.filter(
     (record) => record.nameRange && contains(record.nameRange, position),
   );
-  if (named.length > 0)
+  if (named.length > 0) {
     return { records: named.slice(0, 3), memberIndex: null, range: named[0]!.nameRange! };
+  }
   for (const record of records) {
     const memberIndex = record.members.findIndex(
       (member) => member.nameRange && contains(member.nameRange, position),
     );
-    if (memberIndex >= 0)
+    if (memberIndex >= 0) {
       return { records: [record], memberIndex, range: record.members[memberIndex]!.nameRange! };
+    }
   }
   return null;
 }
@@ -290,16 +295,15 @@ async function downloadEngine(
 }
 
 function defaultCacheDirectory(): string {
-  if (process.platform === 'win32')
-    return path.join(process.env['LOCALAPPDATA'] ?? os.homedir(), 'abi-explorer', 'cache');
-  if (process.platform === 'darwin')
+  if (process.platform === 'win32') {
+    return path.join(process.env.LOCALAPPDATA ?? os.homedir(), 'abi-explorer', 'cache');
+  }
+  if (process.platform === 'darwin') {
     return path.join(os.homedir(), 'Library', 'Caches', 'abi-explorer');
-  return path.join(
-    process.env['XDG_CACHE_HOME'] ?? path.join(os.homedir(), '.cache'),
-    'abi-explorer',
-  );
+  }
+  return path.join(process.env.XDG_CACHE_HOME ?? path.join(os.homedir(), '.cache'), 'abi-explorer');
 }
 
 function windowsDrives(): string[] {
-  return [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'].filter((letter) => fs.existsSync(`${letter}:\\`));
+  return Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ').filter((letter) => fs.existsSync(`${letter}:\\`));
 }

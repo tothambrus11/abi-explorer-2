@@ -25,8 +25,12 @@ export class LayoutPanel implements vscode.WebviewViewProvider {
   register(subscriptions: vscode.Disposable[]): void {
     subscriptions.push(
       vscode.window.registerWebviewViewProvider(LAYOUT_VIEW_ID, this),
-      vscode.window.onDidChangeActiveTextEditor((editor) => this.follow(editor)),
-      vscode.window.onDidChangeTextEditorSelection((event) => this.follow(event.textEditor)),
+      vscode.window.onDidChangeActiveTextEditor((editor) => {
+        this.follow(editor);
+      }),
+      vscode.window.onDidChangeTextEditorSelection((event) => {
+        this.follow(event.textEditor);
+      }),
     );
   }
 
@@ -39,7 +43,9 @@ export class LayoutPanel implements vscode.WebviewViewProvider {
       if (message.type === 'ready') this.refresh();
       else this.reveal(message);
     });
-    view.onDidChangeVisibility(() => this.refresh());
+    view.onDidChangeVisibility(() => {
+      this.refresh();
+    });
     this.follow(vscode.window.activeTextEditor);
   }
 
@@ -77,7 +83,8 @@ export class LayoutPanel implements vscode.WebviewViewProvider {
         });
       } catch (error) {
         // A server that is stopping says when it has layouts again; anything else is worth showing.
-        if (client.state !== State.Running) return;
+        // (`state` is read again: it can change while the request is out.)
+        if ((client.state as State) !== State.Running) return;
         result = placeholder(
           `The layout request failed: ${error instanceof Error ? error.message : String(error)}`,
         );

@@ -12,7 +12,7 @@
   "scripts": {
     "build": "npm run build -w vscode",
     "test": "vitest run",
-    "check": "tsc -p shared && tsc -p server && tsc -p panel && tsc -p vscode",
+    "check": "tsc -p . && tsc -p shared && tsc -p server && tsc -p panel && tsc -p vscode",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

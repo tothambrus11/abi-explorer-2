@@ -225,7 +225,8 @@ describe('looksLikeCompiler', () => {
     ]) {
       expect(looksLikeCompiler(name), name).toBe(true);
     }
-    for (const name of ['python3', 'node', 'sh', 'make', 'ccache'])
+    for (const name of ['python3', 'node', 'sh', 'make', 'ccache']) {
       expect(looksLikeCompiler(name), name).toBe(false);
+    }
   });
 });

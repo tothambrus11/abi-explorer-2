@@ -18,6 +18,9 @@ export default ts.config(
       'test-results/',
       'coverage/',
       '.cache/',
+      // The editor plugins' build outputs: Gradle's and cargo's.
+      'editors/clion/**/build/',
+      'editors/zed/target/',
     ],
   },
   js.configs.recommended,
@@ -56,6 +59,11 @@ export default ts.config(
     languageOptions: {
       parserOptions: { parser: ts.parser, svelteConfig, extraFileExtensions: ['.svelte'] },
     },
+  },
+  {
+    // Fakes of async interfaces (a compiler, the engine) answer at once.
+    files: ['editors/**/test/**/*.ts'],
+    rules: { '@typescript-eslint/require-await': 'off' },
   },
   {
     files: ['tools/**/*.mjs', '*.js'],

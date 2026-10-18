@@ -28,11 +28,12 @@ export function buildEngineRequest(inputs: RequestInputs): EngineRequest {
     : [{ path: '', kind: 'builtin' as const }, ...toolchain.systemIncludes];
   for (const include of includes) {
     if (include.kind === 'builtin') flags.push('-isystem', `${ENGINE_RESOURCE_DIRECTORY}/include`);
-    else
+    else {
       flags.push(
         include.kind === 'framework' ? '-iframework' : '-isystem',
         pathMap.toGuest(include.path),
       );
+    }
   }
   if (
     toolchain.msvcVersion &&

@@ -59,10 +59,10 @@ const FILE_MODE = 0o100644;
 export function createHostFs(FS: EmscriptenFs): FilesystemType {
   const fail = (error: unknown): never => {
     const code = (error as NodeJS.ErrnoException | null)?.code;
-    throw new FS.ErrnoError((code !== undefined ? ERRNO[code] : undefined) ?? ERRNO['EIO']!);
+    throw new FS.ErrnoError((code !== undefined ? ERRNO[code] : undefined) ?? ERRNO.EIO!);
   };
   const readOnly = (): never => {
-    throw new FS.ErrnoError(ERRNO['EPERM']!);
+    throw new FS.ErrnoError(ERRNO.EPERM!);
   };
 
   const hostPath = (node: FsNode): string => {
@@ -119,7 +119,7 @@ export function createHostFs(FS: EmscriptenFs): FilesystemType {
       }
     },
     readlink(): never {
-      throw new FS.ErrnoError(ERRNO['EINVAL']!);
+      throw new FS.ErrnoError(ERRNO.EINVAL!);
     },
     setattr: readOnly,
     mknod: readOnly,
@@ -155,7 +155,7 @@ export function createHostFs(FS: EmscriptenFs): FilesystemType {
       else if (whence === 2 && FS.isFile(stream.node.mode)) {
         position += stat(hostPath(stream.node)).size;
       }
-      if (position < 0) throw new FS.ErrnoError(ERRNO['EINVAL']!);
+      if (position < 0) throw new FS.ErrnoError(ERRNO.EINVAL!);
       return position;
     },
     write: readOnly,

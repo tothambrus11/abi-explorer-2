@@ -76,7 +76,11 @@ export async function followCMakeTools(
     client.onDidChangeState(({ newState }) => {
       if (newState === State.Running) push();
     }),
-    { dispose: () => projectSubscription?.dispose() },
+    {
+      dispose: () => {
+        projectSubscription?.dispose();
+      },
+    },
   ];
   await follow(vscode.workspace.workspaceFolders?.[0]?.uri);
   return vscode.Disposable.from(...disposables);

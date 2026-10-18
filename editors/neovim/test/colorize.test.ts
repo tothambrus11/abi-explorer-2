@@ -9,7 +9,7 @@ import { memberColor, PADDING_COLOR } from '@abi-explorer/shared/layoutModel';
 
 const plugin = path.join(import.meta.dirname, '..');
 const source = fs.readFileSync(path.join(plugin, 'lua/abi-explorer/init.lua'), 'utf8');
-const nvim = process.env['NVIM_BIN'] ?? findOnPath('nvim');
+const nvim = process.env.NVIM_BIN ?? findOnPath('nvim');
 
 describe('Neovim colours', () => {
   it('uses the shared palette', () => {
@@ -56,7 +56,7 @@ describe('Neovim colours', () => {
       ['·', 'AbiExplorerPadding'],
       ['·', 'AbiExplorerPadding'],
       ['·', 'AbiExplorerPadding'],
-      ...Array(4).fill(['b', 'AbiExplorerMember2']),
+      ...Array.from({ length: 4 }, () => ['b', 'AbiExplorerMember2']),
     ]);
     // Table swatches keep their colour; the row at the cursor is marked.
     expect(at(6).map(([, , , group]) => group)).toEqual(['AbiExplorerMember1']);
@@ -72,7 +72,7 @@ describe('Neovim colours', () => {
 });
 
 function findOnPath(name: string): string | undefined {
-  for (const directory of (process.env['PATH'] ?? '').split(path.delimiter)) {
+  for (const directory of (process.env.PATH ?? '').split(path.delimiter)) {
     const candidate = path.join(directory, name);
     if (fs.existsSync(candidate)) return candidate;
   }

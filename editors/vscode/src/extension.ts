@@ -31,7 +31,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       await stopSession();
       const client = createClient(context, output);
       const disposables = [
-        client.onNotification(layoutsChangedNotification, () => panel.refresh()),
+        client.onNotification(layoutsChangedNotification, () => {
+          panel.refresh();
+        }),
         // Also after the client restarts a crashed server on its own.
         client.onDidChangeState(({ newState }) => {
           if (newState === State.Running) panel.refresh();
