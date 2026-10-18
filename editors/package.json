@@ -9,9 +9,9 @@
     "vscode"
   ],
   "scripts": {
-    "build": "npm run build --workspaces",
+    "build": "npm run build -w vscode",
     "test": "vitest run",
-    "check": "tsc -b"
+    "check": "tsc -p server && tsc -p view && tsc -p vscode"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

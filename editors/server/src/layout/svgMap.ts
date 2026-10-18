@@ -22,7 +22,7 @@ export function svgMap(record: RecordView, highlightedMember: number | null = nu
   const height = HEADER_HEIGHT + rows * (CELL + GAP);
 
   const parts: string[] = [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="Menlo, Consolas, monospace" font-size="11">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" font-family="Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12">`,
     `<defs><pattern id="pad" width="4" height="4" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="4" height="4" fill="${PADDING_COLOR}" fill-opacity="0.15"/><line x1="0" y1="0" x2="0" y2="4" stroke="${PADDING_COLOR}" stroke-width="1.5" stroke-opacity="0.6"/></pattern></defs>`,
   ];
   for (let column = 0; column < perRow; column++) {
