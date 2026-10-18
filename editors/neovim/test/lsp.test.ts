@@ -22,6 +22,7 @@ interface Session {
   hints: string[];
   actions: string[];
   split: string[];
+  otherTarget: string;
 }
 
 describe.skipIf(!nvim || !hasLocalEngine || !hasCompiler)('Neovim with the server', () => {
@@ -79,7 +80,21 @@ describe.skipIf(!nvim || !hasLocalEngine || !hasCompiler)('Neovim with the serve
         return split[1] ~= nil and split[1]:find('Packet') ~= nil
       end, 200)
 
-      local result = { hover = hover and hover.contents.value or '', hints = {}, actions = {}, split = split }
+      require('abi-explorer').set_target('armv7-unknown-linux-gnueabihf')
+      local other
+      vim.wait(90000, function()
+        local answer = request('textDocument/hover', at_packet)
+        other = answer and answer.contents.value or nil
+        return other ~= nil and other:find('armv7', 1, true) ~= nil
+      end, 500)
+
+      local result = {
+        hover = hover and hover.contents.value or '',
+        hints = {},
+        actions = {},
+        split = split,
+        otherTarget = other or '',
+      }
       for _, hint in ipairs(hints) do table.insert(result.hints, hint.inlay_hint.label) end
       for _, action in ipairs(actions) do table.insert(result.actions, action.title) end
       io.stdout:write(vim.json.encode(result))
@@ -112,6 +127,10 @@ describe.skipIf(!nvim || !hasLocalEngine || !hasCompiler)('Neovim with the serve
       'Reorder members by alignment (40 B → 32 B)',
       'Pin layout with static_assert',
     ]);
+  });
+
+  it('lays out for another target after :AbiTarget', () => {
+    expect(session.otherTarget).toContain('**struct Packet** · 24 B · align 4 · 5 B padding');
   });
 
   it('opens the split on the record at the cursor, marking the member there', () => {

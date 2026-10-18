@@ -11,7 +11,6 @@ npm install -g abi-explorer-lsp
 require('abi-explorer').setup({
   inlay_hints = true,             -- `40 B · align 8 · 7 B padding` after each struct name
   lsp = { init_options = { inlayHints = 'members' } }, -- also `@4 · 4 B` after each member
-  -- lsp = { init_options = { target = 'armv7-unknown-linux-gnueabihf' } }, -- another target's layouts
 })
 ```
 
@@ -23,6 +22,8 @@ require('abi-explorer').setup({
   cursor is marked `▶` and its bytes stay bright while the others fade. Colours match the other
   editors (`termguicolors`); override the `AbiExplorerMember1`…`8`, `AbiExplorerMemberFaded1`…`8`,
   `AbiExplorerPadding` and `AbiExplorerSelected` highlight groups to change them.
+- `:AbiTarget armv7-unknown-linux-gnueabihf` lays structs out for another target, with the
+  engine's bundled headers; `:AbiTarget` alone goes back to the project's own.
 
 Compile flags come from `compile_commands.json` or `compile_flags.txt`, found the way clangd finds
 them. `vim.lsp.inlay_hint.enable` is per buffer, not per server, so turning hints on also shows

@@ -203,6 +203,26 @@ end
 -- For tests: the colouring of the split, on any buffer.
 M.colorize = colorize
 
+--- Lays files out for `triple` instead of the project's own target, or for the
+--- project's own again when `triple` is empty, restarting the server.
+function M.set_target(triple)
+  triple = vim.trim(triple or '')
+  vim.lsp.config(CLIENT_NAME, { init_options = { target = triple ~= '' and triple or vim.NIL } })
+  local buffers = {}
+  for _, client in ipairs(vim.lsp.get_clients({ name = CLIENT_NAME })) do
+    vim.list_extend(buffers, vim.tbl_keys(client.attached_buffers))
+    client:stop(true)
+  end
+  -- Started afresh, with the new options, for every buffer the old one served.
+  vim.defer_fn(function()
+    for _, buffer in ipairs(buffers) do
+      if vim.api.nvim_buf_is_valid(buffer) then
+        vim.api.nvim_exec_autocmds('FileType', { buffer = buffer })
+      end
+    end
+  end, 100)
+end
+
 --- Opens the layout split, or closes it when open.
 function M.toggle()
   if split.window and vim.api.nvim_win_is_valid(split.window) then
@@ -248,6 +268,9 @@ function M.setup(opts)
     schedule_refresh()
   end
   vim.api.nvim_create_user_command('AbiLayout', M.toggle, { desc = 'Toggle the struct layout split' })
+  vim.api.nvim_create_user_command('AbiTarget', function(command)
+    M.set_target(command.args)
+  end, { nargs = '?', desc = "Lay structs out for a target triple, or the project's own with none" })
 end
 
 return M
