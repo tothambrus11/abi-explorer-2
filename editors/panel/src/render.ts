@@ -141,6 +141,14 @@ function recordDetails(
   details.addEventListener('pointerleave', () => {
     highlight(highlighted);
   });
+  // A row reached with the keyboard lights up its bytes as a hovered one does.
+  details.addEventListener('focusin', (event) => {
+    const owner = (event.target as HTMLElement).closest<HTMLElement>('[data-member]');
+    if (owner) highlight(Number(owner.dataset.member));
+  });
+  details.addEventListener('focusout', () => {
+    highlight(highlighted);
+  });
   highlight(highlighted);
   return details;
 }
@@ -225,7 +233,14 @@ function memberTable(record: RecordView, actions: PanelActions): HTMLElement {
       );
       if (member.nameRange) {
         tr.classList.add('clickable');
+        // Reachable with Tab, and Enter jumps as a click does.
+        tr.tabIndex = 0;
         tr.addEventListener('click', () => {
+          revealMember(record, row.memberIndex, actions);
+        });
+        tr.addEventListener('keydown', (event) => {
+          if (event.key !== 'Enter' && event.key !== ' ') return;
+          event.preventDefault();
           revealMember(record, row.memberIndex, actions);
         });
       }

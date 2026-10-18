@@ -140,6 +140,19 @@ describe('renderPanel', () => {
     expect(reveal).toHaveBeenCalledWith(at(12));
   });
 
+  it('reveals a member from the keyboard, and lights up its bytes on focus', () => {
+    renderPanel(root, result({ selection: { recordId: 1, memberIndex: null } }), state, {
+      reveal,
+      copy,
+    });
+    const row = root.querySelector<HTMLElement>('tr[data-member="1"]')!;
+    expect(row.tabIndex).toBe(0);
+    row.focus();
+    expect(root.querySelectorAll('.byte.highlighted')).toHaveLength(4);
+    row.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    expect(reveal).toHaveBeenCalledWith(at(12));
+  });
+
   it('opens another record on click and keeps it open until the caret moves to one', () => {
     renderPanel(root, result(), state, { reveal, copy });
     (root.querySelectorAll('.record-heading')[0] as HTMLElement).click();

@@ -228,3 +228,8 @@ body {
   color: var(--ae-foreground);
   background: var(--ae-hover);
 }
+
+tr.clickable:focus-visible {
+  outline: 1px solid var(--ae-foreground);
+  outline-offset: -1px;
+}
