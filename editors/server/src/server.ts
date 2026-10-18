@@ -27,6 +27,7 @@ import { createPathMap } from './engine/pathMap.ts';
 import { memberHover, recordHover } from './layout/hover.ts';
 import { layoutHints } from './layout/inlayHints.ts';
 import { textLayout } from './layout/textLayout.ts';
+import { reorderNote } from '@abi-explorer/shared/layoutModel';
 import packageJson from '../package.json' with { type: 'json' };
 import {
   compileCommandsNotification,
@@ -188,7 +189,12 @@ export function startServer(connection: Connection, options: ServerOptions): voi
       records: params.includeText
         ? records.map((record) => ({
             ...record,
-            text: textLayout(record, record.id === hit?.record.id ? hit.memberIndex : null),
+            text: [
+              textLayout(record, record.id === hit?.record.id ? hit.memberIndex : null),
+              reorderNote(record),
+            ]
+              .filter(Boolean)
+              .join('\n\n'),
           }))
         : records,
       selection: hit && { recordId: hit.record.id, memberIndex: hit.memberIndex },
