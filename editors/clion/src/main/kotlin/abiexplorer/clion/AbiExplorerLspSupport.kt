@@ -78,8 +78,7 @@ class AbiExplorerServerDescriptor(project: Project, private val runtime: ServerR
 
     override fun createCommandLine() = runtime.commandLine()
 
-    // Quick documentation shows no SVG, so hovers draw the byte map as text.
-    override fun createInitializationOptions(): Any = mapOf("hoverImages" to false, "inlayHints" to "records")
+    override fun createInitializationOptions(): Any = AbiExplorerSettings.of(project).initializationOptions()
 
     override val lsp4jServerClass: Class<out LanguageServer> = AbiExplorerServer::class.java
 

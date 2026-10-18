@@ -19,6 +19,8 @@
     <toolWindow id="Struct Layout" anchor="right" icon="AllIcons.Toolwindows.ToolWindowStructure"
                 factoryClass="abiexplorer.clion.LayoutToolWindowFactory"/>
     <notificationGroup id="ABI Explorer" displayType="BALLOON"/>
+    <projectConfigurable parentId="tools" id="abiexplorer.settings" displayName="ABI Explorer"
+                         instance="abiexplorer.clion.AbiExplorerConfigurable"/>
   </extensions>
 
   <projectListeners>

@@ -5,6 +5,8 @@ CLion 2025.3 or newer. Struct layouts from the project's own compiler and flags:
 - **Quick documentation** (hover, or `F1`/`Ctrl+Q`) on a struct or member name, or any use of a
   struct (`std::string` too): its size, alignment, padding, byte map and member table.
 - **Inlay hints** after each struct name: `40 B · align 8 · 9 B padding`.
+- **Settings | Tools | ABI Explorer**: member inlay hints, and a target to lay structs out for
+  instead of the project's own (`armv7-unknown-linux-gnueabihf`, say).
 - **Pin layout with static_assert** and **Reorder members by alignment** (`Alt+Enter` on a
   struct; the reorder where its member order wastes space).
 - **Struct Layout** tool window, following the caret: click a member to jump to it, or copy the
