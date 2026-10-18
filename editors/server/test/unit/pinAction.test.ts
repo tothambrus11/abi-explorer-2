@@ -103,7 +103,7 @@ describe('pinAction', () => {
       ...packet,
       name: 'Packet',
       nameRange: range(3, 2, 3, 8),
-      extent: range(0, 8, 3, 1),
+      extent: range(0, 8, 3, 8),
     };
     expect(pinAction(anonymous, typedef, 'c')!.edit.newText).toContain('sizeof(Packet) == 8');
   });

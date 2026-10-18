@@ -25,16 +25,13 @@ export function pinAction(
   if (!/^\w+$/.test(name) || record.sizeBits % 8 !== 0) return null;
 
   const close = lines[extent.end.line] ?? '';
+  const brace = close.lastIndexOf('}', extent.end.character - 1);
   // Only after a declaration that ends on the closing brace's line: `};`, `} packet;`, `} Packet;`.
-  if (!/^\s*}[^;{}]*;\s*(\/\/.*)?$/.test(close.slice(Math.max(0, extent.end.character - 1)))) {
-    return null;
-  }
+  if (brace < 0 || !/^}[^;{}]*;\s*(\/\/.*)?$/.test(close.slice(brace))) return null;
   const indent = /^\s*/.exec(lines[extent.start.line] ?? '')![0];
 
   // `typedef struct { … } Pair;` is named after the brace, and only by its typedef name.
-  const typedefName =
-    nameRange.start.line > extent.end.line ||
-    (nameRange.start.line === extent.end.line && nameRange.start.character >= extent.end.character);
+  const typedefName = nameRange.start.line === extent.end.line && nameRange.start.character > brace;
   const c = language === 'c';
   const type = c && !typedefName ? `${record.kind === 'union' ? 'union' : 'struct'} ${name}` : name;
   const assert = (condition: string, what: string) =>

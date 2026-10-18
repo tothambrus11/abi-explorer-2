@@ -6,7 +6,7 @@
 // record's direct members rather than every scalar inside them. Everything
 // past this file works with `RecordView`.
 
-import type { MemberView, Range, RecordView } from '@abi-explorer/shared/protocol';
+import type { MemberView, Position, Range, RecordView } from '@abi-explorer/shared/protocol';
 import type { Location, RecordLayout, RenderNode, SourceRange } from '../engine/engineTypes.ts';
 
 export interface DocumentCoordinates {
@@ -177,6 +177,12 @@ function recordView(
   visit(record.render.tree);
 
   const here = inDocument(record.location);
+  const nameRange = here ? nameRangeOf(record, lines) : null;
+  let extent = here && record.range ? extentOf(record.range, lines) : null;
+  // `typedef struct { … } Pair;` reaches to its name, so the name counts as inside.
+  if (extent && nameRange && after(nameRange.end, extent.end)) {
+    extent = { start: extent.start, end: nameRange.end };
+  }
   return {
     id: record.id,
     kind: record.kind,
@@ -184,8 +190,8 @@ function recordView(
     sizeBits: record.sizeBits,
     alignBits: record.alignBits,
     paddingBytes: record.render.paddingBytes,
-    nameRange: here ? nameRangeOf(record, lines) : null,
-    extent: here && record.range ? extentOf(record.range, lines) : null,
+    nameRange,
+    extent,
     members,
     bases: record.bases.map((base) => ({
       name: base.typeSpelling,
@@ -200,6 +206,10 @@ function recordView(
 function displayName(record: RecordLayout): string {
   const printed = record.printedName.replace(/^(struct|class|union|__interface) /, '');
   return printed.includes('<') ? printed : record.qualifiedName || printed;
+}
+
+function after(a: Position, b: Position): boolean {
+  return a.line > b.line || (a.line === b.line && a.character > b.character);
 }
 
 function rangeOf(location: Location, lines: readonly string[]): Range {

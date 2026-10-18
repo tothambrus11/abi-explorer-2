@@ -180,6 +180,9 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     await session.change(uri, lines.join('\n'));
     expect((await session.layout(uri)).context?.errorCount, edit!.newText).toBe(0);
     expect(edit!.newText).toContain('_Static_assert(offsetof(Packet, length) == 4');
+    // The typedef name is part of the definition: its actions are offered there too.
+    const atName = await session.codeActions(uri, { line: 4, character: 4 });
+    expect(atName.map((action) => action.title)).toContain('Pin layout with static_assert');
   });
 
   it('inlines anonymous members but keeps a named member of an unnamed type whole', async () => {
