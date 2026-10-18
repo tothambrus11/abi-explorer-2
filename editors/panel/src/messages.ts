@@ -10,5 +10,6 @@ export interface HostMessage {
   result: LayoutResult;
 }
 
-/** Panel to host: loaded and listening (send the layout again), or a click on a name. */
-export type PanelMessage = { type: 'ready' } | { type: 'reveal'; range: Range };
+/** Panel to host: loaded and listening (send the layout again), a click on a name, or text to copy. */
+export type PanelMessage =
+  { type: 'ready' } | { type: 'reveal'; range: Range } | { type: 'copy'; text: string };

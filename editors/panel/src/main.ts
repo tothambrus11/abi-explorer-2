@@ -30,6 +30,9 @@ window.addEventListener('message', (event: MessageEvent<HostMessage>) => {
       reveal: (range) => {
         post({ type: 'reveal', range });
       },
+      copy: (text) => {
+        post({ type: 'copy', text });
+      },
     });
   }
 });

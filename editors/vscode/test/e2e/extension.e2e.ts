@@ -68,6 +68,7 @@ test('hovers, inlay hints and the layout view', async ({ page }) => {
   await expect(view.locator('.record.open .record-name')).toHaveText('Packet', { timeout: 30_000 });
   await expect(view.locator('tr.highlighted .label')).toHaveText('checksum');
   await expect(view.locator('.byte')).toHaveCount(40);
+  await expect(view.locator('button.copy')).toBeVisible();
   await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-layout-view.png') });
 
   // Clicking a member in the view moves the caret to it.

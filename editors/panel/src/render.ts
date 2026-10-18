@@ -21,6 +21,8 @@ import {
 
 export interface PanelActions {
   reveal(range: Range): void;
+  /** Puts text on the clipboard; the host does it, a webview may not. */
+  copy(text: string): void;
 }
 
 export interface PanelState {
@@ -103,6 +105,19 @@ function recordDetails(
   const map = byteMap(record, actions);
   if (map) details.append(map);
   details.append(memberTable(record, actions));
+  // The layout as text, to paste into a review or an issue; the server draws it (`includeText`).
+  if (record.text) {
+    const copy = element('button', 'copy', 'Copy as text');
+    copy.type = 'button';
+    copy.title = 'Copy the byte map and member table as text';
+    // Without the caret's `▶`: that only means something here.
+    const layout = record.text.replaceAll('▶', ' ');
+    const text = `${record.kind} ${record.name} · ${recordSummary(record)}\n\n${layout}`;
+    copy.addEventListener('click', () => {
+      actions.copy(text);
+    });
+    details.append(copy);
+  }
   const highlight = (index: number | null) => {
     for (const row of details.querySelectorAll<HTMLElement>('tr[data-member]')) {
       row.classList.toggle('highlighted', index !== null && row.dataset.member === String(index));

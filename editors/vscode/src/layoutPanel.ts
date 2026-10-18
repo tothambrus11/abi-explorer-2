@@ -41,6 +41,7 @@ export class LayoutPanel implements vscode.WebviewViewProvider {
     view.webview.html = html(view.webview, dist);
     view.webview.onDidReceiveMessage((message: PanelMessage) => {
       if (message.type === 'ready') this.refresh();
+      else if (message.type === 'copy') void this.copy(message.text);
       else this.reveal(message);
     });
     view.onDidChangeVisibility(() => {
@@ -80,6 +81,7 @@ export class LayoutPanel implements vscode.WebviewViewProvider {
         result = await client.sendRequest(layoutRequest, {
           textDocument: { uri: editor.document.uri.toString() },
           position: editor.selection.active,
+          includeText: true,
         });
       } catch (error) {
         // A server that is stopping says when it has layouts again; anything else is worth showing.
@@ -93,6 +95,11 @@ export class LayoutPanel implements vscode.WebviewViewProvider {
     if (number !== this.requestNumber) return;
     const message: HostMessage = { type: 'layout', result };
     void this.view.webview.postMessage(message);
+  }
+
+  private async copy(text: string): Promise<void> {
+    await vscode.env.clipboard.writeText(text);
+    vscode.window.setStatusBarMessage('Copied the layout as text', 3_000);
   }
 
   private reveal(message: Extract<PanelMessage, { type: 'reveal' }>): void {

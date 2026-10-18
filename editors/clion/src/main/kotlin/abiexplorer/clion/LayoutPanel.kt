@@ -8,6 +8,7 @@ import com.google.gson.JsonNull
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.intellij.ide.ui.LafManagerListener
+import com.intellij.openapi.ide.CopyPasteManager
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.colors.EditorColorsManager
@@ -32,6 +33,7 @@ import com.intellij.ui.jcef.JBCefJSQuery
 import com.intellij.util.Alarm
 import com.intellij.util.ui.NamedColorUtil
 import com.intellij.util.ui.UIUtil
+import java.awt.datatransfer.StringSelection
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -160,6 +162,7 @@ class LayoutPanel(private val project: Project) : Disposable {
                 val start = json.getAsJsonObject("range").getAsJsonObject("start")
                 UIUtil.invokeLaterIfNeeded { reveal(start["line"].asInt, start["character"].asInt) }
             }
+            "copy" -> CopyPasteManager.getInstance().setContents(StringSelection(json["text"].asString))
         }
     }
 

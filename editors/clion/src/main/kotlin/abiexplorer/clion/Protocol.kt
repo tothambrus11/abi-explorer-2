@@ -27,7 +27,12 @@ data class TextDocumentId(val uri: String)
 /** `character` counts UTF-16 code units, as Java string offsets do. */
 data class LspPosition(val line: Int, val character: Int)
 
-data class LayoutParams(val textDocument: TextDocumentId, val position: LspPosition?)
+data class LayoutParams(
+    val textDocument: TextDocumentId,
+    val position: LspPosition?,
+    /** Also each record's layout as text, for the panel's "Copy as text". */
+    val includeText: Boolean = true,
+)
 
 data class CompileCommandsParams(val source: String, val commands: List<CompileCommand>)
 
