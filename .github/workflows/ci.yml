@@ -142,7 +142,7 @@ jobs:
         working-directory: editors
       - run: ./gradlew -p core test
         working-directory: editors/clion
-      - run: ./gradlew buildPlugin
+      - run: ./gradlew buildPlugin verifyPlugin
         working-directory: editors/clion
       - run: rustup target add wasm32-wasip2 && cargo build --release --target wasm32-wasip2
         working-directory: editors/zed
