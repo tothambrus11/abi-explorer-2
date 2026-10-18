@@ -3,7 +3,6 @@
 // right after its definition, so a change that moves them fails to compile.
 
 import type { Range, RecordView } from '@abi-explorer/shared/protocol';
-import { formatSizeShort } from '@abi-explorer/shared/format';
 
 export interface PinAction {
   title: string;
@@ -63,7 +62,8 @@ export function pinAction(
       ? { line: after, character: 0 }
       : { line: extent.end.line, character: close.length };
   return {
-    title: `Pin layout with static_assert (${formatSizeShort(record.sizeBits)}, align ${record.alignBits / 8})`,
+    // Shorter than the reorder's title: Zed sizes its menu by the longest title in bytes.
+    title: 'Pin layout with static_assert',
     edit: {
       range: { start: at, end: at },
       newText: after < lines.length ? text : `\n${text.replace(/\n$/, '')}`,

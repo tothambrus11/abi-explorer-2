@@ -43,7 +43,7 @@ const packet: RecordView = {
 describe('pinAction', () => {
   it('asserts the size and alignment after the definition, at its indentation', () => {
     const action = pinAction(packet, lines, 'c++')!;
-    expect(action.title).toBe('Pin layout with static_assert (8 B, align 4)');
+    expect(action.title).toBe('Pin layout with static_assert');
     expect(action.edit).toEqual({
       range: range(5, 0, 5, 0),
       newText:

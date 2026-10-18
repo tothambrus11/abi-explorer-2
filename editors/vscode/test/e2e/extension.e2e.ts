@@ -105,7 +105,7 @@ test('hovers, inlay hints and the layout view', async ({ page }) => {
   await expect(page.getByText('Reorder members by alignment (40 B → 32 B)')).toBeVisible({
     timeout: 15_000,
   });
-  await expect(page.getByText('Pin layout with static_assert (40 B, align 8)')).toBeVisible();
+  await expect(page.getByText('Pin layout with static_assert')).toBeVisible();
   await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-code-actions.png') });
   await page.keyboard.press('Escape');
 

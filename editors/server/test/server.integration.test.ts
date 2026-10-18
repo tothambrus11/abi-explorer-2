@@ -178,9 +178,7 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     await session.change(uri, lines.join('\n'));
     expect((await session.layout(uri)).records[0]!.sizeBits / 8).toBe(8);
     const after = await session.codeActions(uri, { line: 2, character: 4 });
-    expect(after.map((action) => action.title)).toEqual([
-      'Pin layout with static_assert (8 B, align 4)',
-    ]);
+    expect(after.map((action) => action.title)).toEqual(['Pin layout with static_assert']);
   });
 
   it('pins a layout with assertions that hold, in C and C++', async () => {
