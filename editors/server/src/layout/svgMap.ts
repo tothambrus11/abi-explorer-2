@@ -126,10 +126,10 @@ function memberTable(
   return { parts, right: sizeRight + 2, bottom: HEADER_HEIGHT + rows.length * ROW_HEIGHT };
 }
 
-/** A member's cell: its colour and letter, faded when another member is the point; padding hatched. */
+/** A member's cell: its colour and letter, faded when another member is the point; padding hatched (fainter then too). */
 function swatch(x: number, y: number, size: number, owner: number | null, faded: boolean): string {
   if (owner === null) {
-    return `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="3" fill="url(#pad)"/>`;
+    return `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="3" fill="url(#pad)"${faded ? ' opacity="0.5"' : ''}/>`;
   }
   const color = memberColor(owner);
   return (

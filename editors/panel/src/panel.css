@@ -138,6 +138,11 @@ body {
   cursor: default;
 }
 
+/* With a member picked out, padding steps back as the other members do. */
+.byte-map:has(.byte.highlighted) .byte.padding {
+  opacity: 0.5;
+}
+
 .byte.dimmed,
 tr.dimmed .chip {
   color: var(--member-color);
