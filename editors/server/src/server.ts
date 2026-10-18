@@ -230,6 +230,8 @@ export function startServer(connection: Connection, options: ServerOptions): voi
     const { records, context } = analysis.document;
     const hit = params.position ? innermostRecordAt(records, params.position) : null;
     const failure = analyzer.failure(document.uri, document.version);
+    // As the code action is: only where the analysed text is the current one.
+    const current = analysis.document.version === document.version;
     return {
       state: analysis.document.version === document.version || failure ? 'ready' : 'analyzing',
       message: failure
@@ -237,17 +239,18 @@ export function startServer(connection: Connection, options: ServerOptions): voi
         : records.length === 0
           ? noRecordsMessage(analysis.document.lines, context)
           : null,
-      records: params.includeText
-        ? records.map((record) => ({
-            ...record,
-            text: [
-              textLayout(record, record.id === hit?.record.id ? hit.memberIndex : null),
-              reorderNote(record),
-            ]
-              .filter(Boolean)
-              .join('\n\n'),
-          }))
-        : records,
+      records: records.map((record) => ({
+        ...record,
+        ...(current && reorderAction(record, analysis.document.lines) && { reorderable: true }),
+        ...(params.includeText && {
+          text: [
+            textLayout(record, record.id === hit?.record.id ? hit.memberIndex : null),
+            reorderNote(record),
+          ]
+            .filter(Boolean)
+            .join('\n\n'),
+        }),
+      })),
       selection: hit && { recordId: hit.record.id, memberIndex: hit.memberIndex },
       context,
     };

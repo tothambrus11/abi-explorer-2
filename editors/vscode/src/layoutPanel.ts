@@ -2,7 +2,7 @@
 
 import * as vscode from 'vscode';
 import { State, type LanguageClient } from 'vscode-languageclient/node';
-import { layoutRequest, type LayoutResult } from '@abi-explorer/shared/protocol';
+import { layoutRequest, type LayoutResult, type Range } from '@abi-explorer/shared/protocol';
 import type { HostMessage, PanelMessage } from '@abi-explorer/layout-panel/messages';
 
 export const LAYOUT_VIEW_ID = 'abiExplorer.layout';
@@ -42,6 +42,7 @@ export class LayoutPanel implements vscode.WebviewViewProvider {
     view.webview.onDidReceiveMessage((message: PanelMessage) => {
       if (message.type === 'ready') this.refresh();
       else if (message.type === 'copy') void this.copy(message.text);
+      else if (message.type === 'reorder') void this.reorder(message.range);
       else this.reveal(message);
     });
     view.onDidChangeVisibility(() => {
@@ -93,13 +94,28 @@ export class LayoutPanel implements vscode.WebviewViewProvider {
       }
     }
     if (number !== this.requestNumber) return;
-    const message: HostMessage = { type: 'layout', result };
+    const message: HostMessage = { type: 'layout', result, canReorder: true };
     void this.view.webview.postMessage(message);
   }
 
   private async copy(text: string): Promise<void> {
     await vscode.env.clipboard.writeText(text);
     vscode.window.setStatusBarMessage('Copied the layout as text', 3_000);
+  }
+
+  /** Applies the server's reorder action for the record named at `range`. */
+  private async reorder(range: Range): Promise<void> {
+    if (!this.editor || this.editor.document.isClosed) return;
+    const at = new vscode.Position(range.start.line, range.start.character);
+    const actions = await vscode.commands.executeCommand<vscode.CodeAction[]>(
+      'vscode.executeCodeActionProvider',
+      this.editor.document.uri,
+      new vscode.Range(at, at),
+      vscode.CodeActionKind.RefactorRewrite.value,
+    );
+    const action = actions.find((candidate) => candidate.title.startsWith('Reorder members'));
+    if (action?.edit) await vscode.workspace.applyEdit(action.edit);
+    else vscode.window.showWarningMessage('These members cannot be reordered automatically.');
   }
 
   private reveal(message: Extract<PanelMessage, { type: 'reveal' }>): void {

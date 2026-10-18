@@ -24,6 +24,8 @@ export interface PanelActions {
   reveal(range: Range): void;
   /** Puts text on the clipboard; the host does it, a webview may not. */
   copy(text: string): void;
+  /** Reorders the members of the record named at `range`; absent where the host cannot. */
+  reorder?: (range: Range) => void;
 }
 
 export interface PanelState {
@@ -120,6 +122,17 @@ function recordDetails(
       actions.copy(text);
     });
     details.append(copy);
+  }
+  if (reorder && record.reorderable && actions.reorder && record.nameRange) {
+    const { nameRange } = record;
+    const { reorder: reorderMembers } = actions;
+    const button = element('button', 'reorder', 'Reorder members');
+    button.type = 'button';
+    button.title = 'Move the member declarations into the order the note names';
+    button.addEventListener('click', () => {
+      reorderMembers(nameRange);
+    });
+    details.append(button);
   }
   const highlight = (index: number | null) => {
     for (const row of details.querySelectorAll<HTMLElement>('tr[data-member]')) {

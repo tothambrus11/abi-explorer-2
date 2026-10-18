@@ -109,12 +109,18 @@ test('hovers, inlay hints and the layout view', async ({ page }) => {
   await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-code-actions.png') });
   await page.keyboard.press('Escape');
 
+  // The view's button reorders Packet's members in the file.
+  await view.getByRole('button', { name: 'Reorder members' }).click();
+  await expect(page.locator('.view-lines')).toContainText('32 B · align 8 · 1 B padding', {
+    timeout: 30_000,
+  });
+
   // Another target, chosen from the list: Packet as 32-bit Arm lays it out.
   await page.keyboard.press('Control+Shift+P');
   await page.keyboard.type('ABI Explorer: Choose Target');
   await page.keyboard.press('Enter');
   await page.getByRole('option', { name: /armv7-unknown-linux-gnueabihf/ }).click();
-  await expect(page.locator('.view-lines')).toContainText('24 B · align 4 · 5 B padding', {
+  await expect(page.locator('.view-lines')).toContainText('20 B · align 4 · 1 B padding', {
     timeout: 60_000,
   });
   await expect(page.locator('.statusbar')).toContainText('armv7-unknown-linux-gnueabihf');
