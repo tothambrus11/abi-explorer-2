@@ -19,10 +19,14 @@ require('abi-explorer').setup()
   other code action writes it) says the order is meant.
 - `vim.lsp.buf.code_action()` (`gra`) on a struct offers to pin its layout with `static_assert`,
   and, on one with that warning, to reorder its members by alignment.
-- `:AbiLayout` toggles a split with the layout of the struct at the cursor; the member at the
-  cursor is marked `▶` and its bytes and letter are filled, while the others show in colour. Colours match the other
-  editors (`termguicolors`); override the `AbiExplorerMember1`…`8`, `AbiExplorerMemberFaded1`…`8`,
-  `AbiExplorerPadding` and `AbiExplorerSelected` highlight groups to change them.
+- `:AbiLayout` toggles a split with the web explorer's layout view of the struct at the cursor,
+  in Unicode: a tab per struct, the size tiles, the byte grid (four characters a byte, two bits a
+  character, so bit-fields show where each starts) and the member table. Colours are the web's
+  (`termguicolors`; Nocturne's with a dark `background`). The member at the cursor is underlined in
+  the grid and tinted in the table. In the split, `<CR>` on a tab opens that struct, on a row with
+  others inside opens or shuts it, and on any other row jumps to the member; `gd` on a compound
+  member opens its struct. The source line of the row under the cursor is marked, and members of
+  the struct at the cursor get a dot in their colour.
 - `:AbiTarget armv7-unknown-linux-gnueabihf` lays structs out for another target, with the
   engine's bundled headers; `:AbiTarget` alone goes back to the project's own. Tab completes
   common targets.

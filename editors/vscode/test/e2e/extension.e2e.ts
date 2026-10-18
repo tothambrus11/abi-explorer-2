@@ -56,16 +56,25 @@ test('hovers, code actions and the layout view', async ({ page }) => {
   await page.getByRole('button', { name: 'Struct Layout Section' }).click();
   // Room for the view: the file tree folded away, the side bar wider.
   await page.locator('.pane-header', { hasText: path.basename(project!.root) }).click();
-  await dragSash(page, 420);
+  await dragSash(page, 640);
   const view = layoutView(page);
-  await expect(view.locator('.record.open .record-name')).toHaveText('Packet', { timeout: 60_000 });
-  await expect(view.locator('tr.highlighted .label')).toHaveText('checksum');
-  await expect(view.locator('.byte')).toHaveCount(40);
+  // The web explorer's view: the record's tab, its tiles, grid and table.
+  await expect(view.locator('.title')).toHaveText('struct Packet', { timeout: 60_000 });
+  await expect(view.locator('.chips button.selected')).toHaveText('struct Packet 40 B');
+  await expect(view.locator('tr.hovered .fname')).toHaveText('checksum');
+  await expect(view.locator('.cell')).toHaveCount(40);
   await expect(view.locator('button.copy')).toBeVisible();
   await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-layout-view.png') });
 
+  // Hovering a byte lights its member in the view and marks it in the editor, as on the web.
+  await view.locator('.cell').nth(5).hover();
+  await expect(view.locator('.tip')).toContainText('length');
+  await expect(view.locator('tr.hovered .fname')).toHaveText('length');
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-layout-hover.png') });
+
   // Clicking a member in the view moves the caret to it.
-  await view.locator('tr[data-member]', { hasText: 'length' }).click();
+  await view.locator('.field-table tbody tr', { hasText: 'length' }).click();
   await expect(page.locator('.statusbar')).toContainText('Ln 11, Col');
 
   await hoverToken(page, 'Packet');
@@ -78,7 +87,7 @@ test('hovers, code actions and the layout view', async ({ page }) => {
 
   await page.mouse.move(0, 0);
   await hoverToken(page, 'checksum');
-  await expect(hover).toContainText('Packet::checksum std::uint16_t · offset 8 · 2 B · align 2', {
+  await expect(hover).toContainText('Packet::checksum std::uint16_t · offset 8 B · 2 B · align 2', {
     timeout: 15_000,
   });
   await page.waitForTimeout(500); // The hover fades in.
@@ -94,6 +103,8 @@ test('hovers, code actions and the layout view', async ({ page }) => {
   await page.mouse.move(0, 0);
   await expect(page.locator('.squiggly-warning').first()).toBeVisible({ timeout: 30_000 });
   await goToLine(page, 9, 10);
+  // Once the light bulb says the actions are in, so the menu opens with them.
+  await expect(page.locator('.lightBulbWidget')).toBeVisible({ timeout: 15_000 });
   await page.keyboard.press('Control+.');
   await expect(page.getByText('Reorder members by alignment (40 B → 32 B)')).toBeVisible({
     timeout: 15_000,
@@ -101,11 +112,8 @@ test('hovers, code actions and the layout view', async ({ page }) => {
   await expect(page.getByText('Pin layout with static_assert')).toBeVisible();
   await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-code-actions.png') });
   await page.getByText('Reorder members by alignment (40 B → 32 B)').click();
-  const packetSize = view
-    .locator('.record')
-    .filter({ has: view.locator('.record-name', { hasText: /^Packet$/ }) })
-    .locator('.record-size');
-  await expect(packetSize).toHaveText('32 B · align 8 · 1 B padding', { timeout: 30_000 });
+  const packetSize = view.locator('.chips button', { hasText: /struct Packet / });
+  await expect(packetSize).toHaveText('struct Packet 32 B', { timeout: 30_000 });
   await expect(page.locator('.view-lines')).not.toContainText('B · align');
   await expect(page.locator('.squiggly-warning')).toHaveCount(0);
 
@@ -114,7 +122,7 @@ test('hovers, code actions and the layout view', async ({ page }) => {
   await page.keyboard.type('ABI Explorer: Choose Target');
   await page.keyboard.press('Enter');
   await page.getByRole('option', { name: /armv7-unknown-linux-gnueabihf/ }).click();
-  await expect(packetSize).toHaveText('20 B · align 4 · 1 B padding', { timeout: 60_000 });
+  await expect(packetSize).toHaveText('struct Packet 20 B', { timeout: 60_000 });
   await expect(page.locator('.statusbar')).toContainText('armv7-unknown-linux-gnueabihf');
   await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-other-target.png') });
 
@@ -127,6 +135,14 @@ test('hovers, code actions and the layout view', async ({ page }) => {
   await expect(hover).toContainText('struct Circle', { timeout: 15_000 });
   await page.waitForTimeout(500);
   await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-light-theme.png') });
+
+  // A base declared in a header opens there, as the web explorer inspects it.
+  await page.mouse.move(0, 0);
+  await view.locator('.chips button', { hasText: 'Circle' }).click();
+  await view.locator('button.open', { hasText: 'Shape' }).click();
+  await expect(page.locator('.tab.active')).toContainText('shapes.h', { timeout: 15_000 });
+  await expect(view.locator('.title')).toHaveText('struct Shape', { timeout: 30_000 });
+  await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-inspect-base.png') });
 });
 
 async function openFile(page: Page, name: string): Promise<void> {

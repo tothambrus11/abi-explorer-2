@@ -86,7 +86,14 @@ export interface RenderGroup {
   type: string;
   offsetBits: number;
   sizeBits: number;
+  /** `sizeof` its type; more than `sizeBits` where its tail padding is reused. */
+  typeSizeBits: number;
   alignBits: number;
+  path: string[];
+  isBase: boolean;
+  isUnion: boolean;
+  /** The leaves inside it. */
+  leafIndexes: number[];
   /** The record it is an instance of. */
   recordId: number | null;
   /** A base carries its specifier's span (no file: it is the record's); a member, its name's location. */
@@ -97,6 +104,8 @@ export interface RenderGroup {
 export interface RenderNode {
   kind: 'leaf' | 'group';
   ref: number;
+  /** Its bytes intersect a sibling's (a union, a reused tail). */
+  overlaps: boolean;
   children: RenderNode[];
 }
 
@@ -104,8 +113,18 @@ export interface Render {
   leaves: RenderLeaf[];
   groups: RenderGroup[];
   tree: RenderNode[];
+  markers: RenderMarker[];
   paddingRuns: PaddingRun[];
   paddingBytes: number | null;
+}
+
+/** Something that occupies nothing but is worth a row: an empty base, a `:0` bit-field. */
+export interface RenderMarker {
+  kind: 'empty-base' | 'zero-bitfield';
+  name: string;
+  type: string;
+  offsetBits: number;
+  path: string[];
 }
 
 export interface RecordLayout {
@@ -119,6 +138,10 @@ export interface RecordLayout {
   range: SourceRange | null;
   sizeBits: number;
   alignBits: number;
+  dataSizeBits: number;
+  nonVirtualSizeBits: number;
+  nonVirtualAlignBits: number;
+  preferredAlignBits: number;
   bases: Base[];
   fields: Field[];
   parentRecordId: number | null;

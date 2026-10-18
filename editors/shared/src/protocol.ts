@@ -37,6 +37,16 @@ export interface InitializationOptions {
    * project's -I, -D and -std flags still apply.
    */
   target?: string | undefined;
+  /** Whether the editor's theme is dark or light, for the colours of hover images. Dark by default. */
+  colorMode?: ColorMode;
+}
+
+export type ColorMode = 'dark' | 'light';
+
+/** Client → server: the editor's theme turned dark or light. */
+export const colorModeNotification = 'abiExplorer/colorMode';
+export interface ColorModeParams {
+  mode: ColorMode;
 }
 
 /** One entry of a compilation database, `command` already split. */
@@ -61,6 +71,8 @@ export interface LayoutParams {
   position?: Position;
   /** Also lay each record out as text, for clients that draw no graphics (Neovim). */
   includeText?: boolean;
+  /** The text's opened table rows, per record name (node ids, `g3`); everything else starts shut. */
+  open?: Record<string, string[]>;
 }
 
 /** Server → client: a document's layouts changed; ask again if it is on screen. */
@@ -113,10 +125,113 @@ export interface RecordView {
   nameRange: Range | null;
   /** The whole declaration. */
   extent: Range | null;
+  /** `dsize`, `nvsize`, `nvalign`, the preferred alignment: shown where they differ from size and alignment. */
+  dataSizeBits: number;
+  nonVirtualSizeBits: number;
+  nonVirtualAlignBits: number;
+  preferredAlignBits: number;
   members: MemberView[];
   bases: BaseView[];
+  /** Everything the record holds, nested, as the web explorer draws it. */
+  layout: LayoutView;
   /** The byte map and member table in monospace text, when `includeText` was asked for. */
   text?: string;
+  /** Where `text` is coloured, for clients that colour it themselves (Neovim). */
+  textColors?: TextColor[];
+  /** The member table's rows in `text`: what each line is, to open it or go to its source. */
+  textRows?: TextRow[];
+}
+
+/**
+ * A run of `text` to colour: `[line, startByte, endByte, foreground, background, style]`,
+ * 0-based, columns in UTF-8 bytes (as Neovim counts them). Colours are member
+ * slots (`c-1`…`c-8`, `c-special`) or the web's neutrals (`text`, `muted`,
+ * `grid`, `baseline`, `accent`); the style is `bold`, `lit` (the member at the
+ * caret, outlined on the web), `lit-row` (its table row, tinted) or null.
+ */
+export type TextColor = [number, number, number, string | null, string | null, string | null];
+
+export interface TextRow {
+  /** 0-based line in `text`. */
+  line: number;
+  /** The node's id (`g3`, `l0`), to name in `LayoutParams.open`. */
+  id: string;
+  /** It holds rows that can be opened. */
+  opens: boolean;
+  /** Its name in the document. */
+  range: Range | null;
+}
+
+/**
+ * The engine's render model, as the web explorer reads it: the leaves (every
+ * scalar, every bit-field), the compound members holding them, and the tree
+ * of what is inside what.
+ */
+export interface LayoutView {
+  leaves: LeafView[];
+  groups: GroupView[];
+  tree: NodeView[];
+  markers: MarkerView[];
+  paddings: { startBits: number; endBits: number }[];
+}
+
+/** A colour slot: `c-1`…`c-8` for members, `c-special` for vtable and vbtable pointers. */
+export type ColorSlot = string;
+
+export interface LeafView {
+  kind: 'field' | 'bitfield' | 'special';
+  name: string;
+  type: string | null;
+  offsetBits: number;
+  sizeBits: number;
+  /** 0 for a bit-field, which has no alignment of its own. */
+  alignBits: number;
+  /** The enclosing members' names, outermost first. */
+  path: string[];
+  /** An empty member sharing an address: it occupies no bytes. */
+  sharesAddress: boolean;
+  /** A member of this record, not of a member's record (`msg.hdr.kind` is not). */
+  direct: boolean;
+  color: ColorSlot;
+  nameRange: Range | null;
+}
+
+export interface GroupView {
+  kind: 'member' | 'base' | 'primary-base' | 'vbase' | 'primary-vbase';
+  name: string;
+  type: string;
+  offsetBits: number;
+  sizeBits: number;
+  typeSizeBits: number;
+  alignBits: number;
+  path: string[];
+  isBase: boolean;
+  isUnion: boolean;
+  leafIndexes: number[];
+  direct: boolean;
+  /** The one colour it stands for, or null (a base or anonymous member, whose fields have their own). */
+  color: ColorSlot | null;
+  nameRange: Range | null;
+  /** The record it is an instance of, and where that is declared, to open it. */
+  recordId: number | null;
+  declaration: { uri: string; range: Range } | null;
+}
+
+export interface NodeView {
+  kind: 'leaf' | 'group';
+  /** Into `leaves` or `groups`. */
+  ref: number;
+  /** Its bytes intersect a sibling's: a union, a reused tail. */
+  overlaps: boolean;
+  children: NodeView[];
+}
+
+export interface MarkerView {
+  kind: 'empty-base' | 'zero-bitfield';
+  name: string;
+  type: string;
+  offsetBits: number;
+  path: string[];
 }
 
 /**
@@ -136,6 +251,9 @@ export interface MemberView {
   alignBits: number;
   /** The member's name in this document; null when declared elsewhere (a base in a header). */
   nameRange: Range | null;
+  /** The leaves of `RecordView.layout` it covers, and the group it is, if it is one. */
+  leaves: number[];
+  group: number | null;
 }
 
 export interface BaseView {

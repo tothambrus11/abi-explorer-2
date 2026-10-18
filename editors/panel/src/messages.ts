@@ -12,7 +12,12 @@ export interface HostMessage {
 
 /**
  * Panel to host: loaded and listening (send the layout again), a click on a
- * name, or text to copy.
+ * name (in this document, or in the file `uri` names), what to mark in the
+ * document while a member is hovered, or text to copy.
  */
 export type PanelMessage =
-  { type: 'ready' } | { type: 'reveal'; range: Range } | { type: 'copy'; text: string };
+  | { type: 'ready' }
+  | { type: 'reveal'; range: Range; uri?: string }
+  | { type: 'mark'; ranges: Range[] }
+  | { type: 'shown'; recordIds: number[] }
+  | { type: 'copy'; text: string };

@@ -1,104 +1,200 @@
 // What every drawing of a layout shares: the text map, the SVG in hovers, and
-// the panel in VS Code and CLion all draw from these, so they agree on which
-// byte is whose, which letter and colour a member gets, and how the member
-// table reads.
+// the panel in VS Code and CLion all draw from these, so they agree with each
+// other and with the web explorer on which byte (and bit) is whose, which
+// colour a member gets, and how the member table reads.
 
-import type { AnalysisContext, MemberView, RecordView } from '@abi-explorer/shared/protocol';
+import type {
+  AnalysisContext,
+  LayoutView,
+  LeafView,
+  MemberView,
+  NodeView,
+  RecordView,
+} from '@abi-explorer/shared/protocol';
 import { formatOffset, formatSizeShort } from './format.ts';
 
-export type ByteOwner = number | null;
-
-/** Every member touching each byte, in declaration order: several in a union, or bit-fields sharing a byte. */
-export function byteMembers(record: RecordView): number[][] {
-  const members: number[][] = Array.from({ length: Math.ceil(record.sizeBits / 8) }, () => []);
-  record.members.forEach((member, index) => {
-    if (member.sizeBits === 0) return;
-    const first = Math.floor(member.offsetBits / 8);
-    const last = Math.ceil((member.offsetBits + member.sizeBits) / 8) - 1;
-    for (let byte = first; byte <= last && byte < members.length; byte++) {
-      members[byte]!.push(index);
-    }
-  });
-  return members;
-}
+// The member colours of the web explorer's themes (its `src/core/themes.ts`):
+// Nocturne's on dark backgrounds, the light themes' default on light ones.
+// Slots are `c-1`…`c-8`, and `c-special` for vtable pointers.
+export const MEMBER_COLORS: Record<'dark' | 'light', Record<string, string>> = {
+  dark: {
+    'c-1': '#82aaff',
+    'c-2': '#f78c6c',
+    'c-3': '#7fdbca',
+    'c-4': '#ffcb6b',
+    'c-5': '#ff869a',
+    'c-6': '#addb67',
+    'c-7': '#c792ea',
+    'c-8': '#ef5350',
+    'c-special': '#5f6b8a',
+  },
+  light: {
+    'c-1': '#3b6fd4',
+    'c-2': '#e0742b',
+    'c-3': '#21a58a',
+    'c-4': '#d9a400',
+    'c-5': '#d65f9b',
+    'c-6': '#4f9d2f',
+    'c-7': '#6c4bc9',
+    'c-8': '#d94a4a',
+    'c-special': '#9a9a94',
+  },
+};
 
 /**
- * One cell per byte, holding the member it is drawn as, or null for padding.
- * Where members overlap (a union, bit-fields sharing a byte) that is the
- * `preferred` member when it is one of them, so a highlighted member shows
- * all of its bytes; otherwise the first. The table lists them all.
+ * The web's neutrals, for what draws its own colours (hover images): the
+ * grid's ground and hatching, the hover outline, the labels. Nocturne's on
+ * dark themes, the light default's on light ones.
  */
-export function byteOwners(record: RecordView, preferred: number | null = null): ByteOwner[] {
-  return byteMembers(record).map((members) =>
-    preferred !== null && members.includes(preferred) ? preferred : (members[0] ?? null),
-  );
+export const NEUTRALS = {
+  dark: {
+    surface: '#1a1a19',
+    gridLine: '#2c2c2a',
+    baseline: '#383835',
+    text: '#ffffff',
+    muted: '#898781',
+    accent: '#3987e5',
+  },
+  light: {
+    surface: '#fcfcfb',
+    gridLine: '#e1e0d9',
+    baseline: '#c3c2b7',
+    text: '#0b0b0b',
+    muted: '#898781',
+    accent: '#2a78d6',
+  },
+};
+
+export const NOCTURNE = NEUTRALS.dark;
+
+/** A slot's colour on a dark or light background. */
+export function slotColor(slot: string, mode: 'dark' | 'light' = 'dark'): string {
+  return MEMBER_COLORS[mode][slot] ?? MEMBER_COLORS[mode]['c-special']!;
 }
 
-/** The letter a member is drawn with: a–z, then A–Z, then digits, then `#`. */
-export function memberLetter(index: number): string {
-  const letters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  return letters[index] ?? '#';
-}
-
-/** Bytes per row: 8 reads best in a hover; wide records get 16 so they stay short. */
+/** Bytes per row, as the web explorer's grid: 8, or 16 past 64 bytes. */
 export function bytesPerRow(sizeBytes: number): number {
-  return sizeBytes > 128 ? 16 : 8;
+  return sizeBytes <= 64 ? 8 : 16;
 }
 
-/** Records past this size are listed but not mapped: hundreds of rows help nobody. */
+/** Past this many bytes the panel draws a proportional bar instead of a grid, as the web does. */
+export const GRID_LIMIT = 2048;
+
+/** Past this many bytes a hover draws no map: hundreds of rows help nobody there. */
 export const MAX_MAPPED_BYTES = 512;
 
-// Tableau's hues, each at the same mid luminance: white letters read on every
-// colour, and every colour reads as text on light and dark themes alike, so
-// images (which cannot follow the theme) and panels draw them the same.
-const PALETTE = [
-  '#527eae',
-  '#be640c',
-  '#4c8943',
-  '#a56794',
-  '#de4446',
-  '#478682',
-  '#96780f',
-  '#9a745e',
-];
-/** Padding's hatching, and an image's muted text: as legible as the colours on either theme. */
-export const PADDING_COLOR = '#7e7e7e';
-
-/** The colour member `index` is drawn in; the hover image and the panel agree. */
-export function memberColor(index: number): string {
-  return PALETTE[index % PALETTE.length]!;
+/** One byte of the grid. */
+export interface GridCell {
+  byte: number;
+  /** The leaves with bits in it; none is padding, several a union or a shared bit-field unit. */
+  leaves: number[];
+  /** Each bit's leaf, where a bit-field touches the byte. */
+  bits: (number | null)[] | null;
+  /** A leaf starts here, so the cell's left edge is a boundary. */
+  start: boolean;
+  /** Inside a base subobject: the band that brackets what the base contributes. */
+  band: { first: boolean; last: boolean } | null;
 }
 
-export type LayoutRow =
-  | { kind: 'member'; memberIndex: number; offsetBits: number; sizeBits: number }
-  | { kind: 'padding'; offsetBits: number; sizeBits: number };
-
-/** The member table: members and the padding runs between them, in offset order. */
-export function layoutRows(record: RecordView): LayoutRow[] {
-  const rows: LayoutRow[] = record.members.map((member, memberIndex) => ({
-    kind: 'member',
-    memberIndex,
-    offsetBits: member.offsetBits,
-    sizeBits: member.sizeBits,
-  }));
-  const owners = byteOwners(record);
-  for (let byte = 0; byte < owners.length; byte++) {
-    if (owners[byte] !== null) continue;
-    const start = byte;
-    while (byte + 1 < owners.length && owners[byte + 1] === null) byte++;
-    rows.push({ kind: 'padding', offsetBits: start * 8, sizeBits: (byte - start + 1) * 8 });
+/** The grid's cells, worked out as the web explorer's ByteGrid does. */
+export function gridCells(record: RecordView): GridCell[] {
+  const { layout } = record;
+  const size = Math.ceil(record.sizeBits / 8);
+  const byByte = new Map<number, number[]>();
+  const bitBytes = new Set<number>();
+  layout.leaves.forEach((leaf, index) => {
+    if (leaf.sizeBits === 0) return;
+    const from = Math.floor(leaf.offsetBits / 8);
+    const to = Math.ceil((leaf.offsetBits + leaf.sizeBits) / 8);
+    for (let byte = from; byte < to; byte++) {
+      byByte.set(byte, [...(byByte.get(byte) ?? []), index]);
+      if (leaf.kind === 'bitfield') bitBytes.add(byte);
+    }
+  });
+  const bands = new Map<number, { first: boolean; last: boolean }>();
+  for (const group of layout.groups) {
+    if (!group.isBase || group.path.length > 0 || !group.sizeBits) continue;
+    const from = Math.floor(group.offsetBits / 8);
+    const to = Math.ceil((group.offsetBits + group.sizeBits) / 8);
+    for (let byte = from; byte < to; byte++) {
+      bands.set(byte, { first: byte === from, last: byte === to - 1 });
+    }
   }
-  // Stable, so a padding run sorts after a zero-sized member at the same offset.
-  return rows.sort((a, b) => a.offsetBits - b.offsetBits);
+  return Array.from({ length: size }, (_, byte): GridCell => {
+    const leaves = byByte.get(byte) ?? [];
+    const bits = bitBytes.has(byte)
+      ? Array.from({ length: 8 }, (_, bit) => {
+          const at = byte * 8 + bit;
+          const owner = leaves.find((index) => {
+            const leaf = layout.leaves[index]!;
+            return at >= leaf.offsetBits && at < leaf.offsetBits + leaf.sizeBits;
+          });
+          return owner ?? null;
+        })
+      : null;
+    return {
+      byte,
+      leaves,
+      bits,
+      start: leaves.some((index) => Math.floor(layout.leaves[index]!.offsetBits / 8) === byte),
+      band: bands.get(byte) ?? null,
+    };
+  });
 }
 
-/** The bytes to draw, or null when there are none or too many to be of use. */
-export function mappedBytes(
-  record: RecordView,
-  preferred: number | null = null,
-): ByteOwner[] | null {
-  const owners = byteOwners(record, preferred);
-  return owners.length === 0 || owners.length > MAX_MAPPED_BYTES ? null : owners;
+/** The cells to draw in a hover, or null when there are none or too many to be of use. */
+export function mappedCells(record: RecordView): GridCell[] | null {
+  const size = Math.ceil(record.sizeBits / 8);
+  return size === 0 || size > MAX_MAPPED_BYTES ? null : gridCells(record);
+}
+
+/** Bytes of padding after each leaf: each run goes to the leaf ending closest before it. */
+export function paddingAfter(layout: LayoutView): Map<number, number> {
+  const out = new Map<number, number>();
+  for (const run of layout.paddings) {
+    let best = -1;
+    let bestEnd = -1;
+    layout.leaves.forEach((leaf, index) => {
+      const end = leaf.offsetBits + leaf.sizeBits;
+      if (end <= run.startBits && end > bestEnd) {
+        bestEnd = end;
+        best = index;
+      }
+    });
+    if (best >= 0) out.set(best, (out.get(best) ?? 0) + (run.endBits - run.startBits) / 8);
+  }
+  return out;
+}
+
+/** A node's id, stable within one layout: `g3`, `l0`. */
+export function nodeId(node: NodeView): string {
+  return (node.kind === 'group' ? 'g' : 'l') + String(node.ref);
+}
+
+/** The table's rows, depth-first; a node not in `open` shows, but not what it holds. */
+export function visibleRows(
+  tree: readonly NodeView[],
+  open: ReadonlySet<string>,
+): { node: NodeView; depth: number }[] {
+  const out: { node: NodeView; depth: number }[] = [];
+  const walk = (nodes: readonly NodeView[], depth: number) => {
+    for (const node of nodes) {
+      out.push({ node, depth });
+      if (node.children.length && open.has(nodeId(node))) walk(node.children, depth + 1);
+    }
+  };
+  walk(tree, 0);
+  return out;
+}
+
+/** `ready` / `Flags::ready`: a leaf's name, with the members it is inside. */
+export function leafName(leaf: LeafView): string {
+  return [...leaf.path, leaf.name].join(' :: ');
+}
+
+/** "3 b" for a bit-field, "8 B" otherwise: the web's size column. */
+export function leafSize(leaf: LeafView): string {
+  return leaf.kind === 'bitfield' ? `${leaf.sizeBits} b` : formatSizeShort(leaf.sizeBits);
 }
 
 /** `40 B · align 8 · 9 B padding`: the hover's and the panel's line for a record. */

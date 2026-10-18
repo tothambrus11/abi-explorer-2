@@ -78,14 +78,14 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     const hover = await session.hover(project.uri('main.cpp'), { line: 8, character: 9 });
     const markdown = (hover!.contents as { value: string }).value;
     expect(markdown).toContain('**struct Packet** · 40 B · align 8 · 9 B padding');
-    expect(markdown).toMatch(/^ b {2}length +4 +4 B {2}std::uint32_t$/m);
+    expect(markdown).toMatch(/^ ■ {3}length +std::uint32_t +4 B +4 B +4 B$/m);
     expect(markdown).toContain('```text');
   });
 
   it('hovers a member with its offset and the padding around it', async () => {
     const hover = await session.hover(project.uri('main.cpp'), { line: 11, character: 18 });
     const markdown = (hover!.contents as { value: string }).value;
-    expect(markdown).toContain('**Packet::checksum** `std::uint16_t` · offset 8 · 2 B · align 2');
+    expect(markdown).toContain('**Packet::checksum** `std::uint16_t` · offset 8 B · 2 B · align 2');
     expect(markdown).toContain('Bytes 8–9, followed by 6 B of padding.');
   });
 
@@ -102,7 +102,7 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     };
     const shape = await markdown(2, 2);
     expect(shape).toContain(`**struct Shape** · ${compiled['sizeof(Shape)']} B`);
-    expect(shape).toMatch(/^ \S {2}name +\d+ +\d+ B {2}std::string$/m);
+    expect(shape).toMatch(/^ ■ ▸ name +std::string +\d+ B +\d+ B/m);
     // clang calls it `std::basic_string<char>`; the field's type says `std::string`.
     expect(await markdown(3, 22)).toMatch(
       /^\*\*class std::(__cxx11::)?basic_string\\<char.*\*\* · 32 B/m,
@@ -129,7 +129,15 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     await session.open(project.uri('sensor.c'));
     const { records } = await session.layout(project.uri('sensor.c'), undefined, true);
     expect(records[0]!.sizeBits / 8).toBe(12);
-    expect(records[0]!.text).toContain('0  a · · · b b b b');
+    // Byte 8 holds `flags` (3 bits) and `valid` (1 bit), then 4 bits of padding.
+    expect(records[0]!.text).toContain(' 0  ████ ╱╱╱╱ ╱╱╱╱ ╱╱╱╱ ▓▓▓▓ ▓▓▓▓ ▓▓▓▓ ▓▓▓▓');
+    expect(records[0]!.text).toContain(' 8  █▌╱╱ ╱╱╱╱ ╱╱╱╱ ╱╱╱╱');
+    expect(records[0]!.layout.leaves.map((leaf) => [leaf.name, leaf.kind, leaf.color])).toEqual([
+      ['channel', 'field', 'c-1'],
+      ['value', 'field', 'c-2'],
+      ['flags', 'bitfield', 'c-3'],
+      ['valid', 'bitfield', 'c-4'],
+    ]);
   });
 
   it('keeps the records clang recovers past an error, and says what the error was', async () => {
@@ -192,7 +200,7 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     // The unnamed type's own fields hover as the member's.
     const hover = await session.hover(uri, { line: 1, character: 15 });
     expect((hover?.contents as { value: string }).value).toMatch(
-      /^\*\*Outer::inner::x\*\* `int` · offset 0 · 4 B · align 4/,
+      /^\*\*Outer::inner::x\*\* `int` · offset 0 B · 4 B · align 4/,
     );
   });
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { MemberView, RecordView } from '@abi-explorer/shared/protocol';
+import type { RecordView } from '@abi-explorer/shared/protocol';
+import { testRecord, type TestMember } from '../../../shared/test/records.ts';
 import { pinAction } from '../../src/layout/pinAction.ts';
 
 const range = (line: number, start: number, endLine: number, end: number) => ({
@@ -7,7 +8,7 @@ const range = (line: number, start: number, endLine: number, end: number) => ({
   end: { line: endLine, character: end },
 });
 
-const field = (label: string, offset: number, size: number): MemberView => ({
+const field = (label: string, offset: number, size: number): TestMember => ({
   kind: 'field',
   label,
   type: 'int',
@@ -27,7 +28,7 @@ const lines = [
   '}',
   '',
 ];
-const packet: RecordView = {
+const packet: RecordView = testRecord({
   id: 1,
   kind: 'struct',
   name: 'net::Packet',
@@ -38,7 +39,7 @@ const packet: RecordView = {
   extent: range(1, 2, 4, 3),
   members: [field('type', 0, 1), field('length', 4, 4)],
   bases: [],
-};
+});
 
 describe('pinAction', () => {
   it('asserts the size and alignment after the definition, at its indentation', () => {

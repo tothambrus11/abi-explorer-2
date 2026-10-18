@@ -1,35 +1,74 @@
 /*
- * Themed through --ae-* variables. VS Code supplies its --vscode-* theme
- * colours, which the defaults below pick up; the CLion plugin sets --ae-*
- * from the IDE's look and feel.
+ * The web explorer's layout view (src/ui/ResultsPane, Summary, ByteGrid and
+ * FieldTable), on the editor's theme.
+ *
+ * Neutrals come from the editor through --ae-* variables: VS Code supplies its
+ * --vscode-* theme colours, which the defaults below pick up, and the CLion
+ * plugin sets --ae-* from the IDE's look and feel. The grid's lines and
+ * hatching are mixed from those, as Nocturne's are from its own ink and
+ * ground. Member colours are the web's: Nocturne's on a dark background, the
+ * light themes' on a light one (main.ts says which, as `data-mode`).
  */
 :root {
   --ae-foreground: var(--vscode-foreground, #cccccc);
   --ae-muted: var(--vscode-descriptionForeground, #9d9d9d);
-  --ae-background: var(--vscode-sideBar-background, transparent);
-  --ae-hover: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.12));
+  --ae-background: var(--vscode-sideBar-background, #1a1a19);
   --ae-border: var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
   --ae-warning: var(--vscode-editorWarning-foreground, #cca700);
+  --ae-accent: var(--vscode-focusBorder, #3987e5);
   --ae-font: var(--vscode-font-family, system-ui, sans-serif);
   --ae-font-size: var(--vscode-font-size, 13px);
   --ae-mono: var(--vscode-editor-font-family, Menlo, Consolas, monospace);
-  /* The images' padding grey (layoutModel.ts PADDING_COLOR), as hatching and its tint. */
-  --ae-padding: rgba(126, 126, 126, 0.6);
-  --ae-padding-tint: rgba(126, 126, 126, 0.15);
+
+  /* The web's tokens, in the editor's colours. */
+  --text-primary: var(--ae-foreground);
+  --text-secondary: color-mix(in srgb, var(--ae-foreground) 78%, var(--ae-background));
+  --text-muted: var(--ae-muted);
+  --surface-1: var(--ae-background);
+  --page: color-mix(in srgb, var(--ae-foreground) 3%, var(--ae-background));
+  --grid-line: color-mix(in srgb, var(--ae-foreground) 8%, var(--ae-background));
+  --baseline: color-mix(in srgb, var(--ae-foreground) 14%, var(--ae-background));
+  --border: color-mix(in srgb, var(--ae-foreground) 12%, transparent);
+  --accent: var(--ae-accent);
+
+  /* Nocturne's member colours (layoutModel.ts MEMBER_COLORS.dark). */
+  --c-1: #82aaff;
+  --c-2: #f78c6c;
+  --c-3: #7fdbca;
+  --c-4: #ffcb6b;
+  --c-5: #ff869a;
+  --c-6: #addb67;
+  --c-7: #c792ea;
+  --c-8: #ef5350;
+  --c-special: #5f6b8a;
+}
+
+/* The light themes' (MEMBER_COLORS.light). */
+:root[data-mode='light'] {
+  --c-1: #3b6fd4;
+  --c-2: #e0742b;
+  --c-3: #21a58a;
+  --c-4: #d9a400;
+  --c-5: #d65f9b;
+  --c-6: #4f9d2f;
+  --c-7: #6c4bc9;
+  --c-8: #d94a4a;
+  --c-special: #9a9a94;
 }
 
 body {
   margin: 0;
-  padding: 4px 8px 12px;
-  color: var(--ae-foreground);
-  background: var(--ae-background);
+  padding: 12px 14px;
+  color: var(--text-primary);
+  background: var(--surface-1);
   font-family: var(--ae-font);
   font-size: var(--ae-font-size);
 }
 
 .empty,
-.context {
-  color: var(--ae-muted);
+.context,
+.note {
+  color: var(--text-secondary);
 }
 
 .notice {
@@ -37,216 +76,472 @@ body {
 }
 
 .context {
-  margin: 12px 0 0;
+  margin: 16px 0 0;
   font-size: 0.9em;
+  color: var(--text-muted);
 }
 
-.records {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.record-heading {
+/* Record tabs (ResultsPane). */
+.bar {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
-  width: 100%;
-  padding: 3px 4px;
-  border: 0;
-  border-radius: 3px;
-  color: inherit;
-  background: none;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.chips {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chips[hidden] {
+  display: none;
+}
+
+.chips button {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-primary);
+  background: var(--page);
   font: inherit;
-  text-align: left;
+  font-size: 12.5px;
   cursor: pointer;
 }
 
-.record-heading:hover {
-  background: var(--ae-hover);
+.chips button .kind {
+  color: var(--text-muted);
 }
 
-.chevron {
-  width: 1em;
-  color: var(--ae-muted);
+.chips button .size {
+  color: var(--text-secondary);
 }
 
-.record-name {
+.chips button.selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.chips button.selected .kind {
+  color: var(--accent);
+}
+
+.icon-button {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  background: var(--page);
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  color: var(--text-primary);
+}
+
+button:focus-visible,
+tr.clickable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.sections > section + section {
+  margin-top: 28px;
+  padding-top: 22px;
+  border-top: 1px solid var(--grid-line);
+}
+
+/* RecordSection and Summary. */
+.title {
+  margin: 2px 0 10px;
   font-family: var(--ae-mono);
+  font-size: 16px;
   font-weight: 600;
 }
 
-.record-size {
-  margin-left: auto;
-  color: var(--ae-muted);
-  white-space: nowrap;
-}
-
-.record-details {
-  padding: 4px 4px 10px 22px;
-}
-
 .summary {
-  margin: 0 0 8px;
-  color: var(--ae-muted);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 12px;
+  margin-bottom: 14px;
 }
 
-.byte-map {
-  display: grid;
-  grid-template-columns: 3em repeat(var(--columns), minmax(14px, 22px));
-  gap: 2px;
-  margin-bottom: 12px;
-  font-family: var(--ae-mono);
-  font-size: 12px;
+.tile {
+  min-width: 96px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--page);
 }
 
-.column-label,
-.row-label {
-  color: var(--ae-muted);
+.tile .label {
+  color: var(--text-muted);
   font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.tile .value {
+  font-size: 24px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.tile .unit {
+  color: var(--text-secondary);
+  font-size: 11.5px;
+}
+
+.tile.warn .value {
+  color: var(--c-2);
+}
+
+.extras {
+  align-self: center;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+}
+
+/* ByteGrid. */
+.grid-box {
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+
+.grid {
+  --band-ink: color-mix(in srgb, var(--text-primary) 62%, transparent);
+  display: grid;
+  grid-template-columns: minmax(40px, auto) repeat(var(--bpr, 8), minmax(26px, 44px));
+  width: max-content;
+  font-size: 11px;
+}
+
+.corner,
+.col {
+  height: 18px;
+}
+
+.col {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
   text-align: center;
 }
 
-.row-label {
-  padding-right: 6px;
-  text-align: right;
-  line-height: 22px;
-}
-
-/* Cells and swatches are drawn as the hover images draw them (svgMap.ts): a
- * member's colour with a white letter, a faded tint with a coloured letter
- * when another member is the point, padding hatched. */
-.byte,
-.chip {
-  border-radius: 3px;
-  text-align: center;
-  color: #ffffff;
-  background: var(--member-color);
-}
-
-.byte {
-  height: 22px;
-  line-height: 22px;
-  cursor: pointer;
-}
-
-.byte.padding,
-.chip.padding {
-  background:
-    repeating-linear-gradient(135deg, var(--ae-padding) 0 1.5px, transparent 1.5px 4px),
-    var(--ae-padding-tint);
-  cursor: default;
-}
-
-/* With a member picked out, padding steps back as the other members do. */
-.byte-map:has(.byte.highlighted) .byte.padding {
-  opacity: 0.5;
-}
-
-.byte.dimmed,
-tr.dimmed .chip {
-  color: var(--member-color);
-  background: color-mix(in srgb, var(--member-color) 15%, transparent);
-}
-
-.members {
-  width: 100%;
-  table-layout: fixed;
-  border-collapse: collapse;
-  font-family: var(--ae-mono);
-  font-size: 12px;
-}
-
-.members th {
-  color: var(--ae-muted);
-  font-weight: normal;
-  text-align: left;
-}
-
-.members td,
-.members th {
-  padding: 2px 4px;
-  white-space: nowrap;
-}
-
-.members th:first-child {
-  width: 16px;
-}
-
-.members th.number {
-  width: 4.5em;
-  text-align: right;
-}
-
-.members td.number {
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 8px;
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
   text-align: right;
 }
 
-.members td.member {
+.cell {
+  position: relative;
+  height: 30px;
+  border: 1px solid var(--surface-1);
+  border-radius: 3px;
+  box-sizing: border-box;
+  cursor: default;
+}
+
+.cell.start {
+  border-left: 2px solid var(--surface-1);
+}
+
+.cell.void {
+  visibility: hidden;
+}
+
+.pad {
+  background:
+    repeating-linear-gradient(45deg, transparent 0 4px, var(--baseline) 4px 6px), var(--grid-line);
+  background-clip: padding-box;
+}
+
+.cell.bits {
+  display: flex;
+  padding: 0;
+  background: var(--grid-line);
+}
+
+.bit {
+  flex: 1;
+  border-right: 1px solid var(--surface-1);
+}
+
+.bit:last-child {
+  border-right: none;
+}
+
+.bit.start {
+  border-left: 2px solid var(--surface-1);
+}
+
+.bit.pad {
+  background:
+    repeating-linear-gradient(45deg, transparent 0 3px, var(--baseline) 3px 4px), var(--grid-line);
+}
+
+/* A base subobject's bytes, bracketed. */
+.cell.band {
+  box-shadow:
+    inset 0 2px 0 var(--band-ink),
+    inset 0 -2px 0 var(--band-ink);
+}
+
+.cell.band-first {
+  box-shadow:
+    inset 0 2px 0 var(--band-ink),
+    inset 0 -2px 0 var(--band-ink),
+    inset 2px 0 0 var(--band-ink);
+}
+
+.cell.band-last {
+  box-shadow:
+    inset 0 2px 0 var(--band-ink),
+    inset 0 -2px 0 var(--band-ink),
+    inset -2px 0 0 var(--band-ink);
+}
+
+.cell.band-first.band-last {
+  box-shadow: inset 0 0 0 2px var(--band-ink);
+}
+
+/* An outline, so it composes with the band's box-shadow. */
+.cell.hovered,
+.bit.hovered,
+.segment.hovered {
+  z-index: 1;
+  outline: 2px solid var(--text-primary);
+  outline-offset: -2px;
+}
+
+.proportional {
+  display: flex;
+  width: 100%;
+  height: 34px;
+  margin-bottom: 16px;
   overflow: hidden;
-  text-overflow: ellipsis;
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }
 
-.members .type {
-  margin-left: 0.8em;
-  color: var(--ae-muted);
+.segment {
+  min-width: 2px;
+  border-right: 1px solid var(--surface-1);
 }
 
-.members td.swatch {
-  padding-right: 4px;
+/* FieldTable. */
+.table-box {
+  overflow-x: auto;
 }
 
-.chip {
-  display: block;
-  width: 16px;
-  height: 16px;
+.field-table {
+  --indent: 16px;
+  --guide-ink: color-mix(in srgb, var(--text-primary) 16%, transparent);
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.field-table th {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--baseline);
+  color: var(--text-muted);
   font-size: 11px;
-  line-height: 16px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.members tr.padding,
-.members tr.dimmed {
-  color: var(--ae-muted);
+.field-table th .help {
+  text-decoration: underline dotted color-mix(in srgb, currentColor 45%, transparent);
+  text-underline-offset: 3px;
+  cursor: help;
 }
 
-.members tr.padding {
-  font-style: italic;
+.field-table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--grid-line);
 }
 
-.members tr.clickable {
+.field-table tr.hovered td {
+  background-color: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.field-table tr.clickable {
   cursor: pointer;
 }
 
-.members tr.highlighted td {
-  background: var(--ae-hover);
+.chip-col {
+  width: 20px;
 }
 
-.members tr.highlighted td:first-child {
-  border-radius: 3px 0 0 3px;
+.field-table .chip {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  vertical-align: -1px;
 }
 
-.members tr.highlighted td:last-child {
-  border-radius: 0 3px 3px 0;
+/* One guide line per ancestor, down the middle of its twisty. */
+.field-table .name {
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--guide-ink) 0 1px,
+    transparent 1px var(--indent)
+  );
+  background-position: var(--indent) 0;
+  background-repeat: no-repeat;
+  background-size: calc(var(--depth) * var(--indent)) 100%;
+  white-space: nowrap;
+}
+
+.nest {
+  display: flex;
+  align-items: center;
+}
+
+.twist,
+.twist-gap {
+  display: inline-block;
+  flex: none;
+  width: var(--indent);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.twist {
+  padding: 0;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.twist:hover {
+  color: var(--text-primary);
+}
+
+.fname {
+  font-family: var(--ae-mono);
+}
+
+tr.group .gname {
+  font-weight: 600;
+}
+
+.open {
+  padding: 0;
+  border: none;
+  color: inherit;
+  background: none;
+  font: inherit;
+  font-family: var(--ae-mono);
+  font-weight: 600;
+  text-decoration: underline dotted color-mix(in srgb, currentColor 45%, transparent);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.open:hover {
+  color: var(--accent);
+}
+
+.tag {
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 3px;
+  color: var(--text-muted);
+  background: color-mix(in srgb, var(--text-muted) 16%, transparent);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tag.union {
+  color: var(--c-3);
+  background: color-mix(in srgb, var(--c-3) 18%, transparent);
+}
+
+.tag.overlap {
+  color: var(--c-2);
+  background: color-mix(in srgb, var(--c-2) 18%, transparent);
+}
+
+.field-table .type {
+  color: var(--text-secondary);
+  font-family: var(--ae-mono);
+  font-size: 12px;
+}
+
+.field-table .num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.field-table .num.noted {
+  text-decoration: underline dotted color-mix(in srgb, currentColor 50%, transparent);
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
+.field-table .pad {
+  color: var(--c-2);
+  background: none;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+/* The web's tooltip: the page's ink as its ground. */
+.tip {
+  position: absolute;
+  z-index: 10;
+  max-width: 320px;
+  padding: 6px 9px;
+  border-radius: 7px;
+  color: var(--surface-1);
+  background: var(--text-primary);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22);
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+}
+
+.tip[hidden] {
+  display: none;
 }
 
 .copy {
-  margin-top: 8px;
+  margin-top: 10px;
   padding: 2px 8px;
-  border: 1px solid var(--ae-border);
-  border-radius: 3px;
-  color: var(--ae-muted);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-muted);
   background: transparent;
   font: inherit;
+  font-size: 12px;
   cursor: pointer;
 }
 
 .copy:hover {
-  color: var(--ae-foreground);
-  background: var(--ae-hover);
-}
-
-tr.clickable:focus-visible {
-  outline: 1px solid var(--ae-foreground);
-  outline-offset: -1px;
+  color: var(--text-primary);
 }

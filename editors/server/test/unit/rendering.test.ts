@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { byteOwners, reorderWarning } from '@abi-explorer/shared/layoutModel';
+import { gridCells, reorderWarning } from '@abi-explorer/shared/layoutModel';
 import { formatOffset, formatSize, formatSizeShort } from '@abi-explorer/shared/format';
 import { memberHover, recordHover } from '../../src/layout/hover.ts';
 import { svgMap } from '../../src/layout/svgMap.ts';
-import { textMap, textMemberTable } from '../../src/layout/textLayout.ts';
+import { textLayout, textMap } from '../../src/layout/textLayout.ts';
 import { characterAt } from '../../src/layout/documentRecords.ts';
 import type { AnalysisContext, MemberView, RecordView } from '@abi-explorer/shared/protocol';
+import { testRecord } from '../../../shared/test/records.ts';
 
 const at = (line: number, start: number, end: number) => ({
   start: { line, character: start },
@@ -27,11 +28,13 @@ function member(
     sizeBits: size * 8,
     alignBits: size * 8,
     nameRange: line === null ? null : at(line, 4, 4 + label.length),
+    leaves: [],
+    group: null,
   };
 }
 
 /** `struct Packet { char type; int length; short checksum; };` */
-const packet: RecordView = {
+const packet: RecordView = testRecord({
   id: 1,
   kind: 'struct',
   name: 'Packet',
@@ -46,7 +49,7 @@ const packet: RecordView = {
     member('checksum', 8, 2, 'short', 3),
   ],
   bases: [],
-};
+});
 
 const context: AnalysisContext = {
   triple: 'x86_64-linux-gnu',
@@ -61,68 +64,138 @@ const context: AnalysisContext = {
 };
 
 describe('format', () => {
-  it('writes sizes and offsets', () => {
+  it('writes sizes and offsets as the web explorer does', () => {
     expect([formatSize(8), formatSize(16), formatSize(1), formatSize(3)]).toEqual([
       '1 byte',
       '2 bytes',
       '1 bit',
       '3 bits',
     ]);
-    expect([formatSizeShort(32), formatSizeShort(3), formatSizeShort(1)]).toEqual([
-      '4 B',
-      '3 bits',
-      '1 bit',
-    ]);
-    expect([formatOffset(64), formatOffset(67)]).toEqual(['8', '8.3']);
+    expect([formatSizeShort(32), formatSizeShort(3)]).toEqual(['4 B', '3 b']);
+    expect([formatOffset(64), formatOffset(67)]).toEqual(['8 B', '8 B + 3 b']);
   });
 });
 
+const bit = (label: string, offset: number, size: number): MemberView => ({
+  ...member(label, 0, 0, 'unsigned'),
+  kind: 'bitfield',
+  offsetBits: offset,
+  sizeBits: size,
+  alignBits: 0,
+});
+
+/** `struct Flags { unsigned ready : 1, mode : 3, count : 12; char tag; int value; }` */
+const flags = testRecord({
+  ...packet,
+  name: 'Flags',
+  sizeBits: 64,
+  paddingBytes: 1,
+  members: [
+    bit('ready', 0, 1),
+    bit('mode', 1, 3),
+    bit('count', 4, 12),
+    member('tag', 2, 1, 'char'),
+    member('value', 4, 4, 'int'),
+  ],
+});
+
 describe('byte maps', () => {
-  it('gives each byte its first member, or null for padding', () => {
-    expect(byteOwners(packet)).toEqual([0, null, null, null, 1, 1, 1, 1, 2, 2, null, null]);
+  it('gives each byte its leaves, and each bit of a bit-field byte its own', () => {
+    expect(gridCells(packet).map((cell) => cell.leaves)).toEqual([
+      [0],
+      [],
+      [],
+      [],
+      [1],
+      [1],
+      [1],
+      [1],
+      [2],
+      [2],
+      [],
+      [],
+    ]);
+    expect(gridCells(flags)[0]!.bits).toEqual([0, 1, 1, 1, 2, 2, 2, 2]);
+    expect(gridCells(flags)[1]!.bits).toEqual([2, 2, 2, 2, 2, 2, 2, 2]);
   });
 
-  it('draws the text map, and highlights one member', () => {
-    expect(textMap(packet)).toBe(
-      ['    0 1 2 3 4 5 6 7', ' 0  a · · · b b b b', ' 8  c c · ·'].join('\n'),
-    );
-    expect(textMap(packet, 1)!.split('\n')[1]).toBe(' 0  ░ · · · █ █ █ █');
+  it('draws the text map without letters, two bits a character', () => {
+    expect(textLayout(flags).text.split('\n').slice(5, 8)).toEqual([
+      '    +0   +1   +2   +3   +4   +5   +6   +7',
+      ' 0  ▌▓██ ████ ▓▓▓▓ ╱╱╱╱ ████ ████ ████ ████',
+      '',
+    ]);
+    // A plain hover shades the member at hand.
+    expect(textMap(packet, 1)!.split('\n')[1]).toBe(' 0  ░░░░ ╱╱╱╱ ╱╱╱╱ ╱╱╱╱ ████ ████ ████ ████');
   });
 
-  it('draws one SVG cell per byte, hatching padding', () => {
+  it('colours the text map in the web colours, outlining the member at the caret', () => {
+    const { text, colors } = textLayout(flags, 1);
+    const row = text.split('\n').indexOf(' 0  ▌▓██ ████ ▓▓▓▓ ╱╱╱╱ ████ ████ ████ ████');
+    const runs = colors.filter(([line]) => line === row).map((color) => color.slice(3));
+    expect(runs.slice(0, 4)).toEqual([
+      ['muted', null, null],
+      ['c-1', 'c-2', 'lit'],
+      ['c-2', 'c-2', 'lit'],
+      ['c-3', 'c-3', null],
+    ]);
+    expect(runs).toContainEqual(['baseline', 'grid', null]);
+  });
+
+  it('lists the members in the web table, opening nothing', () => {
+    const lines = textLayout(packet).text.split('\n');
+    const table = lines.slice(lines.findIndex((line) => line.includes('FIELD')));
+    expect(table).toEqual([
+      '     FIELD     TYPE   OFFSET  SIZE  ALIGN  PADDING AFTER',
+      ' ■   type      char      0 B   1 B    1 B           +3 B',
+      ' ■   length    int       4 B   4 B    4 B',
+      ' ■   checksum  short     8 B   2 B    2 B           +2 B',
+    ]);
+  });
+
+  it('boxes the size tiles', () => {
+    expect(textLayout(packet).text.split('\n').slice(0, 4)).toEqual([
+      '╭──────────╮ ╭─────────╮ ╭───────────────╮',
+      '│ SIZEOF   │ │ ALIGNOF │ │ PADDING       │',
+      '│ 12 bytes │ │ 4 bytes │ │ 5 bytes · 42% │',
+      '╰──────────╯ ╰─────────╯ ╰───────────────╯',
+    ]);
+  });
+
+  it('draws the web grid in the SVG: no letters, bits, hatched padding', () => {
     const svg = svgMap(packet)!;
-    expect(svg.match(/<rect /g)).toHaveLength(12 + 1);
+    expect(svg).not.toMatch(/>[a-c]<\/text>/);
     expect(svg.match(/fill="url\(#pad\)"/g)).toHaveLength(5);
+    expect(svg).toContain('>+7</text>');
+    const bits = svgMap(flags)!;
+    // Byte 0: three fields and padding-free, drawn as eight bits.
+    expect(bits.match(/ width="3\.\d+"/g)?.length).toBeGreaterThanOrEqual(8);
   });
 
-  it('draws a highlighted union member over all of its bytes', () => {
-    const union: RecordView = {
-      ...packet,
-      kind: 'union',
-      sizeBits: 64,
-      members: [member('i', 0, 4, 'int'), member('d', 0, 8, 'double')],
-    };
-    expect(textMap(union)!.split('\n')[1]).toBe('0  a a a a b b b b');
-    expect(textMap(union, 1)!.split('\n')[1]).toBe('0  █ █ █ █ █ █ █ █');
-    expect(textMap(union, 1, { shade: false })!.split('\n')[1]).toBe('0  b b b b b b b b');
+  it("draws in the light themes' colours for a light editor", () => {
+    expect(svgMap(packet)).toContain('fill="#82aaff"');
+    const light = svgMap(packet, { mode: 'light' })!;
+    expect(light).toContain('fill="#3b6fd4"');
+    expect(light).not.toContain('#82aaff');
   });
 
-  it('fades every member but the highlighted one', () => {
+  it('outlines a member instead of fading the others', () => {
     const svg = svgMap(packet, { highlightedMember: 2 })!;
-    expect(svg.match(/rx="3" fill="#\w+"\/>/g)).toHaveLength(2);
-    expect(svg.match(/rx="3" fill="#\w+" fill-opacity="0.15"/g)).toHaveLength(5);
+    expect(svg).not.toContain('fill-opacity');
+    expect(svg.match(/stroke="#ffffff" stroke-width="2"/g)).toHaveLength(2);
   });
 
-  it('draws the member table beside the map, with the same swatches', () => {
+  it('draws the web table below the map', () => {
     const svg = svgMap(packet, { table: true })!;
-    // 5 rows (3 members, 2 padding runs), each with a swatch.
-    expect(svg.match(/<rect /g)).toHaveLength(12 + 1 + 5);
+    for (const heading of ['FIELD', 'TYPE', 'OFFSET', 'SIZE', 'ALIGN', 'PADDING AFTER']) {
+      expect(svg).toContain(`>${heading}</text>`);
+    }
     expect(svg).toContain('>checksum</text>');
-    expect(svg).toContain('font-style="italic">padding</text>');
+    expect(svg).toContain('>+3 B</text>');
   });
 
   it('does not map huge records', () => {
-    expect(textMap({ ...packet, sizeBits: 8 * 1024, members: [] })).toBeNull();
+    expect(textMap(testRecord({ ...packet, sizeBits: 8 * 1024, members: [] }))).toBeNull();
   });
 });
 
@@ -134,28 +207,11 @@ describe('hovers', () => {
     expect(markdown).toContain('*x86_64-linux-gnu · compile_commands.json*');
   });
 
-  it('lays a record out as monospace text for text clients', () => {
+  it('lays a record out as Unicode text for text clients', () => {
     const markdown = recordHover(packet, context, { images: false });
-    expect(markdown).not.toContain('| Member |');
-    expect(markdown).toContain(
-      [
-        '```text',
-        '    0 1 2 3 4 5 6 7',
-        ' 0  a · · · b b b b',
-        ' 8  c c · ·',
-        '',
-        ' a  type       0  1 B  char',
-        ' ·  padding    1  3 B',
-        ' b  length     4  4 B  int',
-        ' c  checksum   8  2 B  short',
-        ' ·  padding   10  2 B',
-        '```',
-      ].join('\n'),
-    );
-  });
-
-  it('marks a member in the text table', () => {
-    expect(textMemberTable(packet, 2).split('\n')[3]).toBe('▶c  checksum   8  2 B  short');
+    expect(markdown).toContain('```text\n╭──');
+    expect(markdown).toContain(' 0  ████ ╱╱╱╱ ╱╱╱╱ ╱╱╱╱ ▓▓▓▓ ▓▓▓▓ ▓▓▓▓ ▓▓▓▓');
+    expect(markdown).toContain(' ■   checksum  short     8 B   2 B    2 B           +2 B');
   });
 
   it('embeds the map as an image when the editor shows them', () => {
@@ -171,7 +227,7 @@ describe('hovers', () => {
       { ...context, commandInferred: true, errorCount: 2, firstError: 'line 3: expected ;' },
       { images: false },
     );
-    expect(markdown.split('\n')[0]).toBe('**Packet::length** `int` · offset 4 · 4 B · align 4');
+    expect(markdown.split('\n')[0]).toBe('**Packet::length** `int` · offset 4 B · 4 B · align 4');
     expect(markdown).toContain('Bytes 4–7, after 3 B of padding.');
     expect(memberHover(packet, 2, context, { images: false })).toContain(
       'Bytes 8–9, followed by 2 B of padding.',
@@ -181,10 +237,10 @@ describe('hovers', () => {
   });
 
   it('lists the members of a record too large to map, even for image clients', () => {
-    const huge = { ...packet, name: 'Huge', sizeBits: 4096 * 8, paddingBytes: 4086 };
+    const huge = testRecord({ ...packet, name: 'Huge', sizeBits: 4096 * 8, paddingBytes: 4086 });
     const markdown = recordHover(huge, context, { images: true });
     expect(markdown).not.toContain('data:image');
-    expect(markdown).toContain('```text\n a  type');
+    expect(markdown).toContain(' ■   type ');
   });
 
   it('escapes template arguments', () => {

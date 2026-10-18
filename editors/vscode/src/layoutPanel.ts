@@ -2,8 +2,10 @@
 
 import * as vscode from 'vscode';
 import { State, type LanguageClient } from 'vscode-languageclient/node';
-import { layoutRequest, type LayoutResult } from '@abi-explorer/shared/protocol';
+import { layoutRequest, type LayoutResult, type Range } from '@abi-explorer/shared/protocol';
+import { MEMBER_COLORS } from '@abi-explorer/shared/layoutModel';
 import type { HostMessage, PanelMessage } from '@abi-explorer/layout-panel/messages';
+import { colorMode } from './settings.ts';
 
 export const LAYOUT_VIEW_ID = 'abiExplorer.layout';
 const CARET_DEBOUNCE_MS = 150;
@@ -16,6 +18,9 @@ export class LayoutPanel implements vscode.WebviewViewProvider {
   private requestNumber = 0;
   private readonly extensionUri: vscode.Uri;
   private readonly client: () => LanguageClient | undefined;
+  private readonly decorations = new Decorations();
+  /** The last layouts, for marking the records the view shows. */
+  private result: LayoutResult | undefined;
 
   constructor(extensionUri: vscode.Uri, client: () => LanguageClient | undefined) {
     this.extensionUri = extensionUri;
@@ -31,6 +36,11 @@ export class LayoutPanel implements vscode.WebviewViewProvider {
       vscode.window.onDidChangeTextEditorSelection((event) => {
         this.follow(event.textEditor);
       }),
+      vscode.window.onDidChangeActiveColorTheme(() => {
+        this.decorations.dispose();
+        this.refresh();
+      }),
+      this.decorations,
     );
   }
 
@@ -42,7 +52,9 @@ export class LayoutPanel implements vscode.WebviewViewProvider {
     view.webview.onDidReceiveMessage((message: PanelMessage) => {
       if (message.type === 'ready') this.refresh();
       else if (message.type === 'copy') void this.copy(message.text);
-      else this.reveal(message);
+      else if (message.type === 'mark') this.mark(message.ranges);
+      else if (message.type === 'shown') this.showDots(message.recordIds);
+      else void this.reveal(message);
     });
     view.onDidChangeVisibility(() => {
       this.refresh();
@@ -63,7 +75,6 @@ export class LayoutPanel implements vscode.WebviewViewProvider {
   }
 
   private async update(): Promise<void> {
-    if (!this.view?.visible) return;
     const number = ++this.requestNumber;
     const client = this.client();
     const editor = this.editor?.document.isClosed ? undefined : this.editor;
@@ -93,6 +104,10 @@ export class LayoutPanel implements vscode.WebviewViewProvider {
       }
     }
     if (number !== this.requestNumber) return;
+    this.result = result;
+    // Without the view, the record at the caret is the one on screen.
+    if (!this.view?.visible) this.showDots(null);
+    if (!this.view?.visible) return;
     const message: HostMessage = { type: 'layout', result };
     void this.view.webview.postMessage(message);
   }
@@ -102,15 +117,118 @@ export class LayoutPanel implements vscode.WebviewViewProvider {
     vscode.window.setStatusBarMessage('Copied the layout as text', 3_000);
   }
 
-  private reveal(message: Extract<PanelMessage, { type: 'reveal' }>): void {
-    if (!this.editor || this.editor.document.isClosed) return;
-    const { start, end } = message.range;
-    const range = new vscode.Range(start.line, start.character, end.line, end.character);
-    void vscode.window.showTextDocument(this.editor.document, {
-      viewColumn: this.editor.viewColumn ?? vscode.ViewColumn.Active,
-      selection: range,
+  /** Puts the caret on a name: in the document shown, or in another file (a record declared there). */
+  private async reveal(message: Extract<PanelMessage, { type: 'reveal' }>): Promise<void> {
+    const document = message.uri
+      ? await vscode.workspace.openTextDocument(vscode.Uri.parse(message.uri))
+      : this.editor?.document;
+    if (!document || document.isClosed) return;
+    const selection = toRange(message.range);
+    await vscode.window.showTextDocument(document, {
+      viewColumn: this.editor?.viewColumn ?? vscode.ViewColumn.Active,
+      selection,
     });
   }
+
+  /** Dots the members of these records, or of the one at the caret with none given. */
+  private showDots(recordIds: number[] | null): void {
+    const editor = this.editor;
+    if (!editor || editor.document.isClosed || !this.result) return;
+    const ids = recordIds ?? (this.result.selection ? [this.result.selection.recordId] : []);
+    this.decorations.dots(
+      editor,
+      this.result.records.filter((record) => ids.includes(record.id)),
+    );
+  }
+
+  private mark(ranges: Range[]): void {
+    if (this.editor && !this.editor.document.isClosed) this.decorations.mark(this.editor, ranges);
+  }
+}
+
+/**
+ * What the web explorer draws in its editor: a dot in the member's colour
+ * before each member's name, and, while a member is hovered in the panel, a
+ * tint over its line and a stronger one over its name.
+ */
+class Decorations implements vscode.Disposable {
+  private dotTypes = new Map<string, vscode.TextEditorDecorationType>();
+  private readonly line = vscode.window.createTextEditorDecorationType({
+    isWholeLine: true,
+    backgroundColor: 'rgba(57, 135, 229, 0.14)',
+  });
+  private readonly name = vscode.window.createTextEditorDecorationType({
+    backgroundColor: 'rgba(57, 135, 229, 0.30)',
+    borderRadius: '3px',
+  });
+
+  dots(editor: vscode.TextEditor, records: LayoutResult['records']): void {
+    const ranges = new Map<string, vscode.Range[]>();
+    // One dot a name: a template's instantiations share their members' names.
+    const seen = new Set<string>();
+    for (const record of records) {
+      for (const member of record.members) {
+        if (!member.nameRange) continue;
+        const key = `${member.nameRange.start.line}:${member.nameRange.start.character}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const color =
+          member.group === null
+            ? record.layout.leaves[member.leaves[0]!]?.color
+            : (record.layout.groups[member.group]?.color ?? 'compound');
+        if (!color) continue;
+        const start = toRange(member.nameRange).start;
+        ranges.set(color, [...(ranges.get(color) ?? []), new vscode.Range(start, start)]);
+      }
+    }
+    for (const [color, type] of this.dotTypes) {
+      if (!ranges.has(color)) editor.setDecorations(type, []);
+    }
+    for (const [color, at] of ranges) editor.setDecorations(this.dotType(color), at);
+  }
+
+  mark(editor: vscode.TextEditor, ranges: Range[]): void {
+    editor.setDecorations(this.line, ranges.map(toRange));
+    editor.setDecorations(this.name, ranges.map(toRange));
+  }
+
+  /** The dot for a colour slot; a compound member with no one colour gets a ring. */
+  private dotType(color: string): vscode.TextEditorDecorationType {
+    let type = this.dotTypes.get(color);
+    if (!type) {
+      const palette = MEMBER_COLORS[colorMode()];
+      type = vscode.window.createTextEditorDecorationType({
+        before:
+          color === 'compound'
+            ? {
+                contentText: '○',
+                color: new vscode.ThemeColor('descriptionForeground'),
+                margin: '0 4px 0 0',
+              }
+            : {
+                contentText: '●',
+                color: palette[color] ?? palette['c-special']!,
+                margin: '0 4px 0 0',
+              },
+      });
+      this.dotTypes.set(color, type);
+    }
+    return type;
+  }
+
+  dispose(): void {
+    for (const type of this.dotTypes.values()) type.dispose();
+    this.dotTypes = new Map();
+  }
+}
+
+function toRange(range: Range): vscode.Range {
+  return new vscode.Range(
+    range.start.line,
+    range.start.character,
+    range.end.line,
+    range.end.character,
+  );
 }
 
 function placeholder(message: string, state: LayoutResult['state'] = 'unavailable'): LayoutResult {

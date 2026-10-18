@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { memberColor, PADDING_COLOR } from '@abi-explorer/shared/layoutModel';
+import { MEMBER_COLORS, NOCTURNE } from '@abi-explorer/shared/layoutModel';
 
 /** WCAG's contrast ratio between two `#rrggbb` colours. */
 function contrast(a: string, b: string): number {
@@ -14,21 +14,39 @@ function contrast(a: string, b: string): number {
   return (light! + 0.05) / (dark! + 0.05);
 }
 
-// The light and dark backgrounds of common themes: VS Code's Light+ and Dark+, Zed's One Dark.
+// The light and dark backgrounds of common themes: VS Code's Light+ and Dark+,
+// Zed's One Dark, and Nocturne's own surface.
 const LIGHT = '#ffffff';
-const DARK = ['#1e1e1e', '#282c34'];
+const DARK = ['#1e1e1e', '#282c34', NOCTURNE.surface];
+
+const members = (mode: 'dark' | 'light') =>
+  Object.entries(MEMBER_COLORS[mode])
+    .filter(([slot]) => slot !== 'c-special')
+    .map(([, color]) => color);
 
 describe('the member colours', () => {
-  const colors = [...Array(8).keys()].map(memberColor);
-
-  it('carry white letters', () => {
-    for (const color of colors) expect(contrast(color, '#ffffff')).toBeGreaterThan(4);
+  it('are the web explorer’s Nocturne palette on dark themes', () => {
+    expect(members('dark')).toEqual([
+      '#82aaff',
+      '#f78c6c',
+      '#7fdbca',
+      '#ffcb6b',
+      '#ff869a',
+      '#addb67',
+      '#c792ea',
+      '#ef5350',
+    ]);
   });
 
-  it('read as text on light and dark themes', () => {
-    for (const color of [...colors, PADDING_COLOR]) {
-      expect(contrast(color, LIGHT)).toBeGreaterThan(4);
-      for (const background of DARK) expect(contrast(color, background)).toBeGreaterThan(3.2);
+  it('stand out from the ground they are drawn on', () => {
+    for (const color of members('dark')) {
+      for (const background of DARK) expect(contrast(color, background)).toBeGreaterThan(3);
     }
+    for (const color of members('light')) expect(contrast(color, LIGHT)).toBeGreaterThan(2);
+  });
+
+  it('label hover images in a grey that reads on light and dark themes', () => {
+    expect(contrast(NOCTURNE.muted, LIGHT)).toBeGreaterThan(3);
+    for (const background of DARK) expect(contrast(NOCTURNE.muted, background)).toBeGreaterThan(3);
   });
 });

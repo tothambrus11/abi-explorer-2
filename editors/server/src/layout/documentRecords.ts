@@ -6,7 +6,16 @@
 // record's direct members rather than every scalar inside them. Everything
 // past this file works with `RecordView`.
 
-import type { MemberView, Position, Range, RecordView } from '@abi-explorer/shared/protocol';
+import type {
+  GroupView,
+  LayoutView,
+  LeafView,
+  MemberView,
+  NodeView,
+  Position,
+  Range,
+  RecordView,
+} from '@abi-explorer/shared/protocol';
 import type { Location, RecordLayout, RenderNode, SourceRange } from '../engine/engineTypes.ts';
 
 export interface DocumentCoordinates {
@@ -14,6 +23,8 @@ export interface DocumentCoordinates {
   guestPath: string;
   /** The text that was analysed, for turning byte columns into characters. */
   text: string;
+  /** A guest path's file URI on this machine, or null where it has none (a bundled header). */
+  uriOf?: (guestPath: string) => string | null;
 }
 
 export function recordsInDocument(
@@ -25,7 +36,7 @@ export function recordsInDocument(
   return records.flatMap((record): RecordView[] =>
     unnamed(record) || record.location?.file !== document.guestPath
       ? []
-      : [recordView(record, recordsById, document.guestPath, lines)],
+      : [recordView(record, recordsById, document.guestPath, lines, document.uriOf)],
   );
 }
 
@@ -47,7 +58,7 @@ export function nestedRecordsInDocument(
       if (group.kind !== 'member' || !nested || !unnamed(nested) || !/^\w+$/.test(group.name)) {
         return [];
       }
-      const view = recordView(nested, recordsById, document.guestPath, lines);
+      const view = recordView(nested, recordsById, document.guestPath, lines, document.uriOf);
       return [{ ...view, name: `${displayName(parent)}::${group.name}`, nameRange: null }];
     });
   });
@@ -150,9 +161,11 @@ function recordView(
   recordsById: ReadonlyMap<number, RecordLayout>,
   guestPath: string | null,
   lines: readonly string[],
+  uriOf: (guestPath: string) => string | null = () => null,
 ): RecordView {
   const inDocument = (location: Location | null): location is Location =>
     location !== null && location.file === guestPath;
+  const layout = layoutView(record, recordsById, guestPath, lines, uriOf);
   const members: MemberView[] = [];
   const visit = (nodes: readonly RenderNode[]) => {
     for (const node of nodes) {
@@ -165,7 +178,9 @@ function recordView(
           offsetBits: leaf.offsetBits,
           sizeBits: leaf.sizeBits,
           alignBits: leaf.alignBits,
-          nameRange: inDocument(leaf.location) ? rangeOf(leaf.location, lines) : null,
+          nameRange: layout.leaves[node.ref]!.nameRange,
+          leaves: [node.ref],
+          group: null,
         });
         continue;
       }
@@ -178,7 +193,6 @@ function recordView(
         visit(node.children);
         continue;
       }
-      const location = group.location;
       members.push({
         kind: group.kind === 'member' ? 'field' : 'base',
         label: group.kind === 'member' ? group.name : group.type,
@@ -187,15 +201,9 @@ function recordView(
         offsetBits: group.offsetBits,
         sizeBits: group.sizeBits,
         alignBits: group.alignBits,
-        // A base specifier's range has no file of its own: it is in the record's.
-        nameRange:
-          location === null
-            ? null
-            : 'file' in location
-              ? inDocument(location)
-                ? rangeOf(location, lines)
-                : null
-              : extentOf(location, lines),
+        nameRange: layout.groups[node.ref]!.nameRange,
+        leaves: group.leafIndexes,
+        group: node.ref,
       });
     }
   };
@@ -217,6 +225,11 @@ function recordView(
     paddingBytes: record.render.paddingBytes,
     nameRange,
     extent,
+    dataSizeBits: record.dataSizeBits,
+    nonVirtualSizeBits: record.nonVirtualSizeBits,
+    nonVirtualAlignBits: record.nonVirtualAlignBits,
+    preferredAlignBits: record.preferredAlignBits,
+    layout,
     members,
     bases: record.bases.map((base) => ({
       name: base.typeSpelling,
@@ -225,6 +238,171 @@ function recordView(
       isVirtual: base.isVirtual,
     })),
   };
+}
+
+/**
+ * The engine's render model with ranges in the document, and each member's
+ * colour, assigned as the web explorer assigns them (its `src/core/render.ts`).
+ */
+function layoutView(
+  record: RecordLayout,
+  recordsById: ReadonlyMap<number, RecordLayout>,
+  guestPath: string | null,
+  lines: readonly string[],
+  uriOf: (guestPath: string) => string | null,
+): LayoutView {
+  const render = record.render;
+  // A base specifier's range has no file of its own: it is in the record's.
+  const here = (location: Location | SourceRange | null): Range | null =>
+    location === null
+      ? null
+      : 'file' in location
+        ? location.file === guestPath
+          ? rangeOf(location, lines)
+          : null
+        : guestPath === null
+          ? null
+          : extentOf(location, lines);
+  const leaves: LeafView[] = render.leaves.map((leaf) => ({
+    kind: leaf.kind,
+    name: leaf.name,
+    type: leaf.type,
+    offsetBits: leaf.offsetBits,
+    sizeBits: leaf.sizeBits,
+    alignBits: leaf.alignBits,
+    path: leaf.path,
+    sharesAddress: leaf.sharesAddress,
+    direct: false,
+    color: SPECIAL_COLOR,
+    nameRange: here(leaf.location),
+  }));
+  const groups: GroupView[] = render.groups.map((group) => {
+    const target = group.recordId === null ? undefined : recordsById.get(group.recordId);
+    const file = target?.location?.file;
+    const uri = file === undefined ? null : uriOf(file);
+    return {
+      kind: group.kind,
+      name: group.name,
+      // `struct (unnamed at input.c:1:16)` as `struct (unnamed)`.
+      type: group.type.replace(/ at [^()]*:\d+:\d+\)/, ')'),
+      offsetBits: group.offsetBits,
+      sizeBits: group.sizeBits,
+      typeSizeBits: group.typeSizeBits,
+      alignBits: group.alignBits,
+      path: group.path,
+      isBase: group.isBase,
+      isUnion: group.isUnion,
+      leafIndexes: group.leafIndexes,
+      direct: false,
+      color: null,
+      nameRange: here(group.location),
+      recordId: group.recordId,
+      declaration:
+        uri === null || !target?.location
+          ? null
+          : {
+              uri,
+              range:
+                file === guestPath
+                  ? rangeOf(target.location, lines)
+                  : {
+                      start: { line: target.location.line - 1, character: target.location.col - 1 },
+                      end: {
+                        line: target.location.line - 1,
+                        character: target.location.endCol - 1,
+                      },
+                    },
+            },
+    };
+  });
+  const tree = nodes(render.tree);
+  markDirect(tree, leaves, groups, false);
+  assignColors(leaves, groups);
+  return {
+    leaves,
+    groups,
+    tree,
+    markers: render.markers.map(({ kind, name, type, offsetBits, path }) => ({
+      kind,
+      name,
+      type,
+      offsetBits,
+      path,
+    })),
+    paddings: render.paddingRuns.map(({ startBits, endBits }) => ({ startBits, endBits })),
+  };
+}
+
+function nodes(tree: readonly RenderNode[]): NodeView[] {
+  return tree.map((node) => ({
+    kind: node.kind,
+    ref: node.ref,
+    overlaps: node.overlaps,
+    children: nodes(node.children),
+  }));
+}
+
+/**
+ * Does naming what is inside this group skip it? An anonymous aggregate's
+ * fields (`msg.crc_lo`) and a base's (`d.b`) are the record's own, so they
+ * are coloured one by one; a named member (`msg.hdr`) is one unit, one colour.
+ */
+function transparent(group: GroupView): boolean {
+  return group.isBase || group.name === '' || group.name.startsWith('(');
+}
+
+function markDirect(
+  tree: readonly NodeView[],
+  leaves: LeafView[],
+  groups: GroupView[],
+  throughMember: boolean,
+): void {
+  for (const node of tree) {
+    const group = node.kind === 'group' ? groups[node.ref] : undefined;
+    const subject = group ?? leaves[node.ref];
+    if (subject) subject.direct = !throughMember;
+    markDirect(node.children, leaves, groups, throughMember || (!!group && !transparent(group)));
+  }
+}
+
+/** Every vtable and vbtable pointer's colour, whatever it belongs to. */
+const SPECIAL_COLOR = 'c-special';
+const PALETTE_SIZE = 8;
+
+/**
+ * One colour per direct member, in the web explorer's order: named compound
+ * members first (all their leaves share it), then the remaining leaves.
+ */
+function assignColors(leaves: LeafView[], groups: GroupView[]): void {
+  const slot = (index: number) => `c-${(index % PALETTE_SIZE) + 1}`;
+  let next = 0;
+  const assigned = new Set<number>();
+  for (const group of groups) {
+    if (!group.direct || transparent(group)) continue;
+    const color = slot(next++);
+    for (const index of group.leafIndexes) {
+      const leaf = leaves[index];
+      if (!leaf || assigned.has(index)) continue;
+      leaf.color = leaf.kind === 'special' ? SPECIAL_COLOR : color;
+      assigned.add(index);
+    }
+  }
+  leaves.forEach((leaf, index) => {
+    if (!assigned.has(index)) leaf.color = leaf.kind === 'special' ? SPECIAL_COLOR : slot(next++);
+  });
+  for (const group of groups) {
+    if (transparent(group)) continue;
+    // The one colour its leaves share, vtable pointers aside; none if they differ.
+    const colors = new Set(
+      group.leafIndexes.map((index) => leaves[index]!.color).filter((c) => c !== SPECIAL_COLOR),
+    );
+    group.color =
+      colors.size === 1
+        ? [...colors][0]!
+        : colors.size === 0 && group.leafIndexes.length > 0
+          ? SPECIAL_COLOR
+          : null;
+  }
 }
 
 /** `struct Pair<int, char>` → `Pair<int, char>`; a plain record keeps its qualified name. */

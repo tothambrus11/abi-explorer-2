@@ -22,8 +22,9 @@ What is shared, and why:
   compile commands).
 - **The panel** is shared by the two editors that can show a web page. Zed has no panels for
   extensions and Neovim's is text, which the server draws (`includeText`).
-- **`shared/`** is what every drawing agrees on: which byte belongs to which member, its letter
-  and colour, the member table's rows and the record summary. It is bundled into the server and
+- **`shared/`** is what every drawing agrees on, and with the web explorer: which byte and bit
+  belong to which member, its colour (the web's, Nocturne's on dark themes), the member table's
+  rows and the record summary. It is bundled into the server and
   the panel, never published on its own.
 
 The engine (about 50 MB) is never bundled: the server downloads the pinned release once into the

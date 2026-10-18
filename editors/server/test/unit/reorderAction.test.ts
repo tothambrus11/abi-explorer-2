@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import type { MemberView, RecordView } from '@abi-explorer/shared/protocol';
+import type { RecordView } from '@abi-explorer/shared/protocol';
+import { testRecord, type TestMember } from '../../../shared/test/records.ts';
 import { reorderAction } from '../../src/layout/reorderAction.ts';
 
 /** `struct Packet` declared on `lines`, its members at the given lines. */
 function packet(lines: number[]): RecordView {
-  const field = (label: string, offset: number, size: number, line: number): MemberView => ({
+  const field = (label: string, offset: number, size: number, line: number): TestMember => ({
     kind: 'field',
     label,
     type: 'int',
@@ -13,7 +14,7 @@ function packet(lines: number[]): RecordView {
     alignBits: size * 8,
     nameRange: { start: { line, character: 7 }, end: { line, character: 7 + label.length } },
   });
-  return {
+  return testRecord({
     id: 1,
     kind: 'struct',
     name: 'Packet',
@@ -28,7 +29,7 @@ function packet(lines: number[]): RecordView {
       field('checksum', 8, 2, lines[2]!),
     ],
     bases: [],
-  };
+  });
 }
 
 function apply(lines: string[], action: NonNullable<ReturnType<typeof reorderAction>>): string[] {

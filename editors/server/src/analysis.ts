@@ -6,7 +6,7 @@
 // once, and wait a little for one only when the document has none at all.
 
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   languageOfFile,
   prepareCommand,
@@ -208,6 +208,15 @@ export class Analyzer {
         };
       }
 
+      const { pathMap } = this.dependencies;
+      const coordinates = {
+        guestPath: request.filename,
+        text,
+        uriOf: (guestPath: string) => {
+          const host = pathMap.toHost(guestPath);
+          return host === null ? null : pathToFileURL(host).toString();
+        },
+      };
       return {
         kind: 'analyzed',
         document: {
@@ -215,11 +224,8 @@ export class Analyzer {
           version,
           lines: text.split(/\r?\n/),
           language,
-          records: recordsInDocument(response.records, { guestPath: request.filename, text }),
-          nestedRecords: nestedRecordsInDocument(response.records, {
-            guestPath: request.filename,
-            text,
-          }),
+          records: recordsInDocument(response.records, coordinates),
+          nestedRecords: nestedRecordsInDocument(response.records, coordinates),
           recordNamed: typeIndex(response.records),
           context: {
             triple: response.target?.triple ?? toolchain.triple,

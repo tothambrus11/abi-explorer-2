@@ -22,6 +22,7 @@ import com.intellij.openapi.fileEditor.FileEditorManagerListener
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.DumbAware
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.openapi.util.Disposer
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
@@ -161,13 +162,20 @@ class LayoutPanel(private val project: Project) : Disposable {
             }
             "reveal" -> {
                 val start = json.getAsJsonObject("range").getAsJsonObject("start")
-                UIUtil.invokeLaterIfNeeded { reveal(start["line"].asInt, start["character"].asInt) }
+                val uri = json["uri"]?.asString
+                UIUtil.invokeLaterIfNeeded { reveal(start["line"].asInt, start["character"].asInt, uri) }
             }
             "copy" -> CopyPasteManager.getInstance().setContents(StringSelection(json["text"].asString))
         }
     }
 
-    private fun reveal(line: Int, character: Int) {
+    /** Puts the caret on a name: in the editor shown, or in the file `uri` names (a record declared there). */
+    private fun reveal(line: Int, character: Int, uri: String?) {
+        if (uri != null) {
+            val file = VirtualFileManager.getInstance().findFileByUrl(uri) ?: return
+            OpenFileDescriptor(project, file, line, character).navigate(true)
+            return
+        }
         val editor = editor?.takeUnless { it.isDisposed } ?: return
         val file = FileDocumentManager.getInstance().getFile(editor.document) ?: return
         if (line >= editor.document.lineCount) return

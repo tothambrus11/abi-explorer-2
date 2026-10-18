@@ -38,10 +38,13 @@ import { reorderAction } from './layout/reorderAction.ts';
 import { textLayout } from './layout/textLayout.ts';
 import packageJson from '../package.json' with { type: 'json' };
 import {
+  colorModeNotification,
   compileCommandsNotification,
   layoutRequest,
   layoutsChangedNotification,
   type AnalysisContext,
+  type ColorMode,
+  type ColorModeParams,
   type CompileCommandsParams,
   type InitializationOptions,
   type LayoutParams,
@@ -65,10 +68,12 @@ export function startServer(connection: Connection, options: ServerOptions): voi
   let engine: EngineClient | null = null;
   let commands: CompileCommandFinder | null = null;
   let hoverImages = false;
+  let colorMode: ColorMode = 'dark';
 
   connection.onInitialize((params): InitializeResult => {
     const settings = (params.initializationOptions ?? {}) as InitializationOptions;
     hoverImages = settings.hoverImages ?? false;
+    colorMode = settings.colorMode ?? 'dark';
     const canShowProgress = params.capabilities.window?.workDoneProgress ?? false;
 
     const style = process.platform === 'win32' ? 'win32' : 'posix';
@@ -150,15 +155,23 @@ export function startServer(connection: Connection, options: ServerOptions): voi
       const name = typeNameAt(lineText(document, position.line), position.line, position.character);
       const record = name && analyzed.recordNamed(name.spelling);
       if (!record) return null;
-      const markdown = recordHover(record, analyzed.context, { images: hoverImages });
+      const markdown = recordHover(record, analyzed.context, {
+        images: hoverImages,
+        mode: colorMode,
+      });
       return { contents: { kind: MarkupKind.Markdown, value: markdown }, range: name.range };
     }
     const markdown =
       hit.memberIndex === null
         ? hit.records
-            .map((record) => recordHover(record, analyzed.context, { images: hoverImages }))
+            .map((record) =>
+              recordHover(record, analyzed.context, { images: hoverImages, mode: colorMode }),
+            )
             .join('\n\n---\n\n')
-        : memberHover(hit.records[0]!, hit.memberIndex, analyzed.context, { images: hoverImages });
+        : memberHover(hit.records[0]!, hit.memberIndex, analyzed.context, {
+            images: hoverImages,
+            mode: colorMode,
+          });
     return { contents: { kind: MarkupKind.Markdown, value: markdown }, range: hit.range };
   });
 
@@ -258,15 +271,28 @@ export function startServer(connection: Connection, options: ServerOptions): voi
         : records.length === 0
           ? noRecordsMessage(analysis.document.lines, context)
           : null,
-      records: records.map((record) => ({
-        ...record,
-        ...(params.includeText && {
-          text: textLayout(record, record.id === hit?.record.id ? hit.memberIndex : null),
-        }),
-      })),
+      records: records.map((record) => {
+        if (!params.includeText) return record;
+        const drawing = textLayout(
+          record,
+          record.id === hit?.record.id ? hit.memberIndex : null,
+          // A client's empty list can arrive as `{}` (Lua tables encode either way).
+          new Set(Array.isArray(params.open?.[record.name]) ? params.open[record.name] : []),
+        );
+        return {
+          ...record,
+          text: drawing.text,
+          textColors: drawing.colors,
+          textRows: drawing.rows,
+        };
+      }),
       selection: hit && { recordId: hit.record.id, memberIndex: hit.memberIndex },
       context,
     };
+  });
+
+  connection.onNotification(colorModeNotification, (params: ColorModeParams) => {
+    colorMode = params.mode;
   });
 
   connection.onNotification(compileCommandsNotification, (params: CompileCommandsParams) => {

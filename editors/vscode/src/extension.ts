@@ -9,10 +9,10 @@ import {
   type LanguageClientOptions,
   type ServerOptions,
 } from 'vscode-languageclient/node';
-import { layoutsChangedNotification } from '@abi-explorer/shared/protocol';
+import { colorModeNotification, layoutsChangedNotification } from '@abi-explorer/shared/protocol';
 import { followCMakeTools } from './cmakeTools.ts';
 import { LayoutPanel, LAYOUT_VIEW_ID } from './layoutPanel.ts';
-import { affectsServer, initializationOptions } from './settings.ts';
+import { affectsServer, colorMode, initializationOptions } from './settings.ts';
 import { chooseTarget, targetStatus } from './chooseTarget.ts';
 
 /** The running client and what was set up for it; replaced as a whole on restart. */
@@ -34,6 +34,12 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       const disposables = [
         client.onNotification(layoutsChangedNotification, () => {
           panel.refresh();
+        }),
+        // Hover images draw in the theme's colours.
+        vscode.window.onDidChangeActiveColorTheme(() => {
+          if (client.isRunning()) {
+            void client.sendNotification(colorModeNotification, { mode: colorMode() });
+          }
         }),
         // Also after the client restarts a crashed server on its own.
         client.onDidChangeState(({ newState }) => {

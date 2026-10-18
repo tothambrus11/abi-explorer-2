@@ -3,13 +3,14 @@
 
 import path from 'node:path';
 import * as vscode from 'vscode';
-import type { InitializationOptions } from '@abi-explorer/shared/protocol';
+import type { ColorMode, InitializationOptions } from '@abi-explorer/shared/protocol';
 
 export function initializationOptions(cacheDirectory: string): InitializationOptions {
   const settings = vscode.workspace.getConfiguration('abiExplorer');
   return {
     cacheDirectory,
     hoverImages: true,
+    colorMode: colorMode(),
     compileCommandsDir:
       expandWorkspaceFolder(settings.get<string>('compileCommandsDir', '')) ||
       borrowedCompileCommandsDir(),
@@ -17,6 +18,15 @@ export function initializationOptions(cacheDirectory: string): InitializationOpt
     fallbackFlags: settings.get<string[]>('fallbackFlags', []),
     target: settings.get<string>('target', '').trim() || undefined,
   };
+}
+
+/** Whether the theme is light or dark, which the hover images' colours follow. */
+export function colorMode(): ColorMode {
+  return [vscode.ColorThemeKind.Light, vscode.ColorThemeKind.HighContrastLight].includes(
+    vscode.window.activeColorTheme.kind,
+  )
+    ? 'light'
+    : 'dark';
 }
 
 export function affectsServer(event: vscode.ConfigurationChangeEvent): boolean {

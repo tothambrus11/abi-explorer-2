@@ -93,6 +93,12 @@ LUA
   (cd "$project" && LANG=C.UTF-8 LC_ALL=C.UTF-8 xterm -u8 -geometry 160x47+0+0 -fa 'DejaVu Sans Mono' -fs 11 -bg '#1c1c1c' \
     -e "$NVIM" main.cpp '+call cursor(12, 20)' '+AbiLayout' &)
   shot 12 neovim-layout-split.png
+  # In the split: Enter on a row with others inside opens it, as the web's twisty does.
+  xdotool key ctrl+w l
+  xdotool type --delay 50 '/payload'
+  xdotool key Return Return
+  shot 3 neovim-split-open-row.png
+  xdotool key ctrl+w h
   xdotool type --delay 50 ':call cursor(9, 10)'
   xdotool key Return
   sleep 1

@@ -129,8 +129,11 @@ describe.skipIf(!nvim || !hasLocalEngine || !hasCompiler)('Neovim with the serve
     expect(session.otherTarget).toContain('**struct Packet** · 24 B · align 4 · 5 B padding');
   });
 
-  it('opens the split on the record at the cursor, marking the member there', () => {
-    expect(session.split[0]).toContain('Packet');
-    expect(session.split.join('\n')).toMatch(/▶c {2}checksum/);
+  it('opens the split on the record at the cursor, as the web explorer draws it', () => {
+    expect(session.split[0]).toContain('struct Packet 40 B');
+    const text = session.split.join('\n');
+    expect(text).toContain('│ SIZEOF   │');
+    expect(text).toContain('    +0   +1   +2   +3   +4   +5   +6   +7');
+    expect(text).toMatch(/■ +checksum +std::uint16_t/);
   });
 });

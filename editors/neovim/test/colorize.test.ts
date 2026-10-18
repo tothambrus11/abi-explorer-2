@@ -5,8 +5,9 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { memberColor, PADDING_COLOR } from '@abi-explorer/shared/layoutModel';
+import { MEMBER_COLORS } from '@abi-explorer/shared/layoutModel';
 import { TARGETS } from '@abi-explorer/shared/targets';
+import type { TextColor } from '@abi-explorer/shared/protocol';
 import { findOnPath } from './findOnPath.ts';
 
 const plugin = path.join(import.meta.dirname, '..');
@@ -14,10 +15,16 @@ const source = fs.readFileSync(path.join(plugin, 'lua/abi-explorer/init.lua'), '
 const nvim = process.env.NVIM_BIN ?? findOnPath('nvim');
 
 describe('Neovim colours', () => {
-  it('uses the shared palette', () => {
-    const palette = /local PALETTE = \{([^}]*)\}/.exec(source)![1]!.match(/#\w{6}/g);
-    expect(palette).toEqual(Array.from({ length: 8 }, (_, index) => memberColor(index)));
-    expect(source).toContain(`local PADDING_COLOR = '${PADDING_COLOR}'`);
+  it("uses the web explorer's palettes", () => {
+    for (const mode of ['dark', 'light'] as const) {
+      const block = new RegExp(`${mode} = \\{([^}]*)\\}`).exec(source)![1]!;
+      const colors = Object.fromEntries(
+        [...block.matchAll(/\['([\w-]+)'\] = '(#\w{6})'/g)].map(
+          ([, slot, hex]) => [slot!, hex!] as const,
+        ),
+      );
+      expect(colors).toEqual(MEMBER_COLORS[mode]);
+    }
   });
 
   it(':AbiTarget completes the targets VS Code offers', () => {
@@ -27,55 +34,38 @@ describe('Neovim colours', () => {
     );
   });
 
-  it.skipIf(!nvim)('colours map cells and table swatches, fading other members', () => {
-    const lines = [
-      'struct Packet · 12 B · align 4 · 5 B padding',
-      '',
-      '      0 1 2 3 4 5 6 7',
-      '   0  a · · · b b b b',
-      '   8  c c · ·',
-      '',
-      '   a  type       0  1 B  char',
-      '   ·  padding    1  3 B',
-      '  ▶b  length     4  4 B  int',
+  it.skipIf(!nvim)("paints the server's runs in the web colours", () => {
+    const lines = [' 0  ▌▓██ ╱╱╱╱', ' ■   type   char'];
+    const colors: TextColor[] = [
+      [0, 4, 7, 'c-1', 'c-2', 'lit'],
+      [0, 14, 26, 'baseline', 'grid', null],
+      [1, 1, 4, 'c-1', null, null],
     ];
     const script = `
       vim.opt.runtimepath:prepend(${JSON.stringify(plugin)})
+      vim.o.background = 'dark'
       local buffer = vim.api.nvim_create_buf(false, true)
-      local lines = vim.json.decode(${JSON.stringify(JSON.stringify(lines))})
-      vim.api.nvim_buf_set_lines(buffer, 0, -1, false, lines)
-      require('abi-explorer').colorize(buffer, lines, 1)
+      vim.api.nvim_buf_set_lines(buffer, 0, -1, false, vim.json.decode(${JSON.stringify(JSON.stringify(lines))}))
+      require('abi-explorer').colorize(buffer, vim.json.decode(${JSON.stringify(JSON.stringify(colors))}), 0)
       local marks = {}
       for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(buffer, -1, 0, -1, { details = true })) do
-        local details = mark[4]
-        table.insert(marks, { mark[2], mark[3], details.end_col or vim.NIL, details.hl_group or details.line_hl_group })
+        local hl = vim.api.nvim_get_hl(0, { name = mark[4].hl_group })
+        table.insert(marks, {
+          mark[2], mark[3], mark[4].end_col,
+          hl.fg and string.format('#%06x', hl.fg) or vim.NIL,
+          hl.bg and string.format('#%06x', hl.bg) or vim.NIL,
+          hl.underline or false,
+        })
       end
       io.stdout:write(vim.json.encode(marks))
     `;
     const output = execFileSync(nvim!, ['--headless', '-u', 'NONE', '-l', '-'], { input: script });
-    const marks = JSON.parse(output.toString()) as [number, number, number | null, string][];
-    const at = (row: number) => marks.filter(([line]) => line === row);
-
-    // Map row 0: `a` faded (not the member at the cursor), padding grey, `b` bright.
-    // Columns are bytes, and `·` takes two.
-    const charAt = (row: number, byte: number) =>
-      Buffer.from(lines[row]!).subarray(byte).toString().charAt(0);
-    expect(at(3).map(([, start, , group]) => [charAt(3, start), group])).toEqual([
-      ['a', 'AbiExplorerMemberFaded1'],
-      ['·', 'AbiExplorerPadding'],
-      ['·', 'AbiExplorerPadding'],
-      ['·', 'AbiExplorerPadding'],
-      ...Array.from({ length: 4 }, () => ['b', 'AbiExplorerMember2']),
+    expect(JSON.parse(output.toString())).toEqual([
+      // Two bits, two members: Nocturne's first colour over its second, outlined (underlined).
+      [0, 4, 7, '#82aaff', '#f78c6c', true],
+      // Padding: the grid's hatching.
+      [0, 14, 26, '#383835', '#2c2c2a', false],
+      [1, 1, 4, '#82aaff', null, false],
     ]);
-    // Only the swatch of the member at the cursor is filled; the row is marked too.
-    expect(at(6).map(([, , , group]) => group)).toEqual(['AbiExplorerMemberFaded1']);
-    expect(
-      at(8)
-        .map(([, , , group]) => group)
-        .sort(),
-    ).toEqual(['AbiExplorerMember2', 'AbiExplorerSelected']);
-    // Header rows and the summary stay plain.
-    expect(at(0)).toEqual([]);
-    expect(at(2)).toEqual([]);
   });
 });

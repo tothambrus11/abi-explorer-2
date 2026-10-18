@@ -11,8 +11,9 @@ CLion 2025.3 or newer. Struct layouts from the project's own compiler and flags:
   lines into that order. A struct laid out on purpose keeps its order with
   `// abi-explorer: keep order` above it, which **Keep this member order** writes.
   **Pin layout with static_assert** is offered on any struct.
-- **Struct Layout** tool window, following the caret: click a member to jump to it, or copy the
-  layout as text.
+- **Struct Layout** tool window, drawn as the web explorer draws a layout (tabs, size tiles, a
+  byte grid with bit-fields bit by bit, the nested member table) and following the caret: click a
+  member to jump to it, a compound member's name to open its struct, or copy the layout as text.
 
 Each file's compiler and switches come from CLion's project model (CMake, Makefile, compilation
 database and the rest), so no `compile_commands.json` is needed. The language server runs on the
