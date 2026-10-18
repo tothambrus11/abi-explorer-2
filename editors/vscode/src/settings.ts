@@ -10,7 +10,6 @@ export function initializationOptions(cacheDirectory: string): InitializationOpt
   return {
     cacheDirectory,
     hoverImages: true,
-    inlayHints: settings.get<'records' | 'members' | 'off'>('inlayHints', 'records'),
     compileCommandsDir:
       expandWorkspaceFolder(settings.get<string>('compileCommandsDir', '')) ||
       borrowedCompileCommandsDir(),

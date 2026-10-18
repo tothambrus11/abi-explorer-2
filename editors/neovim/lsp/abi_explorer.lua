@@ -5,5 +5,5 @@ return {
   filetypes = { 'c', 'cpp', 'cuda' },
   root_markers = { 'compile_commands.json', 'compile_flags.txt', '.git' },
   -- Hovers draw the byte map as text; a terminal shows no images.
-  init_options = { hoverImages = false, inlayHints = 'records' },
+  init_options = { hoverImages = false },
 }

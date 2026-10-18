@@ -1,5 +1,5 @@
 //! ABI Explorer for Zed: runs the `abi-explorer-lsp` npm package with Zed's
-//! own Node.js, next to clangd. Zed shows its hovers and inlay hints; there is
+//! own Node.js, next to clangd. Zed shows its hovers and code actions; there is
 //! no panel, since extensions cannot add one.
 
 use zed_extension_api::{self as zed, serde_json, settings::LspSettings, LanguageServerId, Result};

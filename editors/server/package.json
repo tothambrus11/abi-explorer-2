@@ -1,7 +1,7 @@
 {
   "name": "abi-explorer-lsp",
   "version": "0.1.0",
-  "description": "A language server that shows how clang lays out C and C++ records: sizes, offsets and padding, in hovers and inlay hints.",
+  "description": "A language server that shows how clang lays out C and C++ records: sizes, offsets and padding, in hovers and code actions.",
   "license": "Apache-2.0",
   "type": "module",
   "bin": {

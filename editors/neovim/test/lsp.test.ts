@@ -1,5 +1,5 @@
-// The plugin in real Neovim against the real server and engine: hovers, inlay
-// hints, code actions and the `:AbiLayout` split on the fixture project.
+// The plugin in real Neovim against the real server and engine: hovers, code
+// actions and the `:AbiLayout` split on the fixture project.
 
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
@@ -19,9 +19,9 @@ const hasCompiler = findOnPath('c++') !== undefined;
 
 interface Session {
   hover: string;
-  hints: string[];
   actions: string[];
   split: string[];
+  hintCount: number;
   otherTarget: string;
 }
 
@@ -61,11 +61,7 @@ describe.skipIf(!nvim || !hasLocalEngine || !hasCompiler)('Neovim with the serve
         range = { start = at_packet.position, ['end'] = at_packet.position },
         context = { diagnostics = {} },
       }) or {}
-      local hints = {}
-      vim.wait(10000, function()
-        hints = vim.lsp.inlay_hint.get({ bufnr = 0 })
-        return #hints > 0
-      end, 200)
+      local hints = vim.lsp.inlay_hint.get({ bufnr = 0 })
 
       vim.api.nvim_win_set_cursor(0, { 12, 20 })
       require('abi-explorer').toggle()
@@ -90,12 +86,11 @@ describe.skipIf(!nvim || !hasLocalEngine || !hasCompiler)('Neovim with the serve
 
       local result = {
         hover = hover and hover.contents.value or '',
-        hints = {},
+        hintCount = #hints,
         actions = {},
         split = split,
         otherTarget = other or '',
       }
-      for _, hint in ipairs(hints) do table.insert(result.hints, hint.inlay_hint.label) end
       for _, action in ipairs(actions) do table.insert(result.actions, action.title) end
       io.stdout:write(vim.json.encode(result))
       for _, client in ipairs(vim.lsp.get_clients()) do client:stop(true) end
@@ -118,8 +113,8 @@ describe.skipIf(!nvim || !hasLocalEngine || !hasCompiler)('Neovim with the serve
     expect(session.hover).not.toContain('data:image');
   });
 
-  it('shows the inlay hints', () => {
-    expect(session.hints).toContain('40 B · align 8 · 9 B padding');
+  it('shows no inlay hints: the hover carries the summary', () => {
+    expect(session.hintCount).toBe(0);
   });
 
   it('offers both code actions', () => {

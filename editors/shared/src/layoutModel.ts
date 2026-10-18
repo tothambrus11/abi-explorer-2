@@ -98,7 +98,7 @@ export function mappedBytes(
   return owners.length === 0 || owners.length > MAX_MAPPED_BYTES ? null : owners;
 }
 
-/** `40 B · align 8 · 9 B padding`: the inlay hint, and the panel's line for a record. */
+/** `40 B · align 8 · 9 B padding`: the hover's and the panel's line for a record. */
 export function recordSummary(record: RecordView): string {
   const parts = [formatSizeShort(record.sizeBits), `align ${record.alignBits / 8}`];
   if (record.paddingBytes) parts.push(`${record.paddingBytes} B padding`);

@@ -22,7 +22,7 @@ export function recordHover(
   context: AnalysisContext,
   options: HoverOptions,
 ): string {
-  // The same summary as the inlay hint and the panel's heading.
+  // The same summary as the panel's heading.
   const sections = [`**${record.kind} ${escape(record.name)}** · ${recordSummary(record)}`];
   const bases = baseList(record);
   if (bases) sections.push(`Bases: ${escape(bases)}`);

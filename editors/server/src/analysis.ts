@@ -2,7 +2,7 @@
 //
 // Every edit schedules an analysis after a quiet period; the engine works
 // through them one at a time, and a result is kept only if it is newer than the
-// one already held. Hovers, inlay hints and panels read the kept result at
+// one already held. Hovers, code actions and panels read the kept result at
 // once, and wait a little for one only when the document has none at all.
 
 import path from 'node:path';

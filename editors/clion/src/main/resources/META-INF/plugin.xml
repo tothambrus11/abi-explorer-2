@@ -5,7 +5,7 @@
   <vendor url="https://github.com/tothambrus11/abi-explorer-2">Ambrus Tóth</vendor>
   <description><![CDATA[
     Sizes, offsets and padding of C and C++ structs, from the project's own compiler and flags:
-    in quick documentation, as inlay hints after each struct name, and in the <b>Struct Layout</b>
+    in quick documentation and in the <b>Struct Layout</b>
     tool window, which follows the caret. Intentions reorder a struct's members by alignment where
     that saves space and pin its layout with <code>static_assert</code>, and a setting lays structs
     out for another target.

@@ -1,7 +1,7 @@
 // The language server: LSP in, analyses out.
 //
 // Everything editor-specific lives in the clients. What is here is the same
-// for all of them: hovers, inlay hints, the reorder and pin code actions, and
+// for all of them: hovers, the reorder and pin code actions, and
 // the `abiExplorer/layout` request that panels draw from.
 
 import fs from 'node:fs';
@@ -14,7 +14,6 @@ import {
   type Connection,
   type Hover,
   type InitializeResult,
-  type InlayHint,
   MarkupKind,
   TextDocuments,
   TextDocumentSyncKind,
@@ -29,7 +28,6 @@ import { createPathMap } from './engine/pathMap.ts';
 import { memberHover, recordHover } from './layout/hover.ts';
 import { typeNameAt } from './layout/typeNameAt.ts';
 import { pinAction } from './layout/pinAction.ts';
-import { layoutHints } from './layout/inlayHints.ts';
 import { reorderAction } from './layout/reorderAction.ts';
 import { textLayout } from './layout/textLayout.ts';
 import { reorderNote } from '@abi-explorer/shared/layoutModel';
@@ -41,7 +39,6 @@ import {
   type AnalysisContext,
   type CompileCommandsParams,
   type InitializationOptions,
-  type InlayHintsMode,
   type LayoutParams,
   type LayoutResult,
   type Position,
@@ -63,14 +60,10 @@ export function startServer(connection: Connection, options: ServerOptions): voi
   let engine: EngineClient | null = null;
   let commands: CompileCommandFinder | null = null;
   let hoverImages = false;
-  let inlayHintsMode: InlayHintsMode = 'records';
-  let canRefreshInlayHints = false;
 
   connection.onInitialize((params): InitializeResult => {
     const settings = (params.initializationOptions ?? {}) as InitializationOptions;
     hoverImages = settings.hoverImages ?? false;
-    inlayHintsMode = settings.inlayHints ?? 'records';
-    canRefreshInlayHints = params.capabilities.workspace?.inlayHint?.refreshSupport ?? false;
     const canShowProgress = params.capabilities.window?.workDoneProgress ?? false;
 
     const style = process.platform === 'win32' ? 'win32' : 'posix';
@@ -108,7 +101,6 @@ export function startServer(connection: Connection, options: ServerOptions): voi
       capabilities: {
         textDocumentSync: TextDocumentSyncKind.Incremental,
         hoverProvider: true,
-        inlayHintProvider: true,
         codeActionProvider: { codeActionKinds: [CodeActionKind.RefactorRewrite] },
       },
       serverInfo: { name: 'abi-explorer-lsp', version: packageJson.version },
@@ -117,7 +109,6 @@ export function startServer(connection: Connection, options: ServerOptions): voi
 
   const announce = (analysis: Analysis) => {
     if (analysis.kind === 'failed') connection.console.warn(`${analysis.uri}: ${analysis.message}`);
-    if (canRefreshInlayHints) void connection.languages.inlayHint.refresh();
     const uri = analysis.kind === 'analyzed' ? analysis.document.uri : analysis.uri;
     void connection.sendNotification(layoutsChangedNotification, { uri });
   };
@@ -150,21 +141,6 @@ export function startServer(connection: Connection, options: ServerOptions): voi
             .join('\n\n---\n\n')
         : memberHover(hit.records[0]!, hit.memberIndex, analyzed.context, { images: hoverImages });
     return { contents: { kind: MarkupKind.Markdown, value: markdown }, range: hit.range };
-  });
-
-  connection.languages.inlayHint.on(({ textDocument, range }): InlayHint[] => {
-    const document = documents.get(textDocument.uri);
-    const analysis = analyzer?.kept(textDocument.uri);
-    if (!document || analysis?.kind !== 'analyzed') return [];
-    const analyzed = analysis.document;
-    return layoutHints(analyzed.records, inlayHintsMode, (line) => lineText(document, line).length)
-      .filter(
-        (hint) =>
-          hint.position.line >= range.start.line &&
-          hint.position.line <= range.end.line &&
-          lineUnchanged(analyzed, document, hint.position.line),
-      )
-      .map((hint) => ({ position: hint.position, label: hint.label, paddingLeft: true }));
   });
 
   connection.onCodeAction(({ textDocument, range, context }): CodeAction[] => {

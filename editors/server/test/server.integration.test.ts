@@ -36,7 +36,6 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     compiled = expectedLayouts(project);
     session = await LspSession.start(project.uri(''), {
       enginePath: LOCAL_ENGINE,
-      inlayHints: 'records',
     });
     await session.open(project.uri('main.cpp'));
   }, 120_000);
@@ -115,15 +114,6 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     expect(await markdown(4, 28)).toMatch(/^\*\*class std::basic_string\\<wchar_t\\>\*\* · 32 B/m);
     // clang prints it `std::vector<struct Shape>`, the source says `std::vector<Shape>`.
     expect(await markdown(5, 6)).toMatch(/^\*\*class std::vector\\<Shape\\>\*\* · 24 B/m);
-  });
-
-  it('shows one inlay hint per record declaration', async () => {
-    const hints = await session.inlayHints(project.uri('main.cpp'));
-    expect(hints.map((hint) => [hint.position.line, hint.label])).toEqual([
-      [3, '64 B · align 8 · 10 B padding'],
-      [8, '40 B · align 8 · 9 B padding'],
-      [15, '16 B · align 8 · 7 B padding'],
-    ]);
   });
 
   it('lays out a header with the flags of the source that includes it', async () => {

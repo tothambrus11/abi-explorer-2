@@ -48,7 +48,6 @@ if [[ -n ${ZED:-} ]]; then
   "buffer_font_size": 15,
   "auto_update": false,
   "disable_ai": true,
-  "inlay_hints": { "enabled": true },
   "hover_popover_delay": 100,
   "lsp": {
     "abi-explorer-lsp": {

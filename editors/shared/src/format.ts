@@ -6,7 +6,7 @@ export function formatSize(bits: number): string {
   return bytes === 1 ? '1 byte' : `${bytes} bytes`;
 }
 
-/** The short form for inlay hints, where space is tight: `4 B`, `3 bits`. */
+/** The short form, where space is tight: `4 B`, `3 bits`. */
 export function formatSizeShort(bits: number): string {
   if (bits % 8 !== 0) return bits === 1 ? '1 bit' : `${bits} bits`;
   return `${bits / 8} B`;

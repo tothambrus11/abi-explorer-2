@@ -1,5 +1,5 @@
-// ABI Explorer for VS Code: the abi-explorer-lsp server for hovers and inlay
-// hints, plus the Struct Layout view.
+// ABI Explorer for VS Code: the abi-explorer-lsp server for hovers and code
+// actions, plus the Struct Layout view.
 
 import * as vscode from 'vscode';
 import {

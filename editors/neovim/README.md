@@ -8,10 +8,8 @@ npm install -g abi-explorer-lsp
 
 ```lua
 -- lazy.nvim: { dir = '…/abi-explorer-2/editors/neovim', config = function() require('abi-explorer').setup() end }
-require('abi-explorer').setup({
-  inlay_hints = true,             -- `40 B · align 8 · 7 B padding` after each struct name
-  lsp = { init_options = { inlayHints = 'members' } }, -- also `@4 · 4 B` after each member
-})
+require('abi-explorer').setup()
+-- or, to configure the server: require('abi-explorer').setup({ lsp = { init_options = { … } } })
 ```
 
 - `K` on a struct or member name shows its byte map and member table, and so does `K` on any use
@@ -19,7 +17,7 @@ require('abi-explorer').setup({
 - `vim.lsp.buf.code_action()` (`gra`) on a struct offers to pin its layout with `static_assert`,
   and, where its member order wastes space, to reorder its members by alignment.
 - `:AbiLayout` toggles a split with the layout of the struct at the cursor; the member at the
-  cursor is marked `▶` and its bytes stay bright while the others fade. Colours match the other
+  cursor is marked `▶` and its bytes and letter are filled, while the others show in colour. Colours match the other
   editors (`termguicolors`); override the `AbiExplorerMember1`…`8`, `AbiExplorerMemberFaded1`…`8`,
   `AbiExplorerPadding` and `AbiExplorerSelected` highlight groups to change them.
 - `:AbiTarget armv7-unknown-linux-gnueabihf` lays structs out for another target, with the
@@ -27,5 +25,4 @@ require('abi-explorer').setup({
   common targets.
 
 Compile flags come from `compile_commands.json` or `compile_flags.txt`, found the way clangd finds
-them. `vim.lsp.inlay_hint.enable` is per buffer, not per server, so turning hints on also shows
-other servers' hints (clangd's parameter names, for example).
+them.

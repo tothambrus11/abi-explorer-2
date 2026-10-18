@@ -1,4 +1,4 @@
--- ABI Explorer for Neovim: the language server (hovers, inlay hints) and
+-- ABI Explorer for Neovim: the language server (hovers, code actions) and
 -- `:AbiLayout`, a split showing the layout of the struct at the cursor.
 --
 --   require('abi-explorer').setup()
@@ -274,15 +274,6 @@ function M.setup(opts)
   local group = vim.api.nvim_create_augroup('AbiExplorer', { clear = true })
   -- A colour scheme loaded later clears the groups.
   vim.api.nvim_create_autocmd('ColorScheme', { group = group, callback = define_highlights })
-  vim.api.nvim_create_autocmd('LspAttach', {
-    group = group,
-    callback = function(event)
-      local client = vim.lsp.get_client_by_id(event.data.client_id)
-      if client and client.name == CLIENT_NAME and opts.inlay_hints ~= false then
-        vim.lsp.inlay_hint.enable(true, { bufnr = event.buf })
-      end
-    end,
-  })
   vim.api.nvim_create_autocmd({ 'CursorMoved', 'BufEnter' }, { group = group, callback = schedule_refresh })
   vim.lsp.handlers['abiExplorer/layoutsChanged'] = function()
     schedule_refresh()

@@ -1,6 +1,6 @@
 // What clients and the server say to each other beyond standard LSP.
 //
-// Clients that only want hovers and inlay hints (Zed, a plain Neovim setup)
+// Clients that only want hovers and code actions (Zed, a plain Neovim setup)
 // need none of this. It is for the editors that draw a layout panel (VS Code,
 // CLion, the Neovim side split) and for the IDEs that know compile commands
 // better than any file on disk (CMake Tools, CLion's project model).
@@ -18,9 +18,6 @@ export interface Range {
   end: Position;
 }
 
-/** Which declarations get an inlay hint. */
-export type InlayHintsMode = 'records' | 'members' | 'off';
-
 export interface InitializationOptions {
   /** Where the engine is downloaded to. Defaults to the user cache directory. */
   cacheDirectory?: string;
@@ -28,8 +25,6 @@ export interface InitializationOptions {
   enginePath?: string;
   /** Draw hover byte maps as SVG images (VS Code and Zed render them). */
   hoverImages?: boolean;
-  /** Which declarations get an inlay hint. Defaults to `records`. */
-  inlayHints?: InlayHintsMode;
   /** Read compile_commands.json from here instead of searching, like clangd's flag. */
   compileCommandsDir?: string | undefined;
   /** Globs of in-project compilers that may be run to learn their include paths. */

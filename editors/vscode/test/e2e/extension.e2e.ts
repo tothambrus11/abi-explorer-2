@@ -1,5 +1,5 @@
 // The packaged extension in real VS Code (code-server), driven by Playwright:
-// inlay hints, hovers, code actions and the Struct Layout view on the fixture project, with
+// hovers, code actions and the Struct Layout view on the fixture project, with
 // a screenshot of each for review.
 
 import path from 'node:path';
@@ -36,7 +36,6 @@ test.beforeAll(async () => {
       'editor.minimap.enabled': false,
       'editor.hover.delay': 100,
       'editor.fontSize': 14,
-      'editor.inlayHints.enabled': 'on',
       'window.commandCenter': false,
     },
   });
@@ -47,25 +46,19 @@ test.afterAll(() => {
   project?.remove();
 });
 
-test('hovers, inlay hints and the layout view', async ({ page }) => {
+test('hovers, code actions and the layout view', async ({ page }) => {
   await page.setViewportSize({ width: 1500, height: 900 });
   await page.goto(codeServer!.url);
   await openFile(page, 'main.cpp');
 
-  // Inlay hints arrive once the first analysis is done.
-  await expect(page.locator('.view-lines')).toContainText('40 B · align 8 · 9 B padding', {
-    timeout: 60_000,
-  });
-  await expect(page.locator('.view-lines')).toContainText('64 B · align 8 · 10 B padding');
-
-  // The caret inside Packet opens it in the view.
+  // The caret inside Packet opens it in the view, once the first analysis is done.
   await goToLine(page, 12, 20);
   await page.getByRole('button', { name: 'Struct Layout Section' }).click();
   // Room for the view: the file tree folded away, the side bar wider.
   await page.locator('.pane-header', { hasText: path.basename(project!.root) }).click();
   await dragSash(page, 420);
   const view = layoutView(page);
-  await expect(view.locator('.record.open .record-name')).toHaveText('Packet', { timeout: 30_000 });
+  await expect(view.locator('.record.open .record-name')).toHaveText('Packet', { timeout: 60_000 });
   await expect(view.locator('tr.highlighted .label')).toHaveText('checksum');
   await expect(view.locator('.byte')).toHaveCount(40);
   await expect(view.locator('button.copy')).toBeVisible();
@@ -111,18 +104,19 @@ test('hovers, inlay hints and the layout view', async ({ page }) => {
 
   // The view's button reorders Packet's members in the file.
   await view.getByRole('button', { name: 'Reorder members' }).click();
-  await expect(page.locator('.view-lines')).toContainText('32 B · align 8 · 1 B padding', {
-    timeout: 30_000,
-  });
+  const packetSize = view
+    .locator('.record')
+    .filter({ has: view.locator('.record-name', { hasText: /^Packet$/ }) })
+    .locator('.record-size');
+  await expect(packetSize).toHaveText('32 B · align 8 · 1 B padding', { timeout: 30_000 });
+  await expect(page.locator('.view-lines')).not.toContainText('B · align');
 
   // Another target, chosen from the list: Packet as 32-bit Arm lays it out.
   await page.keyboard.press('Control+Shift+P');
   await page.keyboard.type('ABI Explorer: Choose Target');
   await page.keyboard.press('Enter');
   await page.getByRole('option', { name: /armv7-unknown-linux-gnueabihf/ }).click();
-  await expect(page.locator('.view-lines')).toContainText('20 B · align 4 · 1 B padding', {
-    timeout: 60_000,
-  });
+  await expect(packetSize).toHaveText('20 B · align 4 · 1 B padding', { timeout: 60_000 });
   await expect(page.locator('.statusbar')).toContainText('armv7-unknown-linux-gnueabihf');
   await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-other-target.png') });
 });

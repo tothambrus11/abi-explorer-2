@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { byteOwners, reorderNote } from '@abi-explorer/shared/layoutModel';
 import { formatOffset, formatSize, formatSizeShort } from '@abi-explorer/shared/format';
 import { memberHover, recordHover } from '../../src/layout/hover.ts';
-import { layoutHints } from '../../src/layout/inlayHints.ts';
 import { svgMap } from '../../src/layout/svgMap.ts';
 import { textMap, textMemberTable } from '../../src/layout/textLayout.ts';
 import { characterAt } from '../../src/layout/documentRecords.ts';
@@ -249,48 +248,6 @@ describe('reorderNote', () => {
       members: [member('a', 0, 1, 'char'), member('b', 2, 4, 'int'), member('c', 6, 1, 'char')],
     };
     expect(reorderNote(packed)).toBe('Ordered as b, a, c, the members would fit in 6 B, 2 B less.');
-  });
-});
-
-describe('layoutHints', () => {
-  it('puts one hint after each record name', () => {
-    expect(layoutHints([packet], 'records', () => 20)).toEqual([
-      { position: { line: 0, character: 13 }, label: '12 B · align 4 · 5 B padding' },
-    ]);
-  });
-
-  it('says how much padding follows each member', () => {
-    expect(layoutHints([packet], 'members', () => 30).map((hint) => hint.label)).toEqual([
-      '12 B · align 4 · 5 B padding',
-      '@0 · 1 B · 3 B padding after',
-      '@4 · 4 B',
-      '@8 · 2 B · 2 B padding after',
-    ]);
-  });
-
-  it('adds member hints at line ends, one per line', () => {
-    const twoOnOneLine = {
-      ...packet,
-      members: [member('x', 0, 4, 'int', 1), member('y', 4, 4, 'int', 1)],
-    };
-    expect(layoutHints([twoOnOneLine], 'members', (line) => line * 10).slice(1)).toEqual([
-      { position: { line: 1, character: 10 }, label: 'x @0 · 4 B, y @4 · 4 B · 4 B padding after' },
-    ]);
-  });
-
-  it('gives no member hint outside the record, as a virtual base named in a base list', () => {
-    const withBase: RecordView = {
-      ...packet,
-      extent: at(0, 0, 40),
-      members: [member('a', 0, 4, 'int', 0), { ...member('Base', 8, 8, 'Base', 7), kind: 'base' }],
-    };
-    expect(layoutHints([withBase], 'members', () => 50).slice(1)).toEqual([
-      { position: { line: 0, character: 50 }, label: '@0 · 4 B · 4 B padding after' },
-    ]);
-  });
-
-  it('hints a template declaration once for all its instantiations', () => {
-    expect(layoutHints([packet, { ...packet, id: 2 }], 'records', () => 0)).toHaveLength(1);
   });
 });
 

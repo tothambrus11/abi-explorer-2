@@ -9,7 +9,7 @@ import {
   StreamMessageWriter,
   type MessageConnection,
 } from 'vscode-jsonrpc/node';
-import type { CodeAction, Hover, InlayHint } from 'vscode-languageserver-protocol';
+import type { CodeAction, Hover } from 'vscode-languageserver-protocol';
 import {
   layoutRequest,
   layoutsChangedNotification,
@@ -35,7 +35,6 @@ export class LspSession {
     this.connection.onNotification(layoutsChangedNotification, ({ uri }: { uri: string }) => {
       this.analyzed.get(uri)?.();
     });
-    this.connection.onRequest('workspace/inlayHint/refresh', () => null);
     this.connection.onRequest('window/workDoneProgress/create', () => null);
     this.connection.listen();
   }
@@ -50,7 +49,6 @@ export class LspSession {
       rootUri,
       workspaceFolders: [{ uri: rootUri, name: 'project' }],
       capabilities: {
-        workspace: { inlayHint: { refreshSupport: true } },
         window: { workDoneProgress: true },
       },
       initializationOptions: options,
@@ -88,13 +86,6 @@ export class LspSession {
 
   hover(uri: string, position: Position): Promise<Hover | null> {
     return this.connection.sendRequest('textDocument/hover', { textDocument: { uri }, position });
-  }
-
-  inlayHints(uri: string): Promise<InlayHint[]> {
-    return this.connection.sendRequest('textDocument/inlayHint', {
-      textDocument: { uri },
-      range: { start: { line: 0, character: 0 }, end: { line: 10_000, character: 0 } },
-    });
   }
 
   codeActions(uri: string, position: Position): Promise<CodeAction[]> {

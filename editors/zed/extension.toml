@@ -1,6 +1,6 @@
 id = "abi-explorer"
 name = "ABI Explorer"
-description = "Sizes, offsets and padding of C and C++ structs in hovers and inlay hints, from your project's compile flags."
+description = "Sizes, offsets and padding of C and C++ structs in hovers and code actions, from your project's compile flags."
 version = "0.1.0"
 schema_version = 1
 authors = ["Ambrus Tóth <palpista11@gmail.com>"]
