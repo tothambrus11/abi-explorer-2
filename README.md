@@ -87,8 +87,10 @@ Hylo never fetches clang.
 
 The same engine runs in VS Code, CLion, Zed and Neovim, against your project's
 own compile flags: a struct's size, alignment and padding after its name, its
-byte map on hover, and (in VS Code and CLion) a side panel that follows the
-caret. See [editors/](editors/README.md).
+byte map on hover (on any use of a type too, `std::string` included), and (in
+VS Code and CLion) a side panel that follows the caret. Two refactorings come
+with it: reorder a struct's members by alignment where that saves space, and
+pin its layout with `static_assert`. See [editors/](editors/README.md).
 
 ## How it works
 
