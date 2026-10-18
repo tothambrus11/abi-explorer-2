@@ -61,6 +61,10 @@ export function typeIndex(
       if (target && !target.isAnonymous) add(group.type.replace(/^const |^volatile /, ''), target);
     }
   }
+  for (const [alias, name] of STANDARD_ALIASES) {
+    const record = byName.get(name);
+    if (record && !byName.has(alias)) byName.set(alias, record);
+  }
   const views = new Map<RecordLayout, RecordView>();
   return (spelling) => {
     const record = byName.get(spelling.replace(/\s+/g, '').replace(/^::/, ''));
@@ -73,6 +77,18 @@ export function typeIndex(
     return view;
   };
 }
+
+/** The standard library's aliases for records, which no field may happen to spell out. */
+const STANDARD_ALIASES: [string, string][] = [
+  ['char', 'string'],
+  ['wchar_t', 'wstring'],
+  ['char8_t', 'u8string'],
+  ['char16_t', 'u16string'],
+  ['char32_t', 'u32string'],
+].flatMap(([char, string]) => [
+  [`std::${string}`, `std::basic_string<${char}>`],
+  [`std::${string}_view`, `std::basic_string_view<${char}>`],
+]);
 
 /** One record as a view; ranges only for locations in `guestPath`, the file `lines` are of. */
 function recordView(

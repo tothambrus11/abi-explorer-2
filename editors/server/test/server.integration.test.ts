@@ -94,7 +94,7 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     const uri = project.uri('uses.cpp');
     fs.writeFileSync(
       project.path('uses.cpp'),
-      '#include "shapes.h"\n#include <vector>\nShape make();\nstruct Holder { std::string name; std::vector<int> values; };\n',
+      '#include "shapes.h"\n#include <vector>\nShape make();\nstruct Holder { std::string name; std::vector<int> values; };\nstd::string_view view(std::wstring);\n',
     );
     await session.open(uri);
     const markdown = async (line: number, character: number) => {
@@ -110,6 +110,9 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     );
     expect(await markdown(3, 42)).toMatch(/^\*\*class std::vector\\<int.*\*\* · 24 B · align 8/m);
     expect(await markdown(3, 1)).toBe(''); // `struct` is not a name
+    // No field says `std::string_view` or `std::wstring`: the standard aliases are known.
+    expect(await markdown(4, 7)).toMatch(/^\*\*class std::basic_string_view\\<char\\>\*\* · 16 B/m);
+    expect(await markdown(4, 28)).toMatch(/^\*\*class std::basic_string\\<wchar_t\\>\*\* · 32 B/m);
   });
 
   it('shows one inlay hint per record declaration', async () => {
