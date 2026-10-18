@@ -17,6 +17,7 @@ import {
   memberColor,
   memberLetter,
   recordSummary,
+  reorderNote,
 } from '@abi-explorer/shared/layoutModel';
 
 export interface PanelActions {
@@ -102,6 +103,8 @@ function recordDetails(
   const details = element('div', 'record-details');
   const bases = baseList(record);
   if (bases) details.append(element('p', 'summary', `Bases: ${bases}`));
+  const reorder = reorderNote(record);
+  if (reorder) details.append(element('p', 'summary', reorder));
   const map = byteMap(record, actions);
   if (map) details.append(map);
   details.append(memberTable(record, actions));

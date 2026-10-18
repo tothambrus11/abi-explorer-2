@@ -3,7 +3,7 @@
 // byte is whose, which letter and colour a member gets, and how the member
 // table reads.
 
-import type { AnalysisContext, RecordView } from '@abi-explorer/shared/protocol';
+import type { AnalysisContext, MemberView, RecordView } from '@abi-explorer/shared/protocol';
 import { formatOffset, formatSizeShort } from './format.ts';
 
 export type ByteOwner = number | null;
@@ -103,6 +103,51 @@ export function recordSummary(record: RecordView): string {
   const parts = [formatSizeShort(record.sizeBits), `align ${record.alignBits / 8}`];
   if (record.paddingBytes) parts.push(`${record.paddingBytes} B padding`);
   return parts.join(' · ');
+}
+
+/**
+ * `Ordered by alignment, the members would fit in 16 B, 8 B less.`, or null
+ * when the order already costs nothing, or the record is not a plain list of
+ * fields (bases, a vtable pointer, bit-fields and unions are laid out by rules
+ * a reorder does not simply change).
+ */
+export function reorderNote(record: RecordView): string | null {
+  if (record.kind === 'union' || record.paddingBytes === 0 || record.members.length < 2) {
+    return null;
+  }
+  const fields = [...record.members].sort((a, b) => a.offsetBits - b.offsetBits);
+  let end = 0;
+  for (const field of fields) {
+    const whole = field.offsetBits % 8 === 0 && field.sizeBits % 8 === 0 && field.alignBits > 0;
+    // Members sharing bytes are an anonymous union's.
+    if (field.kind !== 'field' || !whole || field.offsetBits < end) return null;
+    end = field.offsetBits + field.sizeBits;
+  }
+  // `#pragma pack` lowers the record's alignment, and each member's with it.
+  const alignOf = (field: MemberView) => Math.min(field.alignBits, record.alignBits);
+  const place = (order: readonly MemberView[]) => {
+    let end = 0;
+    const offsets = order.map((field) => {
+      const offset = roundUp(end, alignOf(field));
+      end = offset + field.sizeBits;
+      return offset;
+    });
+    return { offsets, size: roundUp(end, record.alignBits) };
+  };
+  // Only where these rules reproduce the layout as it is: an `alignas` on a
+  // member, for one, is not in its alignment here.
+  const current = place(fields);
+  const reproduced =
+    current.size === record.sizeBits &&
+    current.offsets.every((offset, index) => offset === fields[index]!.offsetBits);
+  if (!reproduced) return null;
+  const { size } = place([...fields].sort((a, b) => alignOf(b) - alignOf(a)));
+  if (size >= record.sizeBits) return null;
+  return `Ordered by alignment, the members would fit in ${formatSizeShort(size)}, ${formatSizeShort(record.sizeBits - size)} less.`;
+}
+
+function roundUp(bits: number, alignBits: number): number {
+  return Math.ceil(bits / alignBits) * alignBits;
 }
 
 /** `Shape at 0, Base at 8 (virtual)`, or null without bases. */
