@@ -1,0 +1,116 @@
+{
+  "name": "abi-explorer",
+  "displayName": "ABI Explorer",
+  "description": "Sizes, offsets and padding of C and C++ structs in hovers, inlay hints and a layout view, from your project's own compile flags.",
+  "version": "0.1.0",
+  "publisher": "tothambrus11",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tothambrus11/abi-explorer-2"
+  },
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Visualization"
+  ],
+  "keywords": [
+    "c",
+    "c++",
+    "struct",
+    "layout",
+    "padding",
+    "abi"
+  ],
+  "main": "./dist/extension.cjs",
+  "activationEvents": [
+    "onLanguage:c",
+    "onLanguage:cpp"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Finding system headers runs the compiler your project's build uses."
+    }
+  },
+  "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "type": "webview",
+          "id": "abiExplorer.layout",
+          "name": "Struct Layout",
+          "when": "abiExplorer.active"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "abiExplorer.showLayout",
+        "title": "Show Struct Layout",
+        "category": "ABI Explorer"
+      },
+      {
+        "command": "abiExplorer.restartServer",
+        "title": "Restart Server",
+        "category": "ABI Explorer"
+      }
+    ],
+    "configuration": {
+      "title": "ABI Explorer",
+      "properties": {
+        "abiExplorer.inlayHints": {
+          "type": "string",
+          "enum": [
+            "records",
+            "members",
+            "off"
+          ],
+          "enumDescriptions": [
+            "Size, alignment and padding after each struct's name.",
+            "Also each member's offset and size at the end of its line.",
+            "No inlay hints."
+          ],
+          "default": "records",
+          "description": "Which layouts to show inline in the editor."
+        },
+        "abiExplorer.compileCommandsDir": {
+          "type": "string",
+          "default": "",
+          "description": "The directory holding compile_commands.json. Empty searches the file's parent directories and their build/ folders, like clangd."
+        },
+        "abiExplorer.allowedCompilers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Globs of compilers inside the workspace that may be run to find system headers. Compilers outside the workspace are always allowed."
+        },
+        "abiExplorer.fallbackFlags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Flags for files no compile command covers, such as [\"-std=c++20\", \"-Iinclude\"]."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "package": "node build.mjs && vsce package --no-dependencies --out dist/abi-explorer.vsix"
+  },
+  "devDependencies": {
+    "@abi-explorer/layout-view": "0.1.0",
+    "@types/vscode": "^1.95.0",
+    "@vscode/vsce": "^3.9.2",
+    "abi-explorer-lsp": "0.1.0",
+    "vscode-languageclient": "^10.1.2"
+  }
+}

@@ -1,0 +1,214 @@
+/*
+ * Themed through --ae-* variables. VS Code supplies its --vscode-* theme
+ * colours, which the defaults below pick up; the CLion plugin sets --ae-*
+ * from the IDE's look and feel.
+ */
+:root {
+  --ae-foreground: var(--vscode-foreground, #cccccc);
+  --ae-muted: var(--vscode-descriptionForeground, #9d9d9d);
+  --ae-background: var(--vscode-sideBar-background, transparent);
+  --ae-hover: var(--vscode-list-hoverBackground, rgba(128, 128, 128, 0.12));
+  --ae-border: var(--vscode-panel-border, rgba(128, 128, 128, 0.35));
+  --ae-warning: var(--vscode-editorWarning-foreground, #cca700);
+  --ae-font: var(--vscode-font-family, system-ui, sans-serif);
+  --ae-font-size: var(--vscode-font-size, 13px);
+  --ae-mono: var(--vscode-editor-font-family, Menlo, Consolas, monospace);
+  --ae-padding: rgba(138, 138, 138, 0.55);
+}
+
+body {
+  margin: 0;
+  padding: 4px 8px 12px;
+  color: var(--ae-foreground);
+  background: var(--ae-background);
+  font-family: var(--ae-font);
+  font-size: var(--ae-font-size);
+}
+
+.empty,
+.context {
+  color: var(--ae-muted);
+}
+
+.notice {
+  color: var(--ae-warning);
+}
+
+.context {
+  margin: 12px 0 0;
+  font-size: 0.9em;
+}
+
+.records {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.record-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  width: 100%;
+  padding: 3px 4px;
+  border: 0;
+  border-radius: 3px;
+  color: inherit;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.record-heading:hover {
+  background: var(--ae-hover);
+}
+
+.chevron {
+  width: 1em;
+  color: var(--ae-muted);
+}
+
+.record-name {
+  font-family: var(--ae-mono);
+  font-weight: 600;
+}
+
+.record-size {
+  margin-left: auto;
+  color: var(--ae-muted);
+  white-space: nowrap;
+}
+
+.record-details {
+  padding: 4px 4px 10px 22px;
+}
+
+.summary {
+  margin: 0 0 8px;
+  color: var(--ae-muted);
+}
+
+.byte-map {
+  display: grid;
+  grid-template-columns: 3em repeat(var(--columns), minmax(14px, 24px));
+  gap: 2px;
+  margin-bottom: 10px;
+  font-family: var(--ae-mono);
+  font-size: 11px;
+}
+
+.column-label,
+.row-label {
+  color: var(--ae-muted);
+  text-align: center;
+}
+
+.row-label {
+  padding-right: 6px;
+  text-align: right;
+  line-height: 22px;
+}
+
+.byte {
+  height: 22px;
+  border-radius: 3px;
+  line-height: 22px;
+  text-align: center;
+  color: #ffffff;
+  background: var(--member-color);
+  cursor: pointer;
+  transition: opacity 80ms;
+}
+
+.byte.padding {
+  background: repeating-linear-gradient(45deg, var(--ae-padding) 0 1.5px, transparent 1.5px 4px);
+  cursor: default;
+}
+
+.dimmed {
+  opacity: 0.3;
+}
+
+.byte.highlighted {
+  outline: 2px solid var(--ae-foreground);
+  outline-offset: -2px;
+}
+
+.members {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+
+.members th {
+  color: var(--ae-muted);
+  font-weight: normal;
+  text-align: left;
+  border-bottom: 1px solid var(--ae-border);
+}
+
+.members td,
+.members th {
+  padding: 2px 4px;
+  white-space: nowrap;
+}
+
+.members th:first-child {
+  width: 1.4em;
+}
+
+.members th.number {
+  width: 3.6em;
+  text-align: right;
+}
+
+.members td.number {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.members td.member {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.members .type {
+  margin-left: 0.6em;
+  font-family: var(--ae-mono);
+  font-size: 0.92em;
+  color: var(--ae-muted);
+}
+
+.members .swatch {
+  font-family: var(--ae-mono);
+  text-align: center;
+  color: #ffffff;
+  background: var(--member-color, transparent);
+  border-radius: 3px;
+}
+
+.members tr.padding {
+  color: var(--ae-muted);
+  font-style: italic;
+}
+
+.members tr.padding .swatch {
+  color: var(--ae-muted);
+}
+
+.members tr.clickable {
+  cursor: pointer;
+}
+
+.members tr.highlighted td {
+  background: var(--ae-hover);
+}
+
+.members tr.highlighted .swatch {
+  background: var(--member-color);
+}
+
+.members tr.dimmed {
+  opacity: 0.55;
+}

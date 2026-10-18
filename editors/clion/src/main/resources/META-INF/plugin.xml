@@ -1,0 +1,28 @@
+<idea-plugin>
+  <id>abiexplorer.clion</id>
+  <name>ABI Explorer</name>
+  <vendor url="https://github.com/tothambrus11/abi-explorer-2">Ambrus Tóth</vendor>
+  <description><![CDATA[
+    Sizes, offsets and padding of C and C++ structs, from the project's own compiler and flags:
+    in quick documentation, as inlay hints after each struct name, and in the <b>Struct Layout</b>
+    tool window, which follows the caret.
+  ]]></description>
+
+  <depends>com.intellij.modules.platform</depends>
+  <depends>com.intellij.modules.lsp</depends>
+  <!-- CLion's project model, for each file's compiler and switches. -->
+  <depends>com.intellij.modules.cidr.lang</depends>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <platform.lsp.serverSupportProvider implementation="abiexplorer.clion.AbiExplorerLspSupport"/>
+    <toolWindow id="Struct Layout" anchor="right" icon="AllIcons.Toolwindows.ToolWindowStructure"
+                factoryClass="abiexplorer.clion.LayoutToolWindowFactory"/>
+    <notificationGroup id="ABI Explorer" displayType="BALLOON"/>
+    <postStartupActivity implementation="abiexplorer.clion.PushCompileCommandsOnStart"/>
+  </extensions>
+
+  <projectListeners>
+    <listener class="abiexplorer.clion.WorkspaceCompileCommands"
+              topic="com.jetbrains.cidr.lang.workspace.OCWorkspaceListener"/>
+  </projectListeners>
+</idea-plugin>
