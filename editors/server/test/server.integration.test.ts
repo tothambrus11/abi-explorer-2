@@ -182,6 +182,20 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     expect(edit!.newText).toContain('_Static_assert(offsetof(Packet, length) == 4');
   });
 
+  it('inlines anonymous members but keeps a named member of an unnamed type whole', async () => {
+    const uri = project.uri('nested.cpp');
+    fs.writeFileSync(
+      project.path('nested.cpp'),
+      'struct Outer {\n  struct { int x; char y; } inner;\n  union { int i; float f; };\n  char z;\n};\n',
+    );
+    await session.open(uri);
+    const { records } = await session.layout(uri);
+    expect(records.map((record) => record.name)).toEqual(['Outer']);
+    const members = records[0]!.members;
+    expect(members.map((member) => member.label)).toEqual(['inner', 'i', 'f', 'z']);
+    expect(members[0]!.type).toBe('struct (unnamed)');
+  });
+
   it('says a template needs a use before it has a layout', async () => {
     const uri = project.uri('box.cpp');
     fs.writeFileSync(project.path('box.cpp'), 'template <class T> struct Box { T t; char c; };\n');

@@ -96,7 +96,7 @@ const STANDARD_ALIASES: [string, string][] = [
  */
 function unnamed(record: RecordLayout): boolean {
   return (
-    record.isAnonymous && (!record.qualifiedName || record.qualifiedName.includes('(anonymous'))
+    record.isAnonymous && !/^[A-Za-z_]\w*$/.test(record.qualifiedName.split('::').at(-1) ?? '')
   );
 }
 
@@ -146,7 +146,10 @@ function recordView(
       }
       const group = record.render.groups[node.ref]!;
       const nested = group.recordId === null ? undefined : recordsById.get(group.recordId);
-      if (group.kind === 'member' && nested && unnamed(nested)) {
+      // An anonymous member's fields are the record's own; a named member of an
+      // unnamed type (`struct { … } inner;`) is one member like any other.
+      const anonymousMember = group.name === '' || group.name.startsWith('(');
+      if (group.kind === 'member' && nested && unnamed(nested) && anonymousMember) {
         visit(node.children);
         continue;
       }
@@ -154,7 +157,8 @@ function recordView(
       members.push({
         kind: group.kind === 'member' ? 'field' : 'base',
         label: group.kind === 'member' ? group.name : group.type,
-        type: group.type,
+        // `struct (unnamed at input.c:1:16)` as `struct (unnamed)`.
+        type: group.type.replace(/ at [^()]*:\d+:\d+\)/, ')'),
         offsetBits: group.offsetBits,
         sizeBits: group.sizeBits,
         alignBits: group.alignBits,
