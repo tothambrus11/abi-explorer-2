@@ -194,7 +194,7 @@ body {
 }
 
 .members tr.padding .swatch {
-  color: var(--ae-muted);
+  background: repeating-linear-gradient(45deg, var(--ae-padding) 0 1.5px, transparent 1.5px 4px);
 }
 
 .members tr.clickable {

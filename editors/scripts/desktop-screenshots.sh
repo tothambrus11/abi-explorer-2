@@ -59,7 +59,7 @@ if [[ -n ${ZED:-} ]]; then
 }
 JSON
   (cd "$project" && ZED_ALLOW_ROOT=true ZED_ALLOW_EMULATED_GPU=1 "$ZED" --foreground . main.cpp >"$work/zed.log" 2>&1 &)
-  sleep 8
+  sleep 15 # the trust prompt can take a while on a software-rendered display
   xdotool key Return # trust the project
   sleep 15
   xdotool mousemove 195 313 # `Packet`

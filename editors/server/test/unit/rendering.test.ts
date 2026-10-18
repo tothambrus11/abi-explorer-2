@@ -91,19 +91,30 @@ describe('byte maps', () => {
     expect(svg.match(/fill="url\(#pad\)"/g)).toHaveLength(5);
   });
 
+  it('fades every member but the highlighted one', () => {
+    const svg = svgMap(packet, { highlightedMember: 2 })!;
+    expect(svg.match(/rx="3" fill="#\w+" fill-opacity="0.9"/g)).toHaveLength(2);
+    expect(svg.match(/rx="3" fill="#\w+" fill-opacity="0.15"/g)).toHaveLength(5);
+  });
+
+  it('draws the member table beside the map, with the same swatches', () => {
+    const svg = svgMap(packet, { table: true })!;
+    // 5 rows (3 members, 2 padding runs), each with a swatch.
+    expect(svg.match(/<rect /g)).toHaveLength(12 + 1 + 5);
+    expect(svg).toContain('>checksum</text>');
+    expect(svg).toContain('font-style="italic">padding</text>');
+  });
+
   it('does not map huge records', () => {
     expect(textMap({ ...packet, sizeBits: 8 * 1024, members: [] })).toBeNull();
   });
 });
 
 describe('hovers', () => {
-  it('summarises a record with a markdown member table, padding included, for image clients', () => {
+  it('summarises a record as the inlay hint does, with one image for image clients', () => {
     const markdown = recordHover(packet, context, { images: true });
-    expect(markdown.split('\n')[0]).toBe(
-      '**struct Packet** · 12 bytes · align 4 · 5 bytes padding',
-    );
-    expect(markdown).toContain('| `·` | *padding* | 1 | 3 bytes |  |');
-    expect(markdown).toContain('| `c` | checksum | 8 | 2 bytes | `short` |');
+    expect(markdown.split('\n')[0]).toBe('**struct Packet** · 12 B · align 4 · 5 B padding');
+    expect(markdown.match(/!\[Packet layout\]/g)).toHaveLength(1);
     expect(markdown).toContain('*x86_64-linux-gnu · compile_commands.json*');
   });
 
@@ -144,8 +155,11 @@ describe('hovers', () => {
       { ...context, commandInferred: true, errorCount: 2 },
       { images: false },
     );
-    expect(markdown.split('\n')[0]).toBe('**Packet::length** · offset 4 · 4 bytes · align 4');
-    expect(markdown).toContain('3 bytes of padding before it.');
+    expect(markdown.split('\n')[0]).toBe('**Packet::length** `int` · offset 4 · 4 B · align 4');
+    expect(markdown).toContain('Bytes 4–7, after 3 B of padding.');
+    expect(memberHover(packet, 2, context, { images: false })).toContain(
+      'Bytes 8–9, followed by 2 B of padding.',
+    );
     expect(markdown).toContain('flags borrowed from a neighbouring file · 2 errors in this file');
   });
 

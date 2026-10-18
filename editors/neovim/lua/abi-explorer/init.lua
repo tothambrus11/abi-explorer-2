@@ -7,6 +7,81 @@ local M = {}
 
 local CLIENT_NAME = 'abi_explorer'
 local DEBOUNCE_MS = 150
+local NAMESPACE = vim.api.nvim_create_namespace('abi_explorer')
+
+-- The member colours and letters of editors/shared/src/layoutModel.ts, so the
+-- split matches the hovers and panels of the other editors (a test checks).
+local PALETTE = { '#4e79a7', '#f28e2b', '#59a14f', '#b07aa1', '#e15759', '#76b7b2', '#edc948', '#9c755f' }
+local PADDING_COLOR = '#8a8a8a'
+local LETTERS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+local PADDING_DOT = '·'
+local MARKER = '▶'
+
+--- Highlight groups per palette colour: `AbiExplorerMember1` (a filled cell),
+--- `AbiExplorerMemberFaded1` (another member than the one at the cursor).
+--- `default = true` leaves any the user defined alone.
+local function define_highlights()
+  for index, color in ipairs(PALETTE) do
+    vim.api.nvim_set_hl(0, 'AbiExplorerMember' .. index, { default = true, bg = color, fg = '#ffffff', bold = true })
+    vim.api.nvim_set_hl(0, 'AbiExplorerMemberFaded' .. index, { default = true, fg = color })
+  end
+  vim.api.nvim_set_hl(0, 'AbiExplorerPadding', { default = true, fg = PADDING_COLOR })
+  vim.api.nvim_set_hl(0, 'AbiExplorerSelected', { default = true, link = 'CursorLine' })
+end
+
+--- The group for a cell or swatch: `letter` names the member, `·` is padding.
+local function cell_group(token, highlighted)
+  if token == PADDING_DOT then
+    return 'AbiExplorerPadding'
+  end
+  local index = LETTERS:find(token, 1, true)
+  if not index then
+    return nil
+  end
+  local color = (index - 1) % #PALETTE + 1
+  local faded = highlighted ~= nil and highlighted ~= index - 1
+  return (faded and 'AbiExplorerMemberFaded' or 'AbiExplorerMember') .. color
+end
+
+--- Colours the server's text layout in place: the byte map's cells, and the
+--- swatch letter of each member table row. `highlighted` is the 0-based index
+--- of the member at the cursor; its bytes stay bright and the others fade.
+local function colorize(buffer, lines, highlighted)
+  vim.api.nvim_buf_clear_namespace(buffer, NAMESPACE, 0, -1)
+  local function mark(row, start, finish, group)
+    vim.api.nvim_buf_set_extmark(buffer, NAMESPACE, row, start, { end_col = finish, hl_group = group })
+  end
+  for row, line in ipairs(lines) do
+    local label_end = line:match('^%s*%d+  ()')
+    if label_end and not line:match('^[%s%d]*$') then
+      -- A byte map row: `  8  c c · ·`.
+      for start, token in line:sub(label_end):gmatch('()(%S+)') do
+        local group = cell_group(token, highlighted)
+        local from = label_end + start - 2
+        if group then
+          mark(row - 1, from, from + #token, group)
+        end
+      end
+    else
+      -- A member table row: `  ▶c  checksum  8  2 B  short`.
+      local first = line:find('%S')
+      if first and line:sub(first, first + #MARKER - 1) == MARKER then
+        -- The row at the cursor, but not its swatch: a line highlight would cover the swatch's colour.
+        vim.api.nvim_buf_set_extmark(buffer, NAMESPACE, row - 1, first + #MARKER, {
+          end_col = #line,
+          hl_group = 'AbiExplorerSelected',
+          hl_eol = true,
+        })
+        first = first + #MARKER
+      end
+      local token = first and (line:sub(first, first + #PADDING_DOT - 1) == PADDING_DOT and PADDING_DOT or line:sub(first, first))
+      local swatch_group = token and line:sub(first + #token, first + #token + 1) == '  ' and cell_group(token, nil)
+      if swatch_group then
+        mark(row - 1, first - 1, first - 1 + #token, swatch_group)
+      end
+    end
+  end
+end
 
 local split = { buffer = nil, window = nil }
 local timer = vim.uv.new_timer()
@@ -55,10 +130,11 @@ local function record_lines(record)
   return lines
 end
 
-local function show(lines)
+local function show(lines, highlighted)
   vim.bo[split.buffer].modifiable = true
   vim.api.nvim_buf_set_lines(split.buffer, 0, -1, false, lines)
   vim.bo[split.buffer].modifiable = false
+  colorize(split.buffer, lines, highlighted)
 end
 
 local function refresh()
@@ -90,13 +166,19 @@ local function refresh()
       show({ message or (result.state == 'analyzing' and 'Analyzing…' or 'No layouts yet.') })
       return
     end
-    -- The record at the cursor; its member there is marked in the text.
+    -- The record at the cursor, and its member there: marked in the text, bright in the map.
+    local selection = result.selection ~= vim.NIL and result.selection or nil
     local record = result.records[1]
     for _, candidate in ipairs(result.records) do
-      if result.selection and candidate.id == result.selection.recordId then
+      if selection and candidate.id == selection.recordId then
         record = candidate
       end
     end
+    local highlighted = selection
+      and selection.recordId == record.id
+      and selection.memberIndex ~= vim.NIL
+      and selection.memberIndex
+      or nil
     local lines = record_lines(record)
     if result.message and result.message ~= vim.NIL then
       table.insert(lines, 1, result.message)
@@ -106,7 +188,7 @@ local function refresh()
       table.insert(lines, '')
       table.insert(lines, context_line(result.context))
     end
-    show(lines)
+    show(lines, highlighted)
   end, source)
 end
 
@@ -114,6 +196,9 @@ local function schedule_refresh()
   timer:stop()
   timer:start(DEBOUNCE_MS, 0, vim.schedule_wrap(refresh))
 end
+
+-- For tests: the colouring of the split, on any buffer.
+M.colorize = colorize
 
 --- Opens the layout split, or closes it when open.
 function M.toggle()
@@ -136,10 +221,13 @@ end
 
 function M.setup(opts)
   opts = opts or {}
+  define_highlights()
   vim.lsp.config(CLIENT_NAME, opts.lsp or {})
   vim.lsp.enable(CLIENT_NAME)
 
   local group = vim.api.nvim_create_augroup('AbiExplorer', { clear = true })
+  -- A colour scheme loaded later clears the groups.
+  vim.api.nvim_create_autocmd('ColorScheme', { group = group, callback = define_highlights })
   vim.api.nvim_create_autocmd('LspAttach', {
     group = group,
     callback = function(event)

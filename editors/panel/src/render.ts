@@ -165,7 +165,7 @@ function memberTable(record: RecordView, actions: PanelActions): HTMLElement {
     if (row.kind === 'padding') {
       tr.className = 'padding';
       tr.append(
-        element('td', 'swatch', '·'),
+        element('td', 'swatch'),
         element('td', 'member', 'padding'),
         element('td', 'number', formatOffset(row.offsetBits)),
         element('td', 'number', formatSizeShort(row.sizeBits)),

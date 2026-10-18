@@ -78,16 +78,16 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
   it('hovers a record name with its size, map and members', async () => {
     const hover = await session.hover(project.uri('main.cpp'), { line: 8, character: 9 });
     const markdown = (hover!.contents as { value: string }).value;
-    expect(markdown).toContain('**struct Packet** · 40 bytes · align 8 · 9 bytes padding');
+    expect(markdown).toContain('**struct Packet** · 40 B · align 8 · 9 B padding');
     expect(markdown).toMatch(/^ b {2}length +4 +4 B {2}std::uint32_t$/m);
     expect(markdown).toContain('```text');
   });
 
-  it('hovers a member with its offset and the padding before it', async () => {
+  it('hovers a member with its offset and the padding around it', async () => {
     const hover = await session.hover(project.uri('main.cpp'), { line: 11, character: 18 });
     const markdown = (hover!.contents as { value: string }).value;
-    expect(markdown).toContain('**Packet::checksum** · offset 8 · 2 bytes · align 2');
-    expect(markdown).not.toContain('padding before');
+    expect(markdown).toContain('**Packet::checksum** `std::uint16_t` · offset 8 · 2 B · align 2');
+    expect(markdown).toContain('Bytes 8–9, followed by 6 B of padding.');
   });
 
   it('shows one inlay hint per record declaration', async () => {

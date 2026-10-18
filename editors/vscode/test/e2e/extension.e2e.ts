@@ -77,15 +77,17 @@ test('hovers, inlay hints and the layout view', async ({ page }) => {
   await hoverToken(page, 'Packet');
   const hover = page.locator('.monaco-hover:visible');
   await expect(hover).toContainText('struct Packet', { timeout: 15_000 });
-  await expect(hover).toContainText('9 bytes padding');
+  await expect(hover).toContainText('9 B padding');
   await expect(hover.locator('img')).toBeVisible();
+  await page.waitForTimeout(500);
   await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-record-hover.png') });
 
   await page.mouse.move(0, 0);
   await hoverToken(page, 'checksum');
-  await expect(hover).toContainText('Packet::checksum · offset 8 · 2 bytes · align 2', {
+  await expect(hover).toContainText('Packet::checksum std::uint16_t · offset 8 · 2 B · align 2', {
     timeout: 15_000,
   });
+  await page.waitForTimeout(500); // The hover fades in.
   await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-member-hover.png') });
 });
 

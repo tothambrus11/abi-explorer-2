@@ -16,7 +16,9 @@ require('abi-explorer').setup({
 
 - `K` on a struct or member name shows its byte map and member table.
 - `:AbiLayout` toggles a split with the layout of the struct at the cursor; the member at the
-  cursor is marked `▶` in the member table.
+  cursor is marked `▶` and its bytes stay bright while the others fade. Colours match the other
+  editors (`termguicolors`); override the `AbiExplorerMember1`…`8`, `AbiExplorerMemberFaded1`…`8`,
+  `AbiExplorerPadding` and `AbiExplorerSelected` highlight groups to change them.
 
 Compile flags come from `compile_commands.json` or `compile_flags.txt`, found the way clangd finds
 them. `vim.lsp.inlay_hint.enable` is per buffer, not per server, so turning hints on also shows
