@@ -99,5 +99,16 @@ LUA
   sleep 1
   xdotool type K
   shot 3 neovim-hover.png
+  xdotool key j k # moving the cursor closes the hover
+  sleep 1
+  xdotool type --delay 50 ':lua vim.lsp.buf.code_action()'
+  xdotool key Return
+  shot 3 neovim-code-actions.png
+  xdotool key Return # an empty choice cancels
+  sleep 1
+  xdotool type --delay 50 ':AbiTarget '
+  xdotool key Tab
+  shot 2 neovim-target-completion.png
+  xdotool key Escape
   pkill xterm || true
 fi
