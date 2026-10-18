@@ -61,12 +61,6 @@ const PALETTE = [
   '#96780f',
   '#9a745e',
 ];
-/**
- * How much of a member's colour a faded cell keeps, when another member is the
- * point: enough that the map still reads as the same struct (panel.css agrees).
- */
-export const FADED_OPACITY = 0.35;
-
 /** Padding's hatching, and an image's muted text: as legible as the colours on either theme. */
 export const PADDING_COLOR = '#7e7e7e';
 

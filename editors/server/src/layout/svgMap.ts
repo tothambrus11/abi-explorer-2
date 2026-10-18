@@ -15,7 +15,6 @@ import {
   mappedBytes,
   memberColor,
   memberLetter,
-  FADED_OPACITY,
   PADDING_COLOR,
 } from '@abi-explorer/shared/layoutModel';
 
@@ -134,7 +133,7 @@ function swatch(x: number, y: number, size: number, owner: number | null, faded:
   }
   const color = memberColor(owner);
   return (
-    `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="3" fill="${color}"${faded ? ` fill-opacity="${FADED_OPACITY}"` : ''}/>` +
+    `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="3" fill="${color}"${faded ? ' fill-opacity="0.15"' : ''}/>` +
     text(x + size / 2, y + size / 2 + 4, memberLetter(owner), faded ? color : '#ffffff')
   );
 }
