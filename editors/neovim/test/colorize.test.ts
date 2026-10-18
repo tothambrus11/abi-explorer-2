@@ -67,8 +67,8 @@ describe('Neovim colours', () => {
       ['·', 'AbiExplorerPadding'],
       ...Array.from({ length: 4 }, () => ['b', 'AbiExplorerMember2']),
     ]);
-    // Table swatches keep their colour; the row at the cursor is marked.
-    expect(at(6).map(([, , , group]) => group)).toEqual(['AbiExplorerMember1']);
+    // Only the swatch of the member at the cursor is filled; the row is marked too.
+    expect(at(6).map(([, , , group]) => group)).toEqual(['AbiExplorerMemberFaded1']);
     expect(
       at(8)
         .map(([, , , group]) => group)

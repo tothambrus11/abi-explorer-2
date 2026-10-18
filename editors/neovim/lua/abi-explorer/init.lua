@@ -61,7 +61,8 @@ end
 
 --- Colours the server's text layout in place: the byte map's cells, and the
 --- swatch letter of each member table row. `highlighted` is the 0-based index
---- of the member at the cursor; its bytes stay bright and the others fade.
+--- of the member at the cursor; its bytes and swatch are filled, and the others
+--- are coloured text (all map cells are filled when no member is at the cursor).
 local function colorize(buffer, lines, highlighted)
   vim.api.nvim_buf_clear_namespace(buffer, NAMESPACE, 0, -1)
   local function mark(row, start, finish, group)
@@ -91,7 +92,10 @@ local function colorize(buffer, lines, highlighted)
         first = first + #MARKER
       end
       local token = first and (line:sub(first, first + #PADDING_DOT - 1) == PADDING_DOT and PADDING_DOT or line:sub(first, first))
-      local swatch_group = token and line:sub(first + #token, first + #token + 1) == '  ' and cell_group(token, nil)
+      -- Only the member at the cursor gets a filled swatch; the others their colour as text.
+      local swatch_group = token
+        and line:sub(first + #token, first + #token + 1) == '  '
+        and cell_group(token, highlighted or -1)
       if swatch_group then
         mark(row - 1, first - 1, first - 1 + #token, swatch_group)
       end
