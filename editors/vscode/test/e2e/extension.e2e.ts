@@ -1,5 +1,5 @@
 // The packaged extension in real VS Code (code-server), driven by Playwright:
-// inlay hints, hovers and the Struct Layout view on the fixture project, with
+// inlay hints, hovers, code actions and the Struct Layout view on the fixture project, with
 // a screenshot of each for review.
 
 import path from 'node:path';
@@ -91,6 +91,25 @@ test('hovers, inlay hints and the layout view', async ({ page }) => {
   });
   await page.waitForTimeout(500); // The hover fades in.
   await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-member-hover.png') });
+
+  // A use of a library type hovers with its layout too.
+  await page.mouse.move(0, 0);
+  await hoverToken(page, 'vector');
+  await expect(hover).toContainText('class std::vector<int', { timeout: 15_000 });
+  await expect(hover).toContainText('24 B · align 8');
+
+  // The refactorings on Packet.
+  await page.mouse.move(0, 0);
+  await goToLine(page, 9, 10);
+  await page.keyboard.press('Control+.');
+  await expect(
+    page.getByText("Reorder Packet's members by alignment (32 B, 8 B less)"),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(
+    page.getByText("Pin Packet's layout with static_assert (40 B, align 8)"),
+  ).toBeVisible();
+  await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-code-actions.png') });
+  await page.keyboard.press('Escape');
 });
 
 async function openFile(page: Page, name: string): Promise<void> {
