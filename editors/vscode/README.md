@@ -2,7 +2,7 @@
 
 See how your C and C++ structs are laid out, with your project's own compile flags and target:
 
-- **Hover** a struct's name for its size, alignment, padding and a byte map; hover a member for its offset.
+- **Hover** a struct's name for its size, alignment, padding and a byte map; hover a member for its offset. Uses of a type hover the same way, library types included: `std::string`, `std::vector<int>`.
 - **Inlay hints** after each struct name: `40 B · align 8 · 9 B padding`.
 - **Reorder members by alignment**, a refactoring (the light bulb, or `Ctrl+.`) offered on a struct whose member order wastes space: it moves the member lines into the order that packs tightest.
 - **Struct Layout** view in the Explorer, following the caret, with a member table you can click to jump, and a button that copies the layout as text.

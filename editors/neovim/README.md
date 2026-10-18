@@ -14,7 +14,8 @@ require('abi-explorer').setup({
 })
 ```
 
-- `K` on a struct or member name shows its byte map and member table.
+- `K` on a struct or member name shows its byte map and member table, and so does `K` on any use
+  of a struct, library types included (`std::string`).
 - `vim.lsp.buf.code_action()` (`gra`) on a struct whose member order wastes space offers to
   reorder its members by alignment.
 - `:AbiLayout` toggles a split with the layout of the struct at the cursor; the member at the

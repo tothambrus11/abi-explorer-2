@@ -22,75 +22,129 @@ export function recordsInDocument(
 ): RecordView[] {
   const lines = document.text.split(/\r?\n/);
   const recordsById = new Map(records.map((record) => [record.id, record]));
+  return records.flatMap((record): RecordView[] =>
+    record.isAnonymous || record.location?.file !== document.guestPath
+      ? []
+      : [recordView(record, recordsById, document.guestPath, lines)],
+  );
+}
+
+/**
+ * The records the translation unit laid out, by the names a document can
+ * use for them: `Pair<double>`, `ns::Shape`, `Shape`, and each field's type
+ * as written (`std::string`, which clang prints as `std::basic_string<char>`).
+ * Spellings are compared without spaces; a name that means two records means
+ * neither.
+ */
+export function typeIndex(
+  records: readonly RecordLayout[],
+): (spelling: string) => RecordView | null {
+  const recordsById = new Map(records.map((record) => [record.id, record]));
+  const byName = new Map<string, RecordLayout | null>();
+  const add = (name: string, record: RecordLayout) => {
+    const key = name.replace(/\s+/g, '');
+    if (!key) return;
+    const known = byName.get(key);
+    byName.set(key, known === undefined || known === record ? record : null);
+  };
+  for (const record of records) {
+    if (record.isAnonymous) continue;
+    const printed = record.printedName.replace(/^(struct|class|union|__interface) /, '');
+    add(printed, record);
+    if (record.qualifiedName) add(record.qualifiedName, record);
+    const parts = printed.split('::');
+    for (let index = 1; index < parts.length; index++) add(parts.slice(index).join('::'), record);
+  }
+  for (const record of records) {
+    for (const group of record.render.groups) {
+      const target = group.recordId === null ? undefined : recordsById.get(group.recordId);
+      if (target && !target.isAnonymous) add(group.type.replace(/^const |^volatile /, ''), target);
+    }
+  }
+  const views = new Map<RecordLayout, RecordView>();
+  return (spelling) => {
+    const record = byName.get(spelling.replace(/\s+/g, '').replace(/^::/, ''));
+    if (!record) return null;
+    let view = views.get(record);
+    if (!view) {
+      view = recordView(record, recordsById, null, []);
+      views.set(record, view);
+    }
+    return view;
+  };
+}
+
+/** One record as a view; ranges only for locations in `guestPath`, the file `lines` are of. */
+function recordView(
+  record: RecordLayout,
+  recordsById: ReadonlyMap<number, RecordLayout>,
+  guestPath: string | null,
+  lines: readonly string[],
+): RecordView {
   const inDocument = (location: Location | null): location is Location =>
-    location !== null && location.file === document.guestPath;
-
-  return records.flatMap((record): RecordView[] => {
-    if (record.isAnonymous || !inDocument(record.location)) return [];
-    const members: MemberView[] = [];
-    const visit = (nodes: readonly RenderNode[]) => {
-      for (const node of nodes) {
-        if (node.kind === 'leaf') {
-          const leaf = record.render.leaves[node.ref]!;
-          members.push({
-            kind: leaf.kind,
-            label: leaf.name || '(unnamed)',
-            type: leaf.type,
-            offsetBits: leaf.offsetBits,
-            sizeBits: leaf.sizeBits,
-            alignBits: leaf.alignBits,
-            nameRange: inDocument(leaf.location) ? rangeOf(leaf.location, lines) : null,
-          });
-          continue;
-        }
-        const group = record.render.groups[node.ref]!;
-        const nested = group.recordId === null ? undefined : recordsById.get(group.recordId);
-        if (group.kind === 'member' && nested?.isAnonymous) {
-          visit(node.children);
-          continue;
-        }
-        const location = group.location;
+    location !== null && location.file === guestPath;
+  const members: MemberView[] = [];
+  const visit = (nodes: readonly RenderNode[]) => {
+    for (const node of nodes) {
+      if (node.kind === 'leaf') {
+        const leaf = record.render.leaves[node.ref]!;
         members.push({
-          kind: group.kind === 'member' ? 'field' : 'base',
-          label: group.kind === 'member' ? group.name : group.type,
-          type: group.type,
-          offsetBits: group.offsetBits,
-          sizeBits: group.sizeBits,
-          alignBits: group.alignBits,
-          // A base specifier's range has no file of its own: it is in the record's.
-          nameRange:
-            location === null
-              ? null
-              : 'file' in location
-                ? inDocument(location)
-                  ? rangeOf(location, lines)
-                  : null
-                : extentOf(location, lines),
+          kind: leaf.kind,
+          label: leaf.name || '(unnamed)',
+          type: leaf.type,
+          offsetBits: leaf.offsetBits,
+          sizeBits: leaf.sizeBits,
+          alignBits: leaf.alignBits,
+          nameRange: inDocument(leaf.location) ? rangeOf(leaf.location, lines) : null,
         });
+        continue;
       }
-    };
-    visit(record.render.tree);
+      const group = record.render.groups[node.ref]!;
+      const nested = group.recordId === null ? undefined : recordsById.get(group.recordId);
+      if (group.kind === 'member' && nested?.isAnonymous) {
+        visit(node.children);
+        continue;
+      }
+      const location = group.location;
+      members.push({
+        kind: group.kind === 'member' ? 'field' : 'base',
+        label: group.kind === 'member' ? group.name : group.type,
+        type: group.type,
+        offsetBits: group.offsetBits,
+        sizeBits: group.sizeBits,
+        alignBits: group.alignBits,
+        // A base specifier's range has no file of its own: it is in the record's.
+        nameRange:
+          location === null
+            ? null
+            : 'file' in location
+              ? inDocument(location)
+                ? rangeOf(location, lines)
+                : null
+              : extentOf(location, lines),
+      });
+    }
+  };
+  visit(record.render.tree);
 
-    return [
-      {
-        id: record.id,
-        kind: record.kind,
-        name: displayName(record),
-        sizeBits: record.sizeBits,
-        alignBits: record.alignBits,
-        paddingBytes: record.render.paddingBytes,
-        nameRange: rangeOf(record.location, lines),
-        extent: record.range ? extentOf(record.range, lines) : null,
-        members,
-        bases: record.bases.map((base) => ({
-          name: base.typeSpelling,
-          offsetBits: base.offsetBits,
-          sizeBits: base.sizeBits,
-          isVirtual: base.isVirtual,
-        })),
-      },
-    ];
-  });
+  const here = inDocument(record.location);
+  return {
+    id: record.id,
+    kind: record.kind,
+    name: displayName(record),
+    sizeBits: record.sizeBits,
+    alignBits: record.alignBits,
+    paddingBytes: record.render.paddingBytes,
+    nameRange: here ? rangeOf(record.location!, lines) : null,
+    extent: here && record.range ? extentOf(record.range, lines) : null,
+    members,
+    bases: record.bases.map((base) => ({
+      name: base.typeSpelling,
+      offsetBits: base.offsetBits,
+      sizeBits: base.sizeBits,
+      isVirtual: base.isVirtual,
+    })),
+  };
 }
 
 /** `struct Pair<int, char>` → `Pair<int, char>`; a plain record keeps its qualified name. */

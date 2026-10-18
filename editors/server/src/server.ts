@@ -27,6 +27,7 @@ import { EngineClient } from './engine/engineClient.ts';
 import { ensureEngineFiles } from './engine/engineFiles.ts';
 import { createPathMap } from './engine/pathMap.ts';
 import { memberHover, recordHover } from './layout/hover.ts';
+import { typeNameAt } from './layout/typeNameAt.ts';
 import { layoutHints } from './layout/inlayHints.ts';
 import { reorderAction } from './layout/reorderAction.ts';
 import { textLayout } from './layout/textLayout.ts';
@@ -131,7 +132,13 @@ export function startServer(connection: Connection, options: ServerOptions): voi
     if (!lineUnchanged(analyzed, document, position.line)) return null;
 
     const hit = nameUnder(analyzed.records, position);
-    if (!hit) return null;
+    if (!hit) {
+      const name = typeNameAt(lineText(document, position.line), position.line, position.character);
+      const record = name && analyzed.recordNamed(name.spelling);
+      if (!record) return null;
+      const markdown = recordHover(record, analyzed.context, { images: hoverImages });
+      return { contents: { kind: MarkupKind.Markdown, value: markdown }, range: name.range };
+    }
     const markdown =
       hit.memberIndex === null
         ? hit.records

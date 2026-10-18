@@ -24,7 +24,7 @@ import {
 } from './compile/toolchain.ts';
 import type { PathMap } from './engine/pathMap.ts';
 import type { EngineRequest, EngineResponse } from './engine/engineTypes.ts';
-import { recordsInDocument } from './layout/documentRecords.ts';
+import { recordsInDocument, typeIndex } from './layout/documentRecords.ts';
 import type { AnalysisContext, RecordView } from '@abi-explorer/shared/protocol';
 
 export interface AnalyzedDocument {
@@ -33,6 +33,8 @@ export interface AnalyzedDocument {
   /** The lines of the text the ranges in `records` refer to. */
   lines: string[];
   records: RecordView[];
+  /** Any record the translation unit laid out, by a name the document can use for it. */
+  recordNamed: (spelling: string) => RecordView | null;
   context: AnalysisContext;
 }
 
@@ -203,6 +205,7 @@ export class Analyzer {
           version,
           lines: text.split(/\r?\n/),
           records: recordsInDocument(response.records, { guestPath: request.filename, text }),
+          recordNamed: typeIndex(response.records),
           context: {
             triple: response.target?.triple ?? toolchain.triple,
             cxxAbi: response.target?.cxxAbi ?? 'unknown',

@@ -90,6 +90,28 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     expect(markdown).toContain('Bytes 8–9, followed by 6 B of padding.');
   });
 
+  it('hovers a use of a record declared elsewhere, by its name or as written', async () => {
+    const uri = project.uri('uses.cpp');
+    fs.writeFileSync(
+      project.path('uses.cpp'),
+      '#include "shapes.h"\n#include <vector>\nShape make();\nstruct Holder { std::string name; std::vector<int> values; };\n',
+    );
+    await session.open(uri);
+    const markdown = async (line: number, character: number) => {
+      const hover = await session.hover(uri, { line, character });
+      return (hover?.contents as { value: string } | undefined)?.value ?? '';
+    };
+    const shape = await markdown(2, 2);
+    expect(shape).toContain(`**struct Shape** · ${compiled['sizeof(Shape)']} B`);
+    expect(shape).toMatch(/^ \S {2}name +\d+ +\d+ B {2}std::string$/m);
+    // clang calls it `std::basic_string<char>`; the field's type says `std::string`.
+    expect(await markdown(3, 22)).toMatch(
+      /^\*\*class std::(__cxx11::)?basic_string\\<char.*\*\* · 32 B/m,
+    );
+    expect(await markdown(3, 42)).toMatch(/^\*\*class std::vector\\<int.*\*\* · 24 B · align 8/m);
+    expect(await markdown(3, 1)).toBe(''); // `struct` is not a name
+  });
+
   it('shows one inlay hint per record declaration', async () => {
     const hints = await session.inlayHints(project.uri('main.cpp'));
     expect(hints.map((hint) => [hint.position.line, hint.label])).toEqual([
