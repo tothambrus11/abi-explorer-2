@@ -117,6 +117,16 @@ test('hovers, code actions and the layout view', async ({ page }) => {
   await expect(packetSize).toHaveText('20 B · align 4 · 1 B padding', { timeout: 60_000 });
   await expect(page.locator('.statusbar')).toContainText('armv7-unknown-linux-gnueabihf');
   await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-other-target.png') });
+
+  // The view and the hover image on a light theme.
+  await page.keyboard.press('Control+K');
+  await page.keyboard.press('Control+T');
+  await page.getByRole('option', { name: /Light Modern/ }).click();
+  await expect(page.locator('.monaco-workbench.vs')).toBeVisible();
+  await hoverToken(page, 'Circle');
+  await expect(hover).toContainText('struct Circle', { timeout: 15_000 });
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-light-theme.png') });
 });
 
 async function openFile(page: Page, name: string): Promise<void> {

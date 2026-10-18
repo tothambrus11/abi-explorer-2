@@ -109,7 +109,7 @@ describe('byte maps', () => {
 
   it('fades every member but the highlighted one', () => {
     const svg = svgMap(packet, { highlightedMember: 2 })!;
-    expect(svg.match(/rx="3" fill="#\w+" fill-opacity="0.9"/g)).toHaveLength(2);
+    expect(svg.match(/rx="3" fill="#\w+"\/>/g)).toHaveLength(2);
     expect(svg.match(/rx="3" fill="#\w+" fill-opacity="0.15"/g)).toHaveLength(5);
   });
 

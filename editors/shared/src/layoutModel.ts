@@ -48,18 +48,21 @@ export function bytesPerRow(sizeBytes: number): number {
 /** Records past this size are listed but not mapped: hundreds of rows help nobody. */
 export const MAX_MAPPED_BYTES = 512;
 
-// Mid-tone colours, so a map reads on light and dark themes alike.
+// Tableau's hues, each at the same mid luminance: white letters read on every
+// colour, and every colour reads as text on light and dark themes alike, so
+// images (which cannot follow the theme) and panels draw them the same.
 const PALETTE = [
-  '#4e79a7',
-  '#f28e2b',
-  '#59a14f',
-  '#b07aa1',
-  '#e15759',
-  '#76b7b2',
-  '#edc948',
-  '#9c755f',
+  '#527eae',
+  '#be640c',
+  '#4c8943',
+  '#a56794',
+  '#de4446',
+  '#478682',
+  '#96780f',
+  '#9a745e',
 ];
-export const PADDING_COLOR = '#8a8a8a';
+/** Padding's hatching, and an image's muted text: as legible as the colours on either theme. */
+export const PADDING_COLOR = '#7e7e7e';
 
 /** The colour member `index` is drawn in; the hover image and the panel agree. */
 export function memberColor(index: number): string {

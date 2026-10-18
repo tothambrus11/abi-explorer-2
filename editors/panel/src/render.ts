@@ -206,7 +206,7 @@ function memberTable(record: RecordView, actions: PanelActions): HTMLElement {
     if (row.kind === 'padding') {
       tr.className = 'padding';
       tr.append(
-        element('td', 'swatch'),
+        swatchCell(null),
         element('td', 'member', 'padding'),
         element('td', 'number', formatOffset(row.offsetBits)),
         element('td', 'number', formatSizeShort(row.sizeBits)),
@@ -223,7 +223,7 @@ function memberTable(record: RecordView, actions: PanelActions): HTMLElement {
       }
       name.title = member.type ? `${member.label}: ${member.type}` : member.label;
       tr.append(
-        element('td', 'swatch', memberLetter(row.memberIndex)),
+        swatchCell(row.memberIndex),
         name,
         element('td', 'number', formatOffset(member.offsetBits)),
         element('td', 'number', formatSizeShort(member.sizeBits)),
@@ -245,6 +245,17 @@ function memberTable(record: RecordView, actions: PanelActions): HTMLElement {
     body.append(tr);
   }
   return table;
+}
+
+/** A table row's small square: the member's colour and letter, as in the map; padding hatched. */
+function swatchCell(memberIndex: number | null): HTMLElement {
+  const cell = element('td', 'swatch');
+  cell.append(
+    memberIndex === null
+      ? element('span', 'chip padding')
+      : element('span', 'chip', memberLetter(memberIndex)),
+  );
+  return cell;
 }
 
 function revealMember(record: RecordView, memberIndex: number, actions: PanelActions): void {

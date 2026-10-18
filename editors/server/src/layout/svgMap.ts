@@ -133,7 +133,7 @@ function swatch(x: number, y: number, size: number, owner: number | null, faded:
   }
   const color = memberColor(owner);
   return (
-    `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="3" fill="${color}" fill-opacity="${faded ? 0.15 : 0.9}"/>` +
+    `<rect x="${x}" y="${y}" width="${size}" height="${size}" rx="3" fill="${color}"${faded ? ' fill-opacity="0.15"' : ''}/>` +
     text(x + size / 2, y + size / 2 + 4, memberLetter(owner), faded ? color : '#ffffff')
   );
 }

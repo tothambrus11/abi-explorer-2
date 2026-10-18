@@ -11,8 +11,8 @@ local NAMESPACE = vim.api.nvim_create_namespace('abi_explorer')
 
 -- The member colours and letters of editors/shared/src/layoutModel.ts, so the
 -- split matches the hovers and panels of the other editors (a test checks).
-local PALETTE = { '#4e79a7', '#f28e2b', '#59a14f', '#b07aa1', '#e15759', '#76b7b2', '#edc948', '#9c755f' }
-local PADDING_COLOR = '#8a8a8a'
+local PALETTE = { '#527eae', '#be640c', '#4c8943', '#a56794', '#de4446', '#478682', '#96780f', '#9a745e' }
+local PADDING_COLOR = '#7e7e7e'
 
 -- `:AbiTarget`'s completions: the targets VS Code's Choose Target offers.
 local TARGETS = {
