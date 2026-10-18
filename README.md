@@ -83,6 +83,13 @@ Each language's compiler is downloaded only if you select that language: a
 session that stays in C never fetches the Hylo module, and one that starts in
 Hylo never fetches clang.
 
+### In your editor
+
+The same engine runs in VS Code, CLion, Zed and Neovim, against your project's
+own compile flags: a struct's size, alignment and padding after its name, its
+byte map on hover, and (in VS Code and CLion) a side panel that follows the
+caret. See [editors/](editors/README.md).
+
 ## How it works
 
 The app asks one question and reads the answer. There are two compilers that
