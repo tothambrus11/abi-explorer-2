@@ -1,5 +1,6 @@
 <idea-plugin>
-  <id>abiexplorer.clion</id>
+  <!-- Marketplace IDs may not contain the IDE's name, and never change once published. -->
+  <id>io.github.tothambrus11.abiexplorer</id>
   <name>ABI Explorer</name>
   <vendor url="https://github.com/tothambrus11/abi-explorer-2">Ambrus Tóth</vendor>
   <description><![CDATA[

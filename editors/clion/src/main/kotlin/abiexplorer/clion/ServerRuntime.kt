@@ -30,7 +30,7 @@ class ServerRuntime(private val node: Path, private val script: Path) {
         GeneralCommandLine(node.toString(), script.toString(), "--stdio").withCharset(Charsets.UTF_8)
 
     companion object {
-        private const val PLUGIN_ID = "abiexplorer.clion"
+        private const val PLUGIN_ID = "io.github.tothambrus11.abiexplorer"
         private val home: Path get() = Path.of(PathManager.getSystemPath(), "abi-explorer")
 
         /** Set once `prepare` has run in this IDE session. */
