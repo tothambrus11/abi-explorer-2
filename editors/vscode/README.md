@@ -14,7 +14,7 @@ The layout engine (clang compiled to WebAssembly, about 50 MB) is downloaded onc
 
 | Setting | Default | |
 |:--|:--|:--|
-| `abiExplorer.inlayHints` | `records` | `records`, `members` (also each member's offset), or `off` |
+| `abiExplorer.inlayHints` | `records` | `records`, `members` (also each member's offset, size and the padding after it), or `off` |
 | `abiExplorer.compileCommandsDir` | | Where `compile_commands.json` is, when it is not found by searching |
 | `abiExplorer.allowedCompilers` | `[]` | Globs of compilers inside the workspace that may be run |
 | `abiExplorer.fallbackFlags` | `[]` | Flags for files no compile command covers |

@@ -72,7 +72,7 @@
           ],
           "enumDescriptions": [
             "Size, alignment and padding after each struct's name.",
-            "Also each member's offset and size at the end of its line.",
+            "Also each member's offset, size and the padding after it, at the end of its line.",
             "No inlay hints."
           ],
           "default": "records",
