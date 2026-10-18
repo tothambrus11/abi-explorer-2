@@ -4,7 +4,7 @@
 // Zed has no panels and Neovim's are text, so this is the one surface every
 // editor shows without the user asking.
 
-import type { InlayHintsMode, Position, RecordView } from '@abi-explorer/shared/protocol';
+import type { InlayHintsMode, Position, Range, RecordView } from '@abi-explorer/shared/protocol';
 import { formatOffset, formatSizeShort } from '@abi-explorer/shared/format';
 import { recordSummary } from '@abi-explorer/shared/layoutModel';
 
@@ -21,6 +21,9 @@ export function layoutHints(
   if (mode === 'off') return [];
   const hints: LayoutHint[] = [];
   const hintedRecordLines = new Set<number>();
+  // Member hints by line, across records: `int x, y;`, or a nested record and
+  // the member of its type declared on one line, get one hint between them.
+  const memberLines = new Map<number, { name: string; label: string }[]>();
   for (const record of records) {
     // Several instantiations of one template share a declaration; one hint is enough.
     if (!record.nameRange || hintedRecordLines.has(record.nameRange.start.line)) continue;
@@ -28,17 +31,31 @@ export function layoutHints(
     hints.push({ position: record.nameRange.end, label: recordSummary(record) });
 
     if (mode !== 'members') continue;
-    // `int x, y;` declares two members on one line: one hint lists both.
-    const byLine = new Map<number, string[]>();
     for (const member of record.members) {
-      if (!member.nameRange) continue;
+      // A virtual base is named in another class's base list: its hint would land there.
+      if (!member.nameRange || !within(member.nameRange.start, record.extent)) continue;
       const line = member.nameRange.start.line;
       const label = `@${formatOffset(member.offsetBits)} · ${formatSizeShort(member.sizeBits)}`;
-      byLine.set(line, [...(byLine.get(line) ?? []), label]);
-    }
-    for (const [line, labels] of byLine) {
-      hints.push({ position: { line, character: lineLength(line) }, label: labels.join(', ') });
+      memberLines.set(line, [...(memberLines.get(line) ?? []), { name: member.label, label }]);
     }
   }
+  for (const [line, members] of memberLines) {
+    const label =
+      members.length === 1
+        ? members[0]!.label
+        : members.map((member) => `${member.name} ${member.label}`).join(', ');
+    hints.push({ position: { line, character: lineLength(line) }, label });
+  }
   return hints;
+}
+
+function within(position: Position, range: Range | null): boolean {
+  if (!range) return true;
+  const after =
+    position.line > range.start.line ||
+    (position.line === range.start.line && position.character >= range.start.character);
+  const before =
+    position.line < range.end.line ||
+    (position.line === range.end.line && position.character <= range.end.character);
+  return after && before;
 }

@@ -8,22 +8,30 @@ import { formatOffset, formatSizeShort } from './format.ts';
 
 export type ByteOwner = number | null;
 
-/**
- * One cell per byte, holding the index of the first member that touches it, or
- * null for padding. A byte shared by bit-fields belongs to the first of them,
- * and in a union the first member covers the others; the table lists them all.
- */
-export function byteOwners(record: RecordView): ByteOwner[] {
-  const owners: ByteOwner[] = Array.from({ length: Math.ceil(record.sizeBits / 8) }, () => null);
+/** Every member touching each byte, in declaration order: several in a union, or bit-fields sharing a byte. */
+export function byteMembers(record: RecordView): number[][] {
+  const members: number[][] = Array.from({ length: Math.ceil(record.sizeBits / 8) }, () => []);
   record.members.forEach((member, index) => {
     if (member.sizeBits === 0) return;
     const first = Math.floor(member.offsetBits / 8);
     const last = Math.ceil((member.offsetBits + member.sizeBits) / 8) - 1;
-    for (let byte = first; byte <= last && byte < owners.length; byte++) {
-      owners[byte] ??= index;
+    for (let byte = first; byte <= last && byte < members.length; byte++) {
+      members[byte]!.push(index);
     }
   });
-  return owners;
+  return members;
+}
+
+/**
+ * One cell per byte, holding the member it is drawn as, or null for padding.
+ * Where members overlap (a union, bit-fields sharing a byte) that is the
+ * `preferred` member when it is one of them, so a highlighted member shows
+ * all of its bytes; otherwise the first. The table lists them all.
+ */
+export function byteOwners(record: RecordView, preferred: number | null = null): ByteOwner[] {
+  return byteMembers(record).map((members) =>
+    preferred !== null && members.includes(preferred) ? preferred : (members[0] ?? null),
+  );
 }
 
 /** The letter a member is drawn with: a–z, then A–Z, then digits, then `#`. */
@@ -82,8 +90,11 @@ export function layoutRows(record: RecordView): LayoutRow[] {
 }
 
 /** The bytes to draw, or null when there are none or too many to be of use. */
-export function mappedBytes(record: RecordView): ByteOwner[] | null {
-  const owners = byteOwners(record);
+export function mappedBytes(
+  record: RecordView,
+  preferred: number | null = null,
+): ByteOwner[] | null {
+  const owners = byteOwners(record, preferred);
   return owners.length === 0 || owners.length > MAX_MAPPED_BYTES ? null : owners;
 }
 

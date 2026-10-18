@@ -38,9 +38,9 @@ export interface SvgOptions {
 }
 
 export function svgMap(record: RecordView, options: SvgOptions = {}): string | null {
-  const owners = mappedBytes(record);
-  if (!owners) return null;
   const highlighted = options.highlightedMember ?? null;
+  const owners = mappedBytes(record, highlighted);
+  if (!owners) return null;
   const perRow = bytesPerRow(owners.length);
   const rows = Math.ceil(owners.length / perRow);
   const mapWidth = LABEL_WIDTH + perRow * (CELL + GAP);

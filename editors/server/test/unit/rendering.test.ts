@@ -68,7 +68,11 @@ describe('format', () => {
       '1 bit',
       '3 bits',
     ]);
-    expect([formatSizeShort(32), formatSizeShort(3)]).toEqual(['4 B', '3 bits']);
+    expect([formatSizeShort(32), formatSizeShort(3), formatSizeShort(1)]).toEqual([
+      '4 B',
+      '3 bits',
+      '1 bit',
+    ]);
     expect([formatOffset(64), formatOffset(67)]).toEqual(['8', '8.3']);
   });
 });
@@ -89,6 +93,18 @@ describe('byte maps', () => {
     const svg = svgMap(packet)!;
     expect(svg.match(/<rect /g)).toHaveLength(12 + 1);
     expect(svg.match(/fill="url\(#pad\)"/g)).toHaveLength(5);
+  });
+
+  it('draws a highlighted union member over all of its bytes', () => {
+    const union: RecordView = {
+      ...packet,
+      kind: 'union',
+      sizeBits: 64,
+      members: [member('i', 0, 4, 'int'), member('d', 0, 8, 'double')],
+    };
+    expect(textMap(union)!.split('\n')[1]).toBe('0  a a a a b b b b');
+    expect(textMap(union, 1)!.split('\n')[1]).toBe('0  █ █ █ █ █ █ █ █');
+    expect(textMap(union, 1, { shade: false })!.split('\n')[1]).toBe('0  b b b b b b b b');
   });
 
   it('fades every member but the highlighted one', () => {
@@ -183,7 +199,18 @@ describe('layoutHints', () => {
       members: [member('x', 0, 4, 'int', 1), member('y', 4, 4, 'int', 1)],
     };
     expect(layoutHints([twoOnOneLine], 'members', (line) => line * 10).slice(1)).toEqual([
-      { position: { line: 1, character: 10 }, label: '@0 · 4 B, @4 · 4 B' },
+      { position: { line: 1, character: 10 }, label: 'x @0 · 4 B, y @4 · 4 B' },
+    ]);
+  });
+
+  it('gives no member hint outside the record, as a virtual base named in a base list', () => {
+    const withBase: RecordView = {
+      ...packet,
+      extent: at(0, 0, 40),
+      members: [member('a', 0, 4, 'int', 0), { ...member('Base', 8, 8, 'Base', 7), kind: 'base' }],
+    };
+    expect(layoutHints([withBase], 'members', () => 50).slice(1)).toEqual([
+      { position: { line: 0, character: 50 }, label: '@0 · 4 B' },
     ]);
   });
 

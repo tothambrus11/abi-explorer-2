@@ -19,8 +19,9 @@ import {
 export function textMap(
   record: RecordView,
   highlightedMember: number | null = null,
+  { shade = true }: { shade?: boolean } = {},
 ): string | null {
-  const owners = mappedBytes(record);
+  const owners = mappedBytes(record, highlightedMember);
   if (!owners) return null;
   const perRow = bytesPerRow(owners.length);
   const offsetWidth = String(owners.length - 1).length;
@@ -28,7 +29,7 @@ export function textMap(
 
   const cell = (owner: number | null) => {
     if (owner === null) return '·';
-    if (highlightedMember === null) return memberLetter(owner);
+    if (highlightedMember === null || !shade) return memberLetter(owner);
     return owner === highlightedMember ? '█' : '░';
   };
 
@@ -82,7 +83,9 @@ export function textMemberTable(
 
 /** The byte map, then the member table: a record's whole layout as text. */
 export function textLayout(record: RecordView, highlightedMember: number | null = null): string {
-  return [textMap(record), textMemberTable(record, highlightedMember)].filter(Boolean).join('\n\n');
+  // Letters, not shading: clients colour them (Neovim) or read them as they are.
+  const map = textMap(record, highlightedMember, { shade: false });
+  return [map, textMemberTable(record, highlightedMember)].filter(Boolean).join('\n\n');
 }
 
 function range(n: number): number[] {

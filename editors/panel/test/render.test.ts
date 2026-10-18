@@ -94,6 +94,18 @@ describe('renderPanel', () => {
     expect(root.querySelector('tr.highlighted .label')!.textContent).toBe('length');
   });
 
+  it('draws a highlighted union member over every byte it shares', () => {
+    const union = record(3, 'Value', [member('i', 0, 4, 31), member('d', 0, 8, 32)], 8, 0);
+    const selected = (memberIndex: number) =>
+      result({ records: [union], selection: { recordId: 3, memberIndex } });
+    renderPanel(root, selected(1), state, { reveal });
+    expect(texts('.byte')).toEqual(Array.from({ length: 8 }, () => 'b'));
+    expect(root.querySelectorAll('.byte.highlighted')).toHaveLength(8);
+    renderPanel(root, selected(0), state, { reveal });
+    expect(texts('.byte')).toEqual(['a', 'a', 'a', 'a', 'b', 'b', 'b', 'b']);
+    expect(root.querySelectorAll('.byte.highlighted')).toHaveLength(4);
+  });
+
   it('reveals a member when its row is clicked', () => {
     renderPanel(root, result({ selection: { recordId: 1, memberIndex: null } }), state, { reveal });
     root.querySelector<HTMLElement>('tr[data-member="1"]')!.click();

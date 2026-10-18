@@ -9,6 +9,7 @@ import type { LayoutResult, Range, RecordView } from '@abi-explorer/shared/proto
 import { formatOffset, formatSizeShort } from '@abi-explorer/shared/format';
 import {
   baseList,
+  byteMembers,
   bytesPerRow,
   contextNotes,
   layoutRows,
@@ -103,9 +104,16 @@ function recordDetails(
   if (map) details.append(map);
   details.append(memberTable(record, actions));
   const highlight = (index: number | null) => {
-    for (const node of details.querySelectorAll<HTMLElement>('[data-member]')) {
-      node.classList.toggle('highlighted', index !== null && node.dataset.member === String(index));
-      node.classList.toggle('dimmed', index !== null && node.dataset.member !== String(index));
+    for (const row of details.querySelectorAll<HTMLElement>('tr[data-member]')) {
+      row.classList.toggle('highlighted', index !== null && row.dataset.member === String(index));
+      row.classList.toggle('dimmed', index !== null && row.dataset.member !== String(index));
+    }
+    for (const cell of details.querySelectorAll<HTMLElement>('.byte[data-member]')) {
+      // A byte several members share (a union) is drawn as the highlighted one when it is among them.
+      const covers = index !== null && cell.dataset.covers!.split(' ').includes(String(index));
+      drawCell(cell, covers ? index : Number(cell.dataset.member));
+      cell.classList.toggle('highlighted', covers);
+      cell.classList.toggle('dimmed', index !== null && !covers);
     }
   };
   details.addEventListener('pointerover', (event) => {
@@ -131,22 +139,30 @@ function byteMap(record: RecordView, actions: PanelActions): HTMLElement | null 
   for (let column = 0; column < perRow; column++) {
     grid.append(element('span', 'column-label', String(column)));
   }
+  const members = byteMembers(record);
   owners.forEach((owner, byte) => {
     if (byte % perRow === 0) grid.append(element('span', 'row-label', String(byte)));
     if (owner === null) {
       grid.append(element('span', 'byte padding'));
       return;
     }
-    const cell = element('span', 'byte', memberLetter(owner));
+    const cell = element('span', 'byte');
     cell.dataset.member = String(owner);
-    cell.style.setProperty('--member-color', memberColor(owner));
-    cell.title = `${record.members[owner]!.label} · byte ${byte}`;
+    cell.dataset.covers = members[byte]!.join(' ');
+    drawCell(cell, owner);
+    const names = members[byte]!.map((index) => record.members[index]!.label).join(', ');
+    cell.title = `${names} · byte ${byte}`;
     cell.addEventListener('click', () => {
       revealMember(record, owner, actions);
     });
     grid.append(cell);
   });
   return grid;
+}
+
+function drawCell(cell: HTMLElement, memberIndex: number): void {
+  cell.textContent = memberLetter(memberIndex);
+  cell.style.setProperty('--member-color', memberColor(memberIndex));
 }
 
 function memberTable(record: RecordView, actions: PanelActions): HTMLElement {
