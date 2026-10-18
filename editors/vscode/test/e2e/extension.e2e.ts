@@ -79,6 +79,7 @@ test('hovers, inlay hints and the layout view', async ({ page }) => {
   const hover = page.locator('.monaco-hover:visible');
   await expect(hover).toContainText('struct Packet', { timeout: 15_000 });
   await expect(hover).toContainText('9 B padding');
+  await expect(hover).toContainText('the members would fit in 32 B, 8 B less');
   await expect(hover.locator('img')).toBeVisible();
   await page.waitForTimeout(500);
   await page.screenshot({ path: path.join(SCREENSHOTS, 'vscode-record-hover.png') });
