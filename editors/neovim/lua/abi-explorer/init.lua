@@ -217,7 +217,10 @@ function M.toggle()
   split.window = vim.api.nvim_get_current_win()
   vim.api.nvim_win_set_buf(split.window, split.buffer)
   vim.wo[split.window].number = false
-  vim.wo[split.window].wrap = false
+  -- Wrapped at words, so a long note or type stays readable in a narrow split.
+  vim.wo[split.window].wrap = true
+  vim.wo[split.window].linebreak = true
+  vim.wo[split.window].breakindent = true
   vim.api.nvim_set_current_win(previous)
   refresh()
 end
