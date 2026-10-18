@@ -49,7 +49,7 @@ export function typeIndex(
   };
   for (const record of records) {
     if (unnamed(record)) continue;
-    const printed = record.printedName.replace(/^(struct|class|union|__interface) /, '');
+    const printed = withoutTags(record.printedName);
     add(printed, record);
     if (record.qualifiedName) add(record.qualifiedName, record);
     const parts = printed.split('::');
@@ -67,7 +67,8 @@ export function typeIndex(
   }
   const views = new Map<RecordLayout, RecordView>();
   return (spelling) => {
-    const record = byName.get(spelling.replace(/\s+/g, '').replace(/^::/, ''));
+    const key = spelling.replace(/\s+/g, '').replace(/^::/, '');
+    const record = byName.get(key);
     if (!record) return null;
     let view = views.get(record);
     if (!view) {
@@ -204,12 +205,17 @@ function recordView(
 
 /** `struct Pair<int, char>` → `Pair<int, char>`; a plain record keeps its qualified name. */
 function displayName(record: RecordLayout): string {
-  const printed = record.printedName.replace(/^(struct|class|union|__interface) /, '');
+  const printed = withoutTags(record.printedName);
   return printed.includes('<') ? printed : record.qualifiedName || printed;
 }
 
 function after(a: Position, b: Position): boolean {
   return a.line > b.line || (a.line === b.line && a.character > b.character);
+}
+
+/** `class std::optional<struct P>` → `std::optional<P>`, as the type is written in C++. */
+function withoutTags(printedName: string): string {
+  return printedName.replace(/(^|[<,(]\s*)(?:struct|class|union|enum|__interface) /g, '$1');
 }
 
 function rangeOf(location: Location, lines: readonly string[]): Range {
