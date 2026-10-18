@@ -252,6 +252,23 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp with a target
       project.remove();
     }
   });
+
+  it('says why nothing is laid out for a target clang does not know', async () => {
+    const project = copyFixtureProject();
+    const session = await LspSession.start(project.uri(''), {
+      enginePath: LOCAL_ENGINE,
+      target: 'not-a-target',
+    });
+    try {
+      await session.open(project.uri('main.cpp'));
+      expect((await session.layout(project.uri('main.cpp'))).message).toBe(
+        "Nothing could be laid out: unknown target triple 'not-a-target'.",
+      );
+    } finally {
+      await session.stop();
+      project.remove();
+    }
+  });
 });
 
 function expectedLayouts(project: FixtureProject): Record<string, number> {

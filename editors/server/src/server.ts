@@ -38,6 +38,7 @@ import {
   compileCommandsNotification,
   layoutRequest,
   layoutsChangedNotification,
+  type AnalysisContext,
   type CompileCommandsParams,
   type InitializationOptions,
   type InlayHintsMode,
@@ -234,7 +235,7 @@ export function startServer(connection: Connection, options: ServerOptions): voi
       message: failure
         ? `The latest edit could not be analysed (${failure}); these are the last layouts that worked.`
         : records.length === 0
-          ? noRecordsMessage(analysis.document.lines)
+          ? noRecordsMessage(analysis.document.lines, context)
           : null,
       records: params.includeText
         ? records.map((record) => ({
@@ -364,8 +365,15 @@ function windowsDrives(): string[] {
   return Array.from('ABCDEFGHIJKLMNOPQRSTUVWXYZ').filter((letter) => fs.existsSync(`${letter}:\\`));
 }
 
-/** Why a file shows nothing. A template has no layout of its own until something uses it. */
-function noRecordsMessage(lines: readonly string[]): string {
+/**
+ * Why a file shows nothing: an error that stopped everything (an unknown
+ * target, a missing header), or a template, which has no layout of its own
+ * until something uses it.
+ */
+function noRecordsMessage(lines: readonly string[], context: AnalysisContext): string {
+  if (context.firstError && context.errorCount + context.otherErrorCount > 0) {
+    return `Nothing could be laid out: ${context.firstError}.`;
+  }
   return lines.some((line) => /\btemplate\s*</.test(line))
     ? 'A template has no layout until it is used with concrete types: declare one, such as Box<int> box;, to see its layout.'
     : 'No struct, class or union is defined in this file.';
