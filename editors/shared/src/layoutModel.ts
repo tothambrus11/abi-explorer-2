@@ -106,35 +106,38 @@ export function recordSummary(record: RecordView): string {
 }
 
 /**
- * `Ordered as b, a, c, the members would fit in 16 B, 8 B less.`, or null
- * when the order already costs nothing, or the record is not a plain list of
- * fields (bases, a vtable pointer, bit-fields and unions are laid out by rules
- * a reorder does not simply change).
+ * The members (as indices) in the order that packs them tightest, and the
+ * size that order would give; null when the order already costs nothing, or
+ * the record is not a plain list of fields (bases, a vtable pointer,
+ * bit-fields and unions are laid out by rules a reorder does not simply
+ * change).
  */
-export function reorderNote(record: RecordView): string | null {
+export function tighterOrder(record: RecordView): { order: number[]; sizeBits: number } | null {
   if (record.kind === 'union' || record.paddingBytes === 0 || record.members.length < 2) {
     return null;
   }
-  const fields = [...record.members].sort((a, b) => a.offsetBits - b.offsetBits);
+  const fields = record.members
+    .map((member, index) => ({ member, index }))
+    .sort((a, b) => a.member.offsetBits - b.member.offsetBits);
   let end = 0;
-  for (const field of fields) {
+  for (const { member } of fields) {
     // A flexible array member (size 0) has to stay last.
     const whole =
-      field.offsetBits % 8 === 0 &&
-      field.sizeBits % 8 === 0 &&
-      field.sizeBits > 0 &&
-      field.alignBits > 0;
+      member.offsetBits % 8 === 0 &&
+      member.sizeBits % 8 === 0 &&
+      member.sizeBits > 0 &&
+      member.alignBits > 0;
     // Members sharing bytes are an anonymous union's.
-    if (field.kind !== 'field' || !whole || field.offsetBits < end) return null;
-    end = field.offsetBits + field.sizeBits;
+    if (member.kind !== 'field' || !whole || member.offsetBits < end) return null;
+    end = member.offsetBits + member.sizeBits;
   }
   // `#pragma pack` lowers the record's alignment, and each member's with it.
-  const alignOf = (field: MemberView) => Math.min(field.alignBits, record.alignBits);
-  const place = (order: readonly MemberView[]) => {
+  const alignOf = (member: MemberView) => Math.min(member.alignBits, record.alignBits);
+  const place = (order: readonly { member: MemberView }[]) => {
     let end = 0;
-    const offsets = order.map((field) => {
-      const offset = roundUp(end, alignOf(field));
-      end = offset + field.sizeBits;
+    const offsets = order.map(({ member }) => {
+      const offset = roundUp(end, alignOf(member));
+      end = offset + member.sizeBits;
       return offset;
     });
     return { offsets, size: roundUp(end, record.alignBits) };
@@ -144,17 +147,24 @@ export function reorderNote(record: RecordView): string | null {
   const current = place(fields);
   const reproduced =
     current.size === record.sizeBits &&
-    current.offsets.every((offset, index) => offset === fields[index]!.offsetBits);
+    current.offsets.every((offset, index) => offset === fields[index]!.member.offsetBits);
   if (!reproduced) return null;
-  const order = [...fields].sort((a, b) => alignOf(b) - alignOf(a));
+  const order = [...fields].sort((a, b) => alignOf(b.member) - alignOf(a.member));
   const { size } = place(order);
   if (size >= record.sizeBits) return null;
+  return { order: order.map(({ index }) => index), sizeBits: size };
+}
+
+/** `Ordered as b, a, c, the members would fit in 16 B, 8 B less.`, or null (see `tighterOrder`). */
+export function reorderNote(record: RecordView): string | null {
+  const tighter = tighterOrder(record);
+  if (!tighter) return null;
   // The order itself while it is short enough to read in one line.
   const how =
-    order.length <= 6
-      ? `Ordered as ${order.map((field) => field.label).join(', ')}`
+    tighter.order.length <= 6
+      ? `Ordered as ${tighter.order.map((index) => record.members[index]!.label).join(', ')}`
       : 'Ordered by alignment';
-  return `${how}, the members would fit in ${formatSizeShort(size)}, ${formatSizeShort(record.sizeBits - size)} less.`;
+  return `${how}, the members would fit in ${formatSizeShort(tighter.sizeBits)}, ${formatSizeShort(record.sizeBits - tighter.sizeBits)} less.`;
 }
 
 function roundUp(bits: number, alignBits: number): number {

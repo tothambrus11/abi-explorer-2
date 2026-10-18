@@ -140,6 +140,21 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
     expect(records.map((record) => record.name)).toEqual(['Box<int>']);
   });
 
+  it('offers to reorder a record whose order wastes space', async () => {
+    const uri = project.uri('packet.cpp');
+    const text = 'struct Packet {\n  char type;\n  int length;\n  short checksum;\n};\n';
+    fs.writeFileSync(project.path('packet.cpp'), text);
+    await session.open(uri);
+    const [action] = await session.codeActions(uri, { line: 2, character: 4 });
+    expect(action?.title).toBe("Reorder Packet's members by alignment (8 B, 4 B less)");
+    const edits = action!.edit!.changes![uri]!;
+    const lines = text.split('\n');
+    for (const edit of edits) lines[edit.range.start.line] = edit.newText;
+    await session.change(uri, lines.join('\n'));
+    expect((await session.layout(uri)).records[0]!.sizeBits / 8).toBe(8);
+    expect(await session.codeActions(uri, { line: 2, character: 4 })).toEqual([]);
+  });
+
   it('re-analyses an edit, and a pushed command wins over the database', async () => {
     const uri = project.uri('sensor.c');
     await session.change(

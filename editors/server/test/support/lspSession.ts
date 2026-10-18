@@ -9,7 +9,7 @@ import {
   StreamMessageWriter,
   type MessageConnection,
 } from 'vscode-jsonrpc/node';
-import type { Hover, InlayHint } from 'vscode-languageserver-protocol';
+import type { CodeAction, Hover, InlayHint } from 'vscode-languageserver-protocol';
 import {
   layoutRequest,
   layoutsChangedNotification,
@@ -94,6 +94,14 @@ export class LspSession {
     return this.connection.sendRequest('textDocument/inlayHint', {
       textDocument: { uri },
       range: { start: { line: 0, character: 0 }, end: { line: 10_000, character: 0 } },
+    });
+  }
+
+  codeActions(uri: string, position: Position): Promise<CodeAction[]> {
+    return this.connection.sendRequest('textDocument/codeAction', {
+      textDocument: { uri },
+      range: { start: position, end: position },
+      context: { diagnostics: [] },
     });
   }
 

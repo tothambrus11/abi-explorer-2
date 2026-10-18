@@ -9,6 +9,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+  type CodeAction,
+  CodeActionKind,
   type Connection,
   type Hover,
   type InitializeResult,
@@ -26,6 +28,7 @@ import { ensureEngineFiles } from './engine/engineFiles.ts';
 import { createPathMap } from './engine/pathMap.ts';
 import { memberHover, recordHover } from './layout/hover.ts';
 import { layoutHints } from './layout/inlayHints.ts';
+import { reorderAction } from './layout/reorderAction.ts';
 import { textLayout } from './layout/textLayout.ts';
 import { reorderNote } from '@abi-explorer/shared/layoutModel';
 import packageJson from '../package.json' with { type: 'json' };
@@ -102,6 +105,7 @@ export function startServer(connection: Connection, options: ServerOptions): voi
         textDocumentSync: TextDocumentSyncKind.Incremental,
         hoverProvider: true,
         inlayHintProvider: true,
+        codeActionProvider: { codeActionKinds: [CodeActionKind.RefactorRewrite] },
       },
       serverInfo: { name: 'abi-explorer-lsp', version: packageJson.version },
     };
@@ -150,6 +154,33 @@ export function startServer(connection: Connection, options: ServerOptions): voi
           lineUnchanged(analyzed, document, hint.position.line),
       )
       .map((hint) => ({ position: hint.position, label: hint.label, paddingLeft: true }));
+  });
+
+  connection.onCodeAction(({ textDocument, range, context }): CodeAction[] => {
+    const wanted = context.only;
+    if (wanted && !wanted.some((kind) => CodeActionKind.RefactorRewrite.startsWith(kind))) {
+      return [];
+    }
+    const document = documents.get(textDocument.uri);
+    const analysis = analyzer?.kept(textDocument.uri);
+    // Moving lines by stale positions would scramble them: only on the analysed text.
+    if (
+      !document ||
+      analysis?.kind !== 'analyzed' ||
+      analysis.document.version !== document.version
+    ) {
+      return [];
+    }
+    const hit = innermostRecordAt(analysis.document.records, range.start);
+    const action = hit && reorderAction(hit.record, analysis.document.lines);
+    if (!action) return [];
+    return [
+      {
+        title: action.title,
+        kind: CodeActionKind.RefactorRewrite,
+        edit: { changes: { [textDocument.uri]: action.edits } },
+      },
+    ];
   });
 
   connection.onRequest(layoutRequest, async (params: LayoutParams): Promise<LayoutResult> => {
