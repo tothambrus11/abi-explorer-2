@@ -109,6 +109,21 @@ test.describe('on a phone', () => {
     await page.keyboard.press('Escape');
     await expect(panel).toHaveCount(0);
 
+    // From the keyboard: the chip's name is the query, the fields take focus
+    // as the panel opens, and Escape shuts the innermost panel only.
+    await expect(chip).toHaveAttribute('aria-label', /AArch64 · macOS/);
+    await chip.focus();
+    await page.keyboard.press('Enter');
+    await expect(panel.locator(':focus')).toHaveCount(1);
+    await panel.locator('#more-options').click();
+    const more = page.locator('[role=dialog][aria-label="More options"]');
+    await expect(more).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(more).toHaveCount(0);
+    await expect(panel).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(panel).toHaveCount(0);
+
     // A second source puts a row inside each Source panel, where it is
     // narrower still: one chip there too, never two lines.
     await page.setViewportSize(PHONE);

@@ -114,6 +114,16 @@
       summary?.focus();
     }
   }
+  // Opened from the keyboard, the fields are where the next key should go: the
+  // panel is drawn at the end of the document, so Tab from the chip would
+  // otherwise walk the rest of the page before reaching them. A pointer press
+  // leaves focus alone, since the pointer is already where it means to be.
+  let byKeyboard = false;
+  $effect(() => {
+    if (panel && byKeyboard) {
+      panel.querySelector<HTMLElement>('button:not([disabled]), input, select')?.focus();
+    }
+  });
   // A row that grows past the threshold draws its fields again and loses the
   // chip the panel hangs off, so the panel goes with it.
   $effect(() => {
@@ -204,9 +214,13 @@
       bind:this={summary}
       aria-haspopup="dialog"
       aria-expanded={open}
-      aria-label="Language, standard and target"
+      aria-label={`Language, standard and target: ${summaryLabel}`}
       use:tooltip={open ? null : 'Language, standard and target'}
-      onclick={() => (open = !open)}
+      onclick={(e) => {
+        // A click the keyboard made has no pointer behind it, and so no count.
+        byKeyboard = e.detail === 0;
+        open = !open;
+      }}
     >
       <span class="t">{summaryLabel}</span>
       {#if changed}<span class="count">{changed}</span>{/if}

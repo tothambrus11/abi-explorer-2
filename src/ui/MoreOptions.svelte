@@ -30,6 +30,10 @@
   }
   function onKey(e: KeyboardEvent) {
     if (e.key === 'Escape' && open) {
+      // This panel can sit inside another (the query panel on a phone), and
+      // Escape closes the innermost only. Heard on the window as it captures,
+      // before the outer panel's listener on the document.
+      e.stopPropagation();
       open = false;
       mark?.focus();
     }
@@ -57,7 +61,8 @@
   });
 </script>
 
-<svelte:document onmousedown={onDocPointer} onkeydown={onKey} />
+<svelte:document onmousedown={onDocPointer} />
+<svelte:window onkeydowncapture={onKey} />
 
 <button
   {id}
