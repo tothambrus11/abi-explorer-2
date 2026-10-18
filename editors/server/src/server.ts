@@ -1,8 +1,8 @@
 // The language server: LSP in, analyses out.
 //
 // Everything editor-specific lives in the clients. What is here is the same
-// for all of them: hovers, inlay hints, and the `abiExplorer/layout` request
-// that panels draw from.
+// for all of them: hovers, inlay hints, the reorder and pin code actions, and
+// the `abiExplorer/layout` request that panels draw from.
 
 import fs from 'node:fs';
 import os from 'node:os';
