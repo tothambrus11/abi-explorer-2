@@ -100,7 +100,7 @@
   },
   "scripts": {
     "build": "node build.mjs",
-    "package": "node build.mjs && vsce package --no-dependencies --out dist/abi-explorer.vsix"
+    "package": "node build.mjs && vsce package --no-dependencies --baseImagesUrl https://raw.githubusercontent.com/tothambrus11/abi-explorer-2/HEAD/editors/vscode --out dist/abi-explorer.vsix"
   },
   "devDependencies": {
     "@abi-explorer/layout-panel": "0.1.0",
