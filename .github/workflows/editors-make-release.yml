@@ -1,0 +1,62 @@
+# Makes an editors release from the Actions page (Editors make release › Run
+# workflow, on main): writes the version into every package under editors/
+# (`scripts/version.mjs set`), commits that to main, tags it `editors-v<version>`
+# and starts the Editors release workflow on the tag, which builds, smoke-tests
+# and publishes. Releasing the version the files already say (the first
+# release, say) tags without a commit.
+#
+# Pushes made with the workflow's own token start no workflows, so the tag
+# would not start Editors release by itself; a workflow_dispatch is the one
+# event that token may start a run with.
+name: Editors make release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: The version to release, such as 0.2.0 (no leading v)
+        required: true
+        type: string
+
+permissions:
+  contents: write # the version commit and the tag
+  actions: write # starting Editors release
+
+concurrency:
+  group: editors-make-release
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Version
+        working-directory: editors
+        run: node scripts/version.mjs set "$VERSION"
+        env:
+          VERSION: ${{ inputs.version }}
+      - name: Commit, tag and push
+        run: |
+          tag="editors-v$VERSION"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            echo "::error::$tag already exists"
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git diff --quiet || git commit -am "editors $VERSION"
+          git tag -a "$tag" -m "Editors $VERSION"
+          git push --atomic origin HEAD:main "refs/tags/$tag"
+        env:
+          VERSION: ${{ inputs.version }}
+      - name: Start Editors release on the tag
+        run: |
+          gh workflow run editors-release.yml --repo "$GITHUB_REPOSITORY" --ref "editors-v$VERSION"
+          echo "Started Editors release for editors-v$VERSION: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/workflows/editors-release.yml" >> "$GITHUB_STEP_SUMMARY"
+        env:
+          VERSION: ${{ inputs.version }}
+          GH_TOKEN: ${{ github.token }}

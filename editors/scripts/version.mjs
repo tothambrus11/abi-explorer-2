@@ -1,12 +1,14 @@
 #!/usr/bin/env node
-// The editors are released together, under one version, kept in five files.
+// The editors are released together, under one version, which every package
+// under editors/ carries, and the packages that depend on each other name.
 //
 //   node scripts/version.mjs              prints it, failing if the files disagree
 //   node scripts/version.mjs check 0.2.0  fails unless every file says 0.2.0
 //   node scripts/version.mjs set 0.2.0    writes 0.2.0 into every file
 //
 // The release workflow runs `check` with the version from its tag
-// (`editors-v0.2.0`), so a tag that does not match the files publishes nothing.
+// (`editors-v0.2.0`), so a tag that does not match the files publishes nothing;
+// the make-release workflow runs `set` before it tags.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -20,6 +22,14 @@ const FILES = [
   { file: 'clion/gradle.properties', pattern: /^pluginVersion = (\S+)$/m },
   { file: 'zed/extension.toml', pattern: /^version = "([^"]+)"$/m },
   { file: 'zed/Cargo.toml', pattern: /^version = "([^"]+)"$/m },
+  { file: 'clion/core/build.gradle.kts', pattern: /^version = "([^"]+)"$/m },
+  { file: 'shared/package.json', pattern: /^ {2}"version": "([^"]+)"/m },
+  { file: 'panel/package.json', pattern: /^ {2}"version": "([^"]+)"/m },
+  // The workspace packages they depend on, by that same version.
+  { file: 'server/package.json', pattern: /"@abi-explorer\/shared": "([^"]+)"/ },
+  { file: 'panel/package.json', pattern: /"@abi-explorer\/shared": "([^"]+)"/ },
+  { file: 'vscode/package.json', pattern: /"@abi-explorer\/shared": "([^"]+)"/ },
+  { file: 'vscode/package.json', pattern: /"@abi-explorer\/layout-panel": "([^"]+)"/ },
 ];
 
 function read() {
@@ -60,7 +70,15 @@ try {
     // than by npm, which would rewrite whatever its own version writes differently.
     const npmLock = path.join(editors, 'package-lock.json');
     const lock = JSON.parse(fs.readFileSync(npmLock, 'utf8'));
-    for (const workspace of ['server', 'vscode']) lock.packages[workspace].version = wanted;
+    for (const workspace of ['server', 'vscode', 'shared', 'panel']) {
+      const entry = lock.packages[workspace];
+      entry.version = wanted;
+      for (const field of ['dependencies', 'devDependencies']) {
+        for (const name of Object.keys(entry[field] ?? {})) {
+          if (name.startsWith('@abi-explorer/')) entry[field][name] = wanted;
+        }
+      }
+    }
     fs.writeFileSync(npmLock, JSON.stringify(lock, null, 2) + '\n');
     const cargoLock = path.join(editors, 'zed', 'Cargo.lock');
     fs.writeFileSync(
