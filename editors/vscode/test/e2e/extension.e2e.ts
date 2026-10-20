@@ -7,6 +7,7 @@ import { expect, test, type Page } from '@playwright/test';
 import {
   copyFixtureProject,
   LOCAL_ENGINE,
+  REQUIRE_ALL,
   type FixtureProject,
 } from '../../../server/test/support/fixtureProject.ts';
 import { startCodeServer, type CodeServer } from './codeServer.ts';
@@ -14,7 +15,10 @@ import { startCodeServer, type CodeServer } from './codeServer.ts';
 const SCREENSHOTS = path.join(import.meta.dirname, '..', '..', '..', 'screenshots');
 const CODE_SERVER_ENTRY = process.env.CODE_SERVER_ENTRY ?? '';
 
-test.skip(!CODE_SERVER_ENTRY, 'set CODE_SERVER_ENTRY to code-server/out/node/entry.js');
+test.skip(
+  !CODE_SERVER_ENTRY && !REQUIRE_ALL,
+  'set CODE_SERVER_ENTRY to code-server/out/node/entry.js',
+);
 
 let project: FixtureProject | undefined;
 let codeServer: CodeServer | undefined;
@@ -23,7 +27,9 @@ test.beforeAll(async () => {
   project = copyFixtureProject();
   codeServer = await startCodeServer({
     entry: CODE_SERVER_ENTRY,
-    vsix: path.join(import.meta.dirname, '..', '..', 'dist', 'abi-explorer.vsix'),
+    // VSIX: the release's own package, which its smoke test installs.
+    vsix:
+      process.env.VSIX ?? path.join(import.meta.dirname, '..', '..', 'dist', 'abi-explorer.vsix'),
     workspace: project.root,
     engineDirectory: LOCAL_ENGINE,
     port: 8123,

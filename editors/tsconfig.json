@@ -8,5 +8,12 @@
     "checkJs": false,
     "types": ["node"]
   },
-  "include": ["*.config.ts", "neovim/test", "*/build.mjs", "server/bin/*.js"]
+  "include": [
+    "*.config.ts",
+    "neovim/test",
+    "*/build.mjs",
+    "server/bin/*.js",
+    "scripts/*.mjs",
+    "zed/test/*.mjs"
+  ]
 }

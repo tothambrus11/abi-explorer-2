@@ -4,7 +4,7 @@
 
 import { ENGINE_RELEASE } from '../engine/engineFiles.ts';
 import type { PathMap } from '../engine/pathMap.ts';
-import type { EngineRequest } from '../engine/engineTypes.ts';
+import type { Diagnostic, EngineRequest } from '../engine/engineTypes.ts';
 import { mapPathOptions, type Language, type PreparedCommand } from './commandLine.ts';
 import type { Toolchain } from './toolchain.ts';
 
@@ -94,3 +94,31 @@ const TARGET_OPTIONS_WITH_VALUE = new Set([
   // A code generation option, and its value with it.
   '-mllvm',
 ]);
+
+/**
+ * The request again without the options clang's driver rejected, or null when
+ * it rejected none.
+ *
+ * Compile commands written for GCC carry options clang does not have (Bazel
+ * adds `-fno-canonical-system-headers` to every command). Each is an error that
+ * says nothing about the code, so the request is made again without them, as a
+ * clang-based tool would be configured to do by hand.
+ */
+export function withoutRejectedFlags(
+  request: EngineRequest,
+  diagnostics: readonly Diagnostic[],
+): EngineRequest | null {
+  const rejected = diagnostics.flatMap((diagnostic) => {
+    if (diagnostic.location || diagnostic.severity !== 'error') return [];
+    // "unknown argument: '-fconcepts'"; "unsupported option '-mabi=' for target '…'".
+    const match =
+      /^unknown argument: '(.+)'$/.exec(diagnostic.message) ??
+      /^unsupported option '(.+?)' for target/.exec(diagnostic.message);
+    return match ? [match[1]!] : [];
+  });
+  if (rejected.length === 0) return null;
+  const isRejected = (flag: string) =>
+    rejected.some((option) => flag === option || (option.endsWith('=') && flag.startsWith(option)));
+  const flags = request.flags.filter((flag) => !isRejected(flag));
+  return flags.length < request.flags.length ? { ...request, flags } : null;
+}

@@ -1,15 +1,33 @@
 {
-  "name": "abi-explorer-lsp",
+  "name": "@hylo-lang/abi-explorer",
   "version": "0.1.0",
   "description": "A language server that shows how clang lays out C and C++ records: sizes, offsets and padding, in hovers and code actions.",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tothambrus11/abi-explorer-2.git",
+    "directory": "editors/server"
+  },
+  "homepage": "https://github.com/tothambrus11/abi-explorer-2/tree/main/editors#readme",
+  "keywords": [
+    "lsp",
+    "language-server",
+    "c",
+    "c++",
+    "struct",
+    "layout",
+    "padding",
+    "abi",
+    "clang"
+  ],
   "type": "module",
   "bin": {
     "abi-explorer-lsp": "bin/abi-explorer-lsp.js"
   },
   "files": [
     "bin",
-    "dist"
+    "dist",
+    "README.md"
   ],
   "engines": {
     "node": ">=20"

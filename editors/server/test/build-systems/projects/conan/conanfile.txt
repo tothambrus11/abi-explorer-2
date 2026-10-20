@@ -1,0 +1,6 @@
+[requires]
+recordlib/1.0
+
+[generators]
+CMakeDeps
+CMakeToolchain

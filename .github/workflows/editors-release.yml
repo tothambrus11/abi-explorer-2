@@ -1,0 +1,400 @@
+# Builds every editor plugin once, smoke-tests each build end to end in its own
+# job, and publishes only when all of them passed.
+#
+#   build ──┬─ smoke-vscode ────────┐
+#           ├─ smoke-zed ───────────┤
+#           ├─ smoke-neovim ────────┼─ publish-vscode ─ github-release
+#           ├─ smoke-clion ─────────┤
+#           └─ smoke-build-systems ─┘
+#
+# Only the VS Code extension is published, to the Visual Studio Marketplace and
+# Open VSX. Everything else is attached to the GitHub release: the server's
+# tarball (which the Zed extension downloads from there, and other editors
+# install with `npm install -g <its URL>`), and the CLion, Zed and Neovim
+# archives to install by hand.
+#
+# Pull requests that touch editors/ and manual runs (Actions › Editors release ›
+# Run workflow) build and smoke-test without publishing. A tag `editors-v0.2.0`
+# also publishes, after `scripts/version.mjs check` has confirmed every plugin
+# says 0.2.0. The publish jobs run in the `release` environment, which holds
+# their secrets; editors/RELEASING.md lists them and the one-time setup.
+name: Editors release
+
+on:
+  push:
+    tags: ['editors-v*']
+  pull_request:
+    paths: ['editors/**', '.github/workflows/editors-release.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: editors-release-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Pinned so a new editor release cannot change what a smoke test means
+  # without a commit here.
+  ZED_VERSION: 1.24.2
+  CODE_SERVER_VERSION: 4.141.0
+  BAZELISK_VERSION: 1.27.0
+  # Nothing in a smoke job may skip itself for want of an editor or a tool.
+  ABI_EXPLORER_REQUIRE_ALL: '1'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    defaults:
+      run:
+        working-directory: editors
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: editors/package-lock.json
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      - uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+      - id: version
+        name: Version (the tag's, when there is one)
+        run: |
+          if [[ $GITHUB_REF == refs/tags/editors-v* ]]; then
+            version=$(node scripts/version.mjs check "${GITHUB_REF_NAME#editors-v}")
+          else
+            version=$(node scripts/version.mjs)
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v4
+        with:
+          path: public/vendor/abi
+          key: abi-module-${{ hashFiles('tools/fetch-abi-module.mjs') }}
+      - run: node tools/fetch-abi-module.mjs
+        working-directory: .
+      - run: npm ci
+      - run: npm run check
+      - run: npm run format:check
+      - run: npm test
+      - name: Server (npm package)
+        run: |
+          mkdir -p "$RUNNER_TEMP/release"
+          npm run build
+          npm pack -w server --pack-destination "$RUNNER_TEMP/release"
+      - name: VS Code extension
+        run: npm run package -w vscode && cp vscode/dist/abi-explorer.vsix "$RUNNER_TEMP/release/abi-explorer-$VERSION.vsix"
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+      - name: CLion plugin
+        working-directory: editors/clion
+        run: |
+          ./gradlew -p core test
+          ./gradlew buildPlugin verifyPlugin
+          cp build/distributions/*.zip "$RUNNER_TEMP/release/abi-explorer-clion-$VERSION.zip"
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+      - name: Zed extension
+        working-directory: editors/zed
+        run: |
+          rustup target add wasm32-wasip2
+          cargo build --release --target wasm32-wasip2
+          # What Zed keeps for an installed extension, so the zip installs by hand:
+          # unpacked into Zed's extensions/installed directory.
+          mkdir -p "$RUNNER_TEMP/zed/abi-explorer"
+          cp extension.toml LICENSE "$RUNNER_TEMP/zed/abi-explorer/"
+          cp target/wasm32-wasip2/release/zed_abi_explorer.wasm "$RUNNER_TEMP/zed/abi-explorer/extension.wasm"
+          (cd "$RUNNER_TEMP/zed" && zip -qr "$RUNNER_TEMP/release/abi-explorer-zed-$VERSION.zip" abi-explorer)
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+      - name: Neovim plugin
+        # The plugin's directory, for a plugin manager's `dir =` or the runtime path.
+        run: |
+          mkdir -p "$RUNNER_TEMP/neovim/abi-explorer.nvim"
+          cp -r neovim/lua neovim/lsp neovim/README.md "$RUNNER_TEMP/neovim/abi-explorer.nvim/"
+          cp ../LICENSE "$RUNNER_TEMP/neovim/abi-explorer.nvim/"
+          (cd "$RUNNER_TEMP/neovim" && zip -qr "$RUNNER_TEMP/release/abi-explorer-neovim-$VERSION.zip" abi-explorer.nvim)
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+      - run: ls -l "$RUNNER_TEMP/release"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: editors-${{ steps.version.outputs.version }}
+          path: ${{ runner.temp }}/release
+          if-no-files-found: error
+
+  # The packaged extension, installed into real VS Code (code-server), driven by Playwright.
+  smoke-vscode:
+    needs: build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: editors
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: editors/package-lock.json
+      - uses: actions/download-artifact@v8
+        with:
+          name: editors-${{ needs.build.outputs.version }}
+          path: ${{ runner.temp }}/release
+      - uses: actions/cache@v4
+        with:
+          path: public/vendor/abi
+          key: abi-module-${{ hashFiles('tools/fetch-abi-module.mjs') }}
+      - run: node tools/fetch-abi-module.mjs
+        working-directory: .
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: code-server
+        run: curl -fsSL "https://github.com/coder/code-server/releases/download/v$CODE_SERVER_VERSION/code-server-$CODE_SERVER_VERSION-linux-amd64.tar.gz" | tar xz -C "$RUNNER_TEMP"
+      - run: npx playwright test
+        env:
+          CODE_SERVER_ENTRY: ${{ runner.temp }}/code-server-${{ env.CODE_SERVER_VERSION }}-linux-amd64/out/node/entry.js
+          VSIX: ${{ runner.temp }}/release/abi-explorer-${{ needs.build.outputs.version }}.vsix
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: smoke-vscode
+          path: |
+            editors/screenshots
+            editors/test-results
+
+  # The extension.wasm in real Zed under Xvfb, with the npm package as its server.
+  # No engine is provided: the server downloads the pinned release, as for a user.
+  smoke-zed:
+    needs: build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: editors
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v8
+        with:
+          name: editors-${{ needs.build.outputs.version }}
+          path: ${{ runner.temp }}/release
+      - run: sudo apt-get update && sudo apt-get install -y xvfb xdotool imagemagick mesa-vulkan-drivers
+      - name: Zed
+        run: curl -fsSL "https://github.com/zed-industries/zed/releases/download/v$ZED_VERSION/zed-linux-x86_64.tar.gz" | tar xz -C "$RUNNER_TEMP"
+      - name: The server, from the npm package
+        run: npm install --prefix "$RUNNER_TEMP/lsp" "$RUNNER_TEMP/release/hylo-lang-abi-explorer-${{ needs.build.outputs.version }}.tgz"
+      - run: unzip -q "$RUNNER_TEMP/release/abi-explorer-zed-${{ needs.build.outputs.version }}.zip" -d "$RUNNER_TEMP/zed-extension"
+      - run: node zed/test/smoke.mjs
+        env:
+          ZED: ${{ runner.temp }}/zed.app/bin/zed
+          SERVER: ${{ runner.temp }}/lsp/node_modules/@hylo-lang/abi-explorer/bin/abi-explorer-lsp.js
+          EXTENSION: ${{ runner.temp }}/zed-extension/abi-explorer
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: smoke-zed
+          path: editors/zed/test/out
+
+  # The plugin in real Neovim, and the server's own end-to-end suite, both
+  # against the npm package as it will be published.
+  smoke-neovim:
+    needs: build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: editors
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: editors/package-lock.json
+      - uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+      - uses: actions/download-artifact@v8
+        with:
+          name: editors-${{ needs.build.outputs.version }}
+          path: ${{ runner.temp }}/release
+      - uses: actions/cache@v4
+        with:
+          path: public/vendor/abi
+          key: abi-module-${{ hashFiles('tools/fetch-abi-module.mjs') }}
+      - run: node tools/fetch-abi-module.mjs
+        working-directory: .
+      - run: npm ci
+      - name: The server, from the npm package
+        run: npm install --prefix "$RUNNER_TEMP/lsp" "$RUNNER_TEMP/release/hylo-lang-abi-explorer-${{ needs.build.outputs.version }}.tgz"
+      - run: unzip -q "$RUNNER_TEMP/release/abi-explorer-neovim-${{ needs.build.outputs.version }}.zip" -d "$RUNNER_TEMP/neovim"
+      - run: npx vitest run neovim/test/lsp.test.ts neovim/test/lspConfig.test.ts server/test/server.integration.test.ts
+        env:
+          ABI_EXPLORER_SERVER: ${{ runner.temp }}/lsp/node_modules/@hylo-lang/abi-explorer/bin/abi-explorer-lsp.js
+          NEOVIM_PLUGIN: ${{ runner.temp }}/neovim/abi-explorer.nvim
+
+  # The plugin in the real IntelliJ Platform of CLion (PluginSmokeTest), and a
+  # check that the zip carries the very server the other smoke jobs ran.
+  smoke-clion:
+    needs: build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: editors
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: editors/package-lock.json
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      - uses: actions/download-artifact@v8
+        with:
+          name: editors-${{ needs.build.outputs.version }}
+          path: ${{ runner.temp }}/release
+      - name: The zip's server is the npm package's
+        run: |
+          cd "$RUNNER_TEMP"
+          mkdir zip npm
+          unzip -q "release/abi-explorer-clion-$VERSION.zip" -d zip
+          unzip -q -o "$(find zip -name 'abi-explorer-clion-*.jar' | head -1)" 'server/*' 'panel/*' -d zip/jar
+          tar xzf "release/hylo-lang-abi-explorer-$VERSION.tgz" -C npm
+          cmp zip/jar/server/server.js npm/package/dist/server.js
+          cmp zip/jar/server/engineWorker.js npm/package/dist/engineWorker.js
+          test -s zip/jar/panel/panel.js
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+      - run: npm ci && npm run build
+      # No engine is provided: the server downloads the pinned release, as for a user.
+      - run: ./gradlew test
+        working-directory: editors/clion
+      - name: The release would sign and publish this zip, not a new build
+        working-directory: editors/clion
+        run: |
+          ./gradlew signPlugin publishPlugin -x buildPlugin --dry-run -PprebuiltPlugin="$RUNNER_TEMP/release/abi-explorer-clion-$VERSION.zip" | tee "$RUNNER_TEMP/plan.txt"
+          grep -q '^:signPlugin ' "$RUNNER_TEMP/plan.txt" && grep -q '^:publishPlugin ' "$RUNNER_TEMP/plan.txt"
+          ! grep -qE '^:(buildPlugin|compileKotlin|jar) ' "$RUNNER_TEMP/plan.txt"
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          # Placeholders, so the plan is the one a release with signing configured makes.
+          JETBRAINS_CERTIFICATE_CHAIN: placeholder
+          JETBRAINS_PRIVATE_KEY: placeholder
+          JETBRAINS_PRIVATE_KEY_PASSWORD: placeholder
+          JETBRAINS_MARKETPLACE_TOKEN: placeholder
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: smoke-clion
+          path: editors/clion/build/reports
+
+  # Real CMake, Meson, Bazel and Conan projects, laid out by the npm package's
+  # server from their compile_commands.json and from commands pushed as CLion
+  # pushes its project model.
+  smoke-build-systems:
+    needs: build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: editors
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: editors/package-lock.json
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+      - run: pip install meson ninja conan
+      - name: Bazel (Bazelisk, which reads .bazelversion)
+        run: |
+          mkdir -p "$RUNNER_TEMP/bin"
+          curl -fsSL -o "$RUNNER_TEMP/bin/bazel" "https://github.com/bazelbuild/bazelisk/releases/download/v$BAZELISK_VERSION/bazelisk-linux-amd64"
+          chmod +x "$RUNNER_TEMP/bin/bazel"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - uses: actions/download-artifact@v8
+        with:
+          name: editors-${{ needs.build.outputs.version }}
+          path: ${{ runner.temp }}/release
+      - uses: actions/cache@v4
+        with:
+          path: public/vendor/abi
+          key: abi-module-${{ hashFiles('tools/fetch-abi-module.mjs') }}
+      - run: node tools/fetch-abi-module.mjs
+        working-directory: .
+      - run: npm ci
+      - name: The server, from the npm package
+        run: npm install --prefix "$RUNNER_TEMP/lsp" "$RUNNER_TEMP/release/hylo-lang-abi-explorer-${{ needs.build.outputs.version }}.tgz"
+      - run: npm run test:build-systems
+        env:
+          ABI_EXPLORER_SERVER: ${{ runner.temp }}/lsp/node_modules/@hylo-lang/abi-explorer/bin/abi-explorer-lsp.js
+
+  # Everything below runs only for a tag, and only once every smoke job passed.
+  # Each publish is skipped when that version is already there, so a failed run
+  # can be re-run.
+
+  publish-vscode:
+    needs: [build, smoke-vscode, smoke-zed, smoke-neovim, smoke-clion, smoke-build-systems]
+    if: startsWith(github.ref, 'refs/tags/editors-v')
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+      id-token: write # Open VSX trusted publishing
+    steps:
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v8
+        with:
+          name: editors-${{ needs.build.outputs.version }}
+          path: release
+      - name: Visual Studio Marketplace
+        run: npx --yes @vscode/vsce@3 publish --packagePath "release/abi-explorer-$VERSION.vsix" --skip-duplicate
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      # Trusted publishing: ovsx exchanges this job's OIDC token for a short-lived one. An OVSX_PAT
+      # secret, if there is one, is used instead (Open VSX wants a token for an extension's first
+      # version).
+      - name: Open VSX (VSCodium, Cursor, Windsurf, Gitpod)
+        run: npx --yes ovsx@1 publish "release/abi-explorer-$VERSION.vsix" --skip-duplicate
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+
+  github-release:
+    needs: [build, publish-vscode]
+    if: startsWith(github.ref, 'refs/tags/editors-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: editors-${{ needs.build.outputs.version }}
+          path: release
+      - run: |
+          gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 ||
+            gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag \
+              --title "Editors $VERSION" --generate-notes release/*
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          GH_TOKEN: ${{ github.token }}

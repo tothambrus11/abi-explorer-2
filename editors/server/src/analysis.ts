@@ -15,7 +15,11 @@ import {
   type PreparedCommand,
 } from './compile/commandLine.ts';
 import type { CompileCommandFinder, FoundCommand } from './compile/compileCommandFinder.ts';
-import { buildCrossTargetRequest, buildEngineRequest } from './compile/engineRequest.ts';
+import {
+  buildCrossTargetRequest,
+  buildEngineRequest,
+  withoutRejectedFlags,
+} from './compile/engineRequest.ts';
 import {
   ProbeRefusedError,
   type ProbePolicy,
@@ -198,7 +202,10 @@ export class Analyzer {
       if (this.superseded(uri, version)) {
         return { kind: 'failed', uri, version, message: 'superseded by a newer edit' };
       }
-      const response = await this.dependencies.engine.query(request);
+      let response = await this.dependencies.engine.query(request);
+      // GCC options clang does not know are asked about again without them.
+      const retry = response.ok ? withoutRejectedFlags(request, response.diagnostics) : null;
+      if (retry) response = await this.dependencies.engine.query(retry);
       if (!response.ok) {
         return {
           kind: 'failed',

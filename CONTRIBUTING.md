@@ -149,6 +149,13 @@ runs lint, type-check, the unit suites (including the ones that drive the real
 module), the build and Playwright, all against the same copy of the module the
 site serves.
 
+## The editor plugins
+
+`editors/` holds the language server and the VS Code, CLion, Zed and Neovim plugins, an npm
+workspace of its own. [editors/README.md](editors/README.md) says how to build and test them,
+and [editors/RELEASING.md](editors/RELEASING.md) how they are released. Their tests run the
+engine from `public/vendor/abi`, the copy `npm run abi:fetch` puts there.
+
 ## The share-link package
 
 The URL fragment a link carries is the work of `packages/share-link`,

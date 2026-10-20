@@ -1,6 +1,7 @@
 // The CLion plugin. Run `npm run build` in editors/ first: the server and
 // panel bundles are copied in from ../server/dist and ../panel/dist.
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel
 import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 
@@ -10,7 +11,7 @@ plugins {
 }
 
 group = "abiexplorer"
-version = "0.1.0"
+version = providers.gradleProperty("pluginVersion").get()
 
 repositories {
     mavenCentral()
@@ -30,10 +31,14 @@ kotlin {
 
 dependencies {
     implementation("abiexplorer:abi-explorer-core")
+    // PluginSmokeTest: the plugin in the real IntelliJ Platform, JUnit 3 style.
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.opentest4j:opentest4j:1.3.0")
     intellijPlatform {
         clion(providers.gradleProperty("platformVersion"))
         bundledPlugin("com.intellij.clion")
         pluginVerifier()
+        testFramework(TestFrameworkType.Platform)
     }
 }
 
@@ -43,6 +48,15 @@ intellijPlatform {
             sinceBuild = providers.gradleProperty("sinceBuild")
             untilBuild = provider { null }
         }
+    }
+    // `./gradlew signPlugin publishPlugin` in the release workflow; see editors/RELEASING.md.
+    signing {
+        certificateChain = providers.environmentVariable("JETBRAINS_CERTIFICATE_CHAIN")
+        privateKey = providers.environmentVariable("JETBRAINS_PRIVATE_KEY")
+        password = providers.environmentVariable("JETBRAINS_PRIVATE_KEY_PASSWORD")
+    }
+    publishing {
+        token = providers.environmentVariable("JETBRAINS_MARKETPLACE_TOKEN")
     }
     // `./gradlew verifyPlugin`: the APIs the plugin uses exist in this CLion, and none is internal
     // or deprecated.
@@ -62,4 +76,24 @@ intellijPlatform {
 tasks.processResources {
     from("../server/dist") { into("server") }
     from("../panel/dist") { into("panel") }
+}
+
+tasks.test {
+    // The project the smoke test opens; the server it runs comes from processResources above.
+    systemProperty("abiexplorer.fixture", file("../server/test/fixtures/project").absolutePath)
+    // Its sources are not inputs Gradle sees, so it always runs when asked.
+    outputs.upToDateWhen { false }
+    testLogging {
+        events("failed", "standard_out")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+}
+
+// The release signs and publishes the zip its smoke tests ran, not a new build:
+// `./gradlew signPlugin publishPlugin -x buildPlugin -PprebuiltPlugin=/path/to/plugin.zip`
+// (`-x buildPlugin`, or publishPlugin builds one first).
+providers.gradleProperty("prebuiltPlugin").orNull?.let { prebuilt ->
+    tasks.signPlugin {
+        archiveFile = file(prebuilt)
+    }
 }

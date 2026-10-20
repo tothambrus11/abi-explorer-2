@@ -7,7 +7,11 @@ warning's other code action writes, says the order is meant. On a struct, the co
 layout with `static_assert`, and, on one with that warning, to reorder its members by alignment. Zed has no extension panels, so there
 is no side view.
 
-The extension installs `abi-explorer-lsp` from npm with Zed's own Node.js. To run a local build:
+To install it, unzip `abi-explorer-zed-<version>.zip` from an [editors release](https://github.com/tothambrus11/abi-explorer-2/releases) into
+Zed's installed extensions directory and restart Zed ([details](../RELEASING.md#installing-a-build-by-hand));
+it is not in Zed's extension registry yet.
+
+The extension downloads the language server from the GitHub release of its own version (or uses an `abi-explorer-lsp` on PATH) and runs it with Zed's own Node.js. To run a local build:
 
 ```json
 {
@@ -24,4 +28,5 @@ To see layouts for another target than the project's, with the engine's bundled 
 `lsp.abi-explorer-lsp` in Zed's settings.
 
 Develop with `zed: install dev extension` on this directory (needs the `wasm32-wasip2` Rust
-target).
+target). `test/smoke.mjs` runs the built extension in Zed under Xvfb and checks what Zed asks the
+server and is told (see [../README.md](../README.md#building-and-testing)).

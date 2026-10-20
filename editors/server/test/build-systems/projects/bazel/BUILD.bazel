@@ -1,0 +1,12 @@
+cc_library(
+    name = "record_lib",
+    hdrs = ["include/record.h"],
+    defines = ["RECORD_WIDE_ID"],
+    includes = ["include"],
+)
+
+cc_binary(
+    name = "record",
+    srcs = ["src/main.cpp"],
+    deps = [":record_lib"],
+)

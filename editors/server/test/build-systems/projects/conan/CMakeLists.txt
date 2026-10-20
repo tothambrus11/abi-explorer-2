@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.20)
+project(record_conan CXX)
+find_package(recordlib REQUIRED)
+add_executable(record src/main.cpp)
+target_link_libraries(record PRIVATE recordlib::recordlib)
+target_compile_features(record PRIVATE cxx_std_17)

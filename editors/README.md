@@ -10,7 +10,7 @@ flags and target.
 | `server/` | `abi-explorer-lsp`, the language server every editor runs: hovers, the wasted-space warning, the reorder and pin code actions and the `abiExplorer/layout` request | npm, esbuild |
 | `panel/` | The layout panel (byte map and member table) shown by VS Code's webview and CLion's tool window | npm, esbuild |
 | `vscode/` | The VS Code extension: the server, the Struct Layout view, CMake Tools' compile commands | npm, vsce |
-| `zed/` | The Zed extension: runs the server from npm with Zed's Node.js | cargo (`wasm32-wasip2`) |
+| `zed/` | The Zed extension: runs the server from the GitHub release with Zed's Node.js | cargo (`wasm32-wasip2`) |
 | `clion/` | The CLion plugin: the server through the IntelliJ LSP API, the panel in JCEF, CLion's project model | Gradle |
 | `neovim/` | `lsp/abi_explorer.lua` for `vim.lsp.enable`, and `:AbiLayout`, a text split | nothing to build |
 
@@ -32,26 +32,55 @@ user's cache, checking its SHA-256.
 
 ## Building and testing
 
+You need Node.js 22.18 or newer (24 in CI: the tests run the server's TypeScript directly), and for
+the parts you touch: a C++ compiler (the integration tests probe it for headers), Neovim 0.11+,
+Java 21 for CLion, and Rust with the `wasm32-wasip2` target for Zed.
+
 ```sh
+node ../tools/fetch-abi-module.mjs   # the engine the integration tests run (or set ABI_ENGINE_PATH)
 npm install                 # in editors/
 npm run build               # vscode/build.mjs builds server/, then panel/, then the extension
-npm run package -w vscode   # the VSIX, in vscode/dist/
-npm test                    # unit and integration tests (vitest)
+npm test                    # unit and integration tests (vitest), Neovim's included
 npm run check               # type-check every package
 npm run format:check        # prettier
 ```
 
-The integration tests run the real engine. They use the web app's copy
-(`npm run abi:fetch` at the repository root) or `ABI_ENGINE_PATH`, and skip without one.
+Suites that need something missing (the engine, a compiler, Neovim, code-server, a build system)
+skip themselves. CI sets `ABI_EXPLORER_REQUIRE_ALL=1`, which makes them fail instead.
 
-End to end, VS Code (in code-server, driven by Playwright) writes screenshots to `screenshots/`:
+| Editor | What tests it | Where it runs in CI |
+|:--|:--|:--|
+| all | `server/test`: unit tests, and the server end to end on a fixture project with the real engine and compiler | `npm test` |
+| all | `server/test/build-systems`: real CMake, Meson, Bazel and Conan projects, built and laid out from their compile commands and from commands pushed as CLion pushes them (`npm run test:build-systems`) | smoke job |
+| VS Code | `vscode/test/e2e`: the VSIX installed in code-server, driven by Playwright | smoke job |
+| CLion | `clion/core` (`./gradlew -p core test`); `PluginSmokeTest` in the real IntelliJ Platform (`./gradlew test`); `verifyPlugin` | build and smoke jobs |
+| Zed | `zed/test/smoke.mjs`: extension.wasm in real Zed under Xvfb | smoke job |
+| Neovim | `neovim/test`: the plugin in headless Neovim | `npm test` and smoke job |
+
+The smoke jobs in [`.github/workflows/editors-release.yml`](../.github/workflows/editors-release.yml)
+test the packages a release ships (the server tarball, the VSIX, the CLion, Zed and Neovim zips)
+rather than the source tree. `ABI_EXPLORER_SERVER` points the server tests and the Neovim
+test at another build of the server, and `VSIX` the VS Code test at another package.
+
+Locally:
 
 ```sh
 npm run package -w vscode
-CODE_SERVER_ENTRY=…/code-server/out/node/entry.js npx playwright test
+CODE_SERVER_ENTRY=…/code-server/out/node/entry.js npx playwright test   # screenshots in screenshots/
+
+(cd zed && cargo build --release --target wasm32-wasip2)
+ZED=…/zed.app/bin/zed node zed/test/smoke.mjs                          # needs Xvfb and xdotool
+
+npm run test:build-systems   # whichever of cmake, meson, bazel, conan are installed
 ```
 
 Zed and Neovim screenshots come from `scripts/desktop-screenshots.sh` (Xvfb; see its header).
 
 The CLion plugin needs `npm run build` first (it copies `server/dist` and `panel/dist`), then
 `./gradlew buildPlugin` in `clion/`. Its IDE-free logic tests on its own: `./gradlew -p core test`.
+The IntelliJ Platform comes from JetBrains' servers, so building the plugin needs them reachable.
+
+## Releasing
+
+All editors share one version. See [RELEASING.md](RELEASING.md) for cutting a release and for the
+accounts and secrets publishing needs.

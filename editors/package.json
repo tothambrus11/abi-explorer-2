@@ -14,7 +14,8 @@
     "test": "vitest run",
     "check": "tsc -p . && tsc -p shared && tsc -p server && tsc -p panel && tsc -p vscode",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test:build-systems": "vitest run --config vitest.build-systems.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

@@ -70,4 +70,11 @@ export default ts.config(
     ...ts.configs.disableTypeChecked,
     languageOptions: { globals: globals.node },
   },
+  {
+    // The editors' release and smoke-test scripts: untyped, and they report on stdout.
+    files: ['editors/scripts/*.mjs', 'editors/zed/test/*.mjs'],
+    ...ts.configs.disableTypeChecked,
+    languageOptions: { globals: globals.node },
+    rules: { ...ts.configs.disableTypeChecked.rules, 'no-console': 'off' },
+  },
 );

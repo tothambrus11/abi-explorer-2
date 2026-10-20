@@ -14,6 +14,8 @@ export type EngineFileName = 'abi_query.mjs' | 'abi_query.wasm' | 'abi_query.dat
 
 interface PinnedFile {
   name: EngineFileName;
+  /** The release asset it is downloaded from: releases name assets by their content. */
+  asset: string;
   sha256: string;
   bytes: number;
 }
@@ -26,16 +28,19 @@ export const ENGINE_RELEASE = {
   files: [
     {
       name: 'abi_query.mjs',
+      asset: 'glue-2459f7a19378.mjs',
       sha256: '2459f7a193786bf07d173ecda9400e345a359f84b7d4233fb6f3847e52af7976',
       bytes: 317_681,
     },
     {
       name: 'abi_query.wasm',
+      asset: 'wasm-1766b05acad6.wasm',
       sha256: '1766b05acad6a8a26ecb4c48120692ca1f8fb6b6935063a29822020ab8773c59',
       bytes: 29_224_771,
     },
     {
       name: 'abi_query.data',
+      asset: 'headers-95122c0f5c56.data',
       sha256: '95122c0f5c56d7c61efad5782a481c5100b9d18e31a4d206b760d8d34d8f3407',
       bytes: 20_119_812,
     },
@@ -81,11 +86,13 @@ export async function ensureEngineFiles(
   const totalBytes = missing.reduce((sum, file) => sum + file.bytes, 0);
   let doneBytes = 0;
   for (const file of missing) {
-    const body = await download(new URL(file.name, ENGINE_RELEASE.baseUrl), fetchImpl, (n) => {
+    const body = await download(new URL(file.asset, ENGINE_RELEASE.baseUrl), fetchImpl, (n) => {
       onProgress({ doneBytes: doneBytes + n, totalBytes });
     });
     if (sha256(body) !== file.sha256) {
-      throw new Error(`${file.name} from ${ENGINE_RELEASE.baseUrl} does not match its pinned hash`);
+      throw new Error(
+        `${file.asset} from ${ENGINE_RELEASE.baseUrl} does not match its pinned hash`,
+      );
     }
     // Written beside the target and renamed, so a cancelled download never
     // leaves a truncated file that a later check would have to hash to reject.

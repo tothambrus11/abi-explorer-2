@@ -1,0 +1,1 @@
+module(name = "record_bazel")
