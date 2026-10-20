@@ -100,6 +100,7 @@ jobs:
         run: |
           ./gradlew -p core test
           ./gradlew buildPlugin verifyPlugin
+          ./gradlew verifyPlugin -PverifyNewest=true
           cp build/distributions/*.zip "$RUNNER_TEMP/release/abi-explorer-clion-$VERSION.zip"
         env:
           VERSION: ${{ steps.version.outputs.version }}

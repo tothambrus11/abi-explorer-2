@@ -144,6 +144,9 @@ jobs:
         working-directory: editors/clion
       - run: ./gradlew buildPlugin verifyPlugin
         working-directory: editors/clion
+      - name: Verify the plugin in the newest CLion too
+        run: ./gradlew verifyPlugin -PverifyNewest=true
+        working-directory: editors/clion
       - run: rustup target add wasm32-wasip2 && cargo build --release --target wasm32-wasip2
         working-directory: editors/zed
       - uses: actions/upload-artifact@v7

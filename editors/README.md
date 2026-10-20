@@ -53,7 +53,7 @@ skip themselves. CI sets `ABI_EXPLORER_REQUIRE_ALL=1`, which makes them fail ins
 | all | `server/test`: unit tests, and the server end to end on a fixture project with the real engine and compiler | `npm test` |
 | all | `server/test/build-systems`: real CMake, Meson, Bazel and Conan projects, built and laid out from their compile commands and from commands pushed as CLion pushes them (`npm run test:build-systems`) | smoke job |
 | VS Code | `vscode/test/e2e`: the VSIX installed in code-server, driven by Playwright | smoke job |
-| CLion | `clion/core` (`./gradlew -p core test`); `PluginSmokeTest` in the real IntelliJ Platform (`./gradlew test`); `verifyPlugin` | build and smoke jobs |
+| CLion | `clion/core` (`./gradlew -p core test`); `PluginSmokeTest` in the real IntelliJ Platform of the oldest and newest CLion (`./gradlew test`, `-PplatformVersion=2026.2`); `verifyPlugin` in both (`-PverifyNewest=true`) | build and smoke jobs |
 | Zed | `zed/test/smoke.mjs`: extension.wasm in real Zed under Xvfb | smoke job |
 | Neovim | `neovim/test`: the plugin in headless Neovim | `npm test` and smoke job |
 

@@ -4,9 +4,8 @@ import abiexplorer.core.NodeRuntime
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.configurations.PathEnvironmentVariableUtil
 import com.intellij.execution.util.ExecUtil
-import com.intellij.ide.plugins.PluginManagerCore
+import com.intellij.ide.plugins.PluginManager
 import com.intellij.openapi.application.PathManager
-import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.util.io.Decompressor
@@ -31,7 +30,6 @@ class ServerRuntime(private val node: Path, private val script: Path) {
         GeneralCommandLine(node.toString(), script.toString(), "--stdio").withCharset(Charsets.UTF_8)
 
     companion object {
-        private const val PLUGIN_ID = "org.hylo-lang.abi-explorer"
         private val home: Path get() = Path.of(PathManager.getSystemPath(), "abi-explorer")
 
         /** Set once `prepare` has run in this IDE session. */
@@ -90,7 +88,7 @@ class ServerRuntime(private val node: Path, private val script: Path) {
          * copy is never mistaken for a finished one.
          */
         private fun extractServer(): Path {
-            val version = PluginManagerCore.getPlugin(PluginId.getId(PLUGIN_ID))?.version ?: "dev"
+            val version = PluginManager.getPluginByClass(ServerRuntime::class.java)?.version ?: "dev"
             val directory = home.resolve("server-$version")
             Files.createDirectories(directory)
             val files = mapOf(

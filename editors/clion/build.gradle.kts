@@ -63,18 +63,21 @@ intellijPlatform {
     publishing {
         token = providers.environmentVariable("JETBRAINS_MARKETPLACE_TOKEN")
     }
-    // `./gradlew verifyPlugin`: the APIs the plugin uses exist in this CLion, and none is internal
-    // or deprecated.
+    // `./gradlew verifyPlugin`: the APIs the plugin uses exist in the oldest CLion it supports, and
+    // none is internal or deprecated there. `-PverifyNewest=true` checks the same plugin in the
+    // newest CLion, where deprecations are allowed: 2026.2 deprecates the whole LSP API in favour
+    // of a renamed one (LspClient, LspIntegrationProvider) that 2025.3 does not have.
     pluginVerification {
-        failureLevel = listOf(
+        val newest = providers.gradleProperty("verifyNewest").map { it.toBoolean() }.getOrElse(false)
+        failureLevel = listOfNotNull(
             FailureLevel.COMPATIBILITY_PROBLEMS,
             FailureLevel.INTERNAL_API_USAGES,
-            FailureLevel.DEPRECATED_API_USAGES,
+            FailureLevel.DEPRECATED_API_USAGES.takeUnless { newest },
             FailureLevel.SCHEDULED_FOR_REMOVAL_API_USAGES,
         )
         ides {
-            create(IntelliJPlatformType.CLion, providers.gradleProperty("platformVersion").get())
-            create(IntelliJPlatformType.CLion, providers.gradleProperty("newestPlatformVersion").get())
+            val version = if (newest) "newestPlatformVersion" else "platformVersion"
+            create(IntelliJPlatformType.CLion, providers.gradleProperty(version).get())
         }
     }
 }
