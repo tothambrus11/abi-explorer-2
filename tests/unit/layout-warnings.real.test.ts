@@ -81,9 +81,20 @@ describe.skipIf(!moduleAvailable)('the reorder warning', () => {
     ).toEqual([]);
   });
 
-  it('warns without the line fix where moving lines would not be safe', async () => {
-    // Two members on one line: the warning stands, but only the comment fixes it.
-    const [w] = await warnings('struct S {\n  char a; double b;\n  char c;\n};\n');
-    expect(w!.fixes.map((f) => f.title)).toEqual(['Keep this member order']);
+  it('splits a line declaring several members to reorder them', async () => {
+    const source = 'struct S {\n  char a; double b; char c;\n};\n';
+    const [w] = await warnings(source);
+    expect(apply(source, w!.fixes[0]!)).toBe('struct S {\n  double b;\n  char a;\n  char c;\n};\n');
+    const declarators = 'struct T {\n  char a;\n  double *b, d;\n  char c;\n};\n';
+    const [x] = await warnings(declarators);
+    expect(apply(declarators, x!.fixes[0]!)).toBe(
+      'struct T {\n  double *b;\n  double d;\n  char a;\n  char c;\n};\n',
+    );
+    // Where it cannot be split, only the comment fixes it.
+    const [v] = await warnings(
+      'struct S {\n  char a; static int n; double b;\n  char c;\n};\n',
+      cxx,
+    );
+    expect(v!.fixes.map((f) => f.title)).toEqual(['Keep this member order']);
   });
 });

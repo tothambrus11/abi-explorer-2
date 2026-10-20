@@ -32,10 +32,36 @@ function packet(lines: number[]): RecordView {
   });
 }
 
+/** The lines with the action's edits applied (whole lines, last first). */
 function apply(lines: string[], action: NonNullable<ReturnType<typeof reorderAction>>): string[] {
   const result = [...lines];
-  for (const edit of action.edits) result[edit.range.start.line] = edit.newText;
+  const edits = [...action.edits].sort((a, b) => b.range.start.line - a.range.start.line);
+  for (const { range, newText } of edits) {
+    result.splice(range.start.line, range.end.line - range.start.line + 1, ...newText.split('\n'));
+  }
   return result;
+}
+
+/** `struct Packet` over `lines`, each member found by its name in them. */
+function packetIn(lines: string[]): RecordView {
+  const record = packet([0, 0, 0]);
+  const find = (label: string) => {
+    for (const [line, text] of lines.entries()) {
+      const match = new RegExp(`\\b${label}\\b`).exec(text.replace(/\/\/.*$/, ''));
+      if (match) return { line, character: match.index };
+    }
+    throw new Error(label);
+  };
+  return {
+    ...record,
+    members: record.members.map((member) => {
+      const start = find(member.label);
+      return {
+        ...member,
+        nameRange: { start, end: { ...start, character: start.character + member.label.length } },
+      };
+    }),
+  };
 }
 
 describe('reorderAction', () => {
@@ -91,14 +117,49 @@ describe('reorderAction', () => {
     ]);
   });
 
+  it('splits a line declaring several members into a line per member', () => {
+    const reordered = (...body: string[]) => {
+      const lines = ['struct Packet {', ...body, '};'];
+      const action = reorderAction(packetIn(lines), lines);
+      return action && apply(lines, action).slice(1, -1);
+    };
+    expect(reordered('  char type, other;', '  int length;', '  short checksum;')).toBeNull();
+    expect(reordered('  char type; int length;', '  short checksum;')).toEqual([
+      '  int length;',
+      '  short checksum;',
+      '  char type;',
+    ]);
+    // One declaration, several declarators: each gets the type, and keeps its own `*` or `&`.
+    expect(
+      reordered('  // the header', '  char type; int length; short checksum;  // all of it'),
+    ).toEqual([
+      '  // the header',
+      '  // all of it',
+      '  int length;',
+      '  short checksum;',
+      '  char type;',
+    ]);
+    expect(reordered('  unsigned char type;', '  int length = 4, checksum{2};')).toEqual([
+      '  int length = 4;',
+      '  int checksum{2};',
+      '  unsigned char type;',
+    ]);
+    expect(reordered('  const char *type, *length;', '  short checksum;')).toEqual([
+      '  const char *length;',
+      '  short checksum;',
+      '  const char *type;',
+    ]);
+    // A declarator that is not a name after its type.
+    expect(reordered('  char type;', '  int (*length)(int), checksum;')).toBeNull();
+  });
+
   it('is not offered where moving lines could change the meaning', () => {
     const lines = (...body: string[]) => ['struct Packet {', ...body, '};'];
     const offered = (text: string[], at: number[]) => reorderAction(packet(at), text) !== null;
     expect(offered(lines('  char type;', '  int length;', '  short checksum;'), [1, 2, 3])).toBe(
       true,
     );
-    // Two members in one declaration.
-    expect(offered(lines('  char type; int length;', '  short checksum;'), [1, 1, 2])).toBe(false);
+    // Something on a member's line that is not a member: it cannot be split off.
     expect(offered(lines('  char type, x;', '  int length;', '  short checksum;'), [1, 2, 3])).toBe(
       false,
     );
