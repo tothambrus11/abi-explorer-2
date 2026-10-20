@@ -1,6 +1,6 @@
 {
   "name": "@abi-explorer/layout-panel",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
@@ -9,7 +9,7 @@
     "build": "node build.mjs"
   },
   "devDependencies": {
-    "@abi-explorer/shared": "0.2.0",
+    "@abi-explorer/shared": "0.2.1",
     "happy-dom": "^21.0.3"
   },
   "exports": {
