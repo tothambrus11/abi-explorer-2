@@ -4,7 +4,7 @@
 #   build ──┬─ smoke-vscode ────────┐
 #           ├─ smoke-zed ───────────┤
 #           ├─ smoke-neovim ────────┼─ publish-vscode ─ github-release
-#           ├─ smoke-clion ─────────┤
+#           ├─ smoke-clion (×2) ────┤
 #           └─ smoke-build-systems ─┘
 #
 # Only the VS Code extension is published, to the Visual Studio Marketplace and
@@ -13,8 +13,9 @@
 # install with `npm install -g <its URL>`), and the CLion, Zed and Neovim
 # archives to install by hand.
 #
-# Pull requests that touch editors/ and manual runs (Actions › Editors release ›
-# Run workflow) build and smoke-test without publishing. A tag `editors-v0.2.0`
+# This is also the editors' CI: pull requests and pushes to main that touch
+# editors/, and manual runs (Actions › Editors release › Run workflow), build
+# and smoke-test without publishing. A tag `editors-v0.2.0`
 # also publishes, after `scripts/version.mjs check` has confirmed every plugin
 # says 0.2.0. The publish jobs run in the `release` environment, which holds
 # their secrets; editors/RELEASING.md lists them and the one-time setup.
@@ -23,6 +24,8 @@ name: Editors release
 on:
   push:
     tags: ['editors-v*']
+    branches: [main]
+    paths: ['editors/**', '.github/workflows/editors-release.yml']
   pull_request:
     paths: ['editors/**', '.github/workflows/editors-release.yml']
   workflow_dispatch:
@@ -100,7 +103,6 @@ jobs:
         run: |
           ./gradlew -p core test
           ./gradlew buildPlugin verifyPlugin
-          ./gradlew verifyPlugin -PverifyNewest=true
           cp build/distributions/*.zip "$RUNNER_TEMP/release/abi-explorer-clion-$VERSION.zip"
         env:
           VERSION: ${{ steps.version.outputs.version }}
@@ -251,6 +253,11 @@ jobs:
   smoke-clion:
     needs: build
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        clion: [oldest, newest]
+    name: smoke-clion (${{ matrix.clion }})
     defaults:
       run:
         working-directory: editors
@@ -270,7 +277,8 @@ jobs:
         with:
           name: editors-${{ needs.build.outputs.version }}
           path: ${{ runner.temp }}/release
-      - name: The zip's server is the npm package's
+      - name: The zip's server is the release's
+        if: matrix.clion == 'oldest'
         run: |
           cd "$RUNNER_TEMP"
           mkdir zip npm
@@ -285,11 +293,16 @@ jobs:
       - run: npm ci && npm run build
       # No engine is provided: the server downloads the pinned release, as for a user.
       - run: ./gradlew test
+        if: matrix.clion == 'oldest'
         working-directory: editors/clion
-      - name: The same in the newest CLion
+      - name: PluginSmokeTest and the plugin verifier in the newest CLion
+        if: matrix.clion == 'newest'
         working-directory: editors/clion
-        run: ./gradlew test -PplatformVersion="$(sed -n 's/^newestPlatformVersion *= *//p' gradle.properties)"
+        run: |
+          ./gradlew test -PplatformVersion="$(sed -n 's/^newestPlatformVersion *= *//p' gradle.properties)"
+          ./gradlew verifyPlugin -PverifyNewest=true
       - name: The release would sign and publish this zip, not a new build
+        if: matrix.clion == 'oldest'
         working-directory: editors/clion
         run: |
           ./gradlew signPlugin publishPlugin -x buildPlugin --dry-run -PprebuiltPlugin="$RUNNER_TEMP/release/abi-explorer-clion-$VERSION.zip" | tee "$RUNNER_TEMP/plan.txt"
@@ -305,7 +318,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         if: failure()
         with:
-          name: smoke-clion
+          name: smoke-clion-${{ matrix.clion }}
           path: editors/clion/build/reports
 
   # Real CMake, Meson, Bazel and Conan projects, laid out by the npm package's
