@@ -1,0 +1,83 @@
+// "Pin layout with static_assert": asserts the record's size, alignment and
+// (where the file already has `offsetof`) each field's offset as they are now,
+// right after its definition, so a change that moves them fails to compile.
+
+import type { Range, RecordView } from '@abi-explorer/shared/protocol';
+
+export interface PinAction {
+  title: string;
+  edit: { range: Range; newText: string };
+}
+
+/** The action for `record` in a document of `language`, or null where there is nothing to name. */
+export function pinAction(
+  record: RecordView,
+  lines: readonly string[],
+  language: 'c' | 'c++',
+): PinAction | null {
+  const { nameRange, extent } = record;
+  // An instantiation is declared by its template, where its arguments are not known.
+  if (!nameRange || !extent || record.name.includes('<')) return null;
+  const name = lines[nameRange.start.line]!.slice(
+    nameRange.start.character,
+    nameRange.end.character,
+  );
+  if (!/^\w+$/.test(name) || record.sizeBits % 8 !== 0) return null;
+
+  const close = lines[extent.end.line] ?? '';
+  const brace = close.lastIndexOf('}', extent.end.character - 1);
+  // Only after a declaration that ends on the closing brace's line: `};`, `} packet;`, `} Packet;`.
+  if (brace < 0 || !/^}[^;{}]*;\s*(\/\/.*)?$/.test(close.slice(brace))) return null;
+  const indent = /^\s*/.exec(lines[extent.start.line] ?? '')![0];
+
+  // `typedef struct { … } Pair;` is named after the brace, and only by its typedef name.
+  const typedefName = nameRange.start.line === extent.end.line && nameRange.start.character > brace;
+  const c = language === 'c';
+  // C needs the tag; C++ the qualified name, since the asserts follow a definition
+  // like `struct ns::S { … };` outside its namespace.
+  const type = typedefName
+    ? name
+    : c
+      ? `${record.kind === 'union' ? 'union' : 'struct'} ${name}`
+      : /^[\w:]+$/.test(record.name)
+        ? record.name
+        : name;
+  const assert = (condition: string, what: string) =>
+    `${indent}${c ? '_Static_assert' : 'static_assert'}(${condition}, "${what}");\n`;
+  let text =
+    assert(`sizeof(${type}) == ${record.sizeBits / 8}`, `${name}'s size`) +
+    assert(
+      `${c ? '_Alignof' : 'alignof'}(${type}) == ${record.alignBits / 8}`,
+      `${name}'s alignment`,
+    );
+
+  const hasOffsetof = lines.some((line) => /^\s*#\s*include\s*<(cstddef|stddef\.h)>/.test(line));
+  const plain = record.members.every((member) => member.kind === 'field');
+  // Outside the class, offsetof can name only public members.
+  const body = lines.slice(extent.start.line, extent.end.line + 1).join('\n');
+  const open = record.kind === 'struct' && !/\b(private|protected)\s*:/.test(body);
+  if (hasOffsetof && plain && open) {
+    for (const member of record.members) {
+      if (!/^\w+$/.test(member.label) || member.offsetBits % 8 !== 0) continue;
+      text += assert(
+        `offsetof(${type}, ${member.label}) == ${member.offsetBits / 8}`,
+        `${name}::${member.label}'s offset`,
+      );
+    }
+  }
+
+  // On the line after the definition; at the end of the file, after a line break of its own.
+  const after = extent.end.line + 1;
+  const at =
+    after < lines.length
+      ? { line: after, character: 0 }
+      : { line: extent.end.line, character: close.length };
+  return {
+    // Shorter than the reorder's title: Zed sizes its menu by the longest title in bytes.
+    title: 'Pin layout with static_assert',
+    edit: {
+      range: { start: at, end: at },
+      newText: after < lines.length ? text : `\n${text.replace(/\n$/, '')}`,
+    },
+  };
+}

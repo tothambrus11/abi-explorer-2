@@ -1,0 +1,3 @@
+# Written by the e2e tests and the screenshot script; shared outside the repository.
+screenshots/
+test-results/

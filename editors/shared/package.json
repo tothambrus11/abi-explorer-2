@@ -1,0 +1,15 @@
+{
+  "name": "@abi-explorer/shared",
+  "version": "0.1.0",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "description": "What the server and the editors' panels share: the protocol and the drawing model of a layout.",
+  "exports": {
+    "./protocol": "./src/protocol.ts",
+    "./layoutModel": "./src/layoutModel.ts",
+    "./format": "./src/format.ts",
+    "./splitCommandLine": "./src/splitCommandLine.ts",
+    "./targets": "./src/targets.ts"
+  }
+}

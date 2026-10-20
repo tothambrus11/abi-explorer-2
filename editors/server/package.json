@@ -1,0 +1,25 @@
+{
+  "name": "abi-explorer-lsp",
+  "version": "0.1.0",
+  "description": "A language server that shows how clang lays out C and C++ records: sizes, offsets and padding, in hovers and code actions.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "abi-explorer-lsp": "bin/abi-explorer-lsp.js"
+  },
+  "files": [
+    "bin",
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "vscode-languageserver": "^10.1.2",
+    "vscode-languageserver-textdocument": "^1.0.12",
+    "@abi-explorer/shared": "0.1.0"
+  }
+}
