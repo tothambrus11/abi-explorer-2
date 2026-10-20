@@ -41,7 +41,7 @@ export async function startCodeServer(options: CodeServerOptions): Promise<CodeS
     userData,
     'User',
     'globalStorage',
-    'tothambrus11.abi-explorer',
+    'hylo-lang.abi-explorer',
     `clang-abi-wasm-${ENGINE_RELEASE.tag}`,
   );
   fs.mkdirSync(cache, { recursive: true });

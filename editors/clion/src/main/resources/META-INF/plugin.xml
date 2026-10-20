@@ -1,8 +1,8 @@
 <idea-plugin>
   <!-- Marketplace IDs may not contain the IDE's name, and never change once published. -->
-  <id>io.github.tothambrus11.abiexplorer</id>
+  <id>org.hylo-lang.abi-explorer</id>
   <name>ABI Explorer</name>
-  <vendor url="https://github.com/tothambrus11/abi-explorer-2">Ambrus Tóth</vendor>
+  <vendor url="https://github.com/tothambrus11/abi-explorer-2">Hylo</vendor>
   <description><![CDATA[
     Sizes, offsets and padding of C and C++ structs, from the project's own compiler and flags:
     in quick documentation and in the <b>Struct Layout</b>
@@ -13,8 +13,14 @@
 
   <depends>com.intellij.modules.platform</depends>
   <depends>com.intellij.modules.lsp</depends>
-  <!-- CLion's project model, for each file's compiler and switches. -->
-  <depends>com.intellij.modules.cidr.lang</depends>
+  <!-- CLion itself, and its project model (OCWorkspace) for each file's compiler and
+       switches, in both C/C++ engines. Not com.intellij.modules.cidr.lang: that is the
+       classic engine, which CLion Nova (the default since 2025.3) does not load, so a
+       plugin requiring it would not load there at all. -->
+  <depends>com.intellij.modules.clion</depends>
+  <!-- The Struct Layout tool window's browser. A module of its own since 2026.1, which a
+       plugin only sees when it says so; an alias of the core in 2025.3.1 and later. -->
+  <depends>com.intellij.modules.jcef</depends>
 
   <extensions defaultExtensionNs="com.intellij">
     <platform.lsp.serverSupportProvider implementation="abiexplorer.clion.AbiExplorerLspSupport"/>

@@ -13,6 +13,7 @@ import {
   copyFixtureProject,
   hasLocalEngine,
   LOCAL_ENGINE,
+  REQUIRE_ALL,
   type FixtureProject,
 } from './support/fixtureProject.ts';
 import { LspSession } from './support/lspSession.ts';
@@ -25,8 +26,9 @@ const hasCompiler = (() => {
     return false;
   }
 })();
+const skipped = !REQUIRE_ALL && (!hasLocalEngine || !hasCompiler);
 
-describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a real project', () => {
+describe.skipIf(skipped)('abi-explorer-lsp against a real project', () => {
   let project: FixtureProject;
   let session: LspSession;
   let compiled: Record<string, number>;
@@ -323,7 +325,7 @@ describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp against a rea
 });
 
 /** sizeof and offsetof as g++ computes them, for the fixture's records. */
-describe.skipIf(!hasLocalEngine || !hasCompiler)('abi-explorer-lsp with a target set', () => {
+describe.skipIf(skipped)('abi-explorer-lsp with a target set', () => {
   it('lays the project out for that target, with the project flags that still apply', async () => {
     const project = copyFixtureProject();
     const session = await LspSession.start(project.uri(''), {

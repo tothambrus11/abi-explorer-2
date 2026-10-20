@@ -8,14 +8,20 @@ import {
   copyFixtureProject,
   hasLocalEngine,
   LOCAL_ENGINE,
+  REQUIRE_ALL,
   type FixtureProject,
 } from '../../server/test/support/fixtureProject.ts';
 import { findOnPath } from './findOnPath.ts';
 
-const plugin = path.join(import.meta.dirname, '..');
-const server = path.join(import.meta.dirname, '..', '..', 'server', 'src', 'main.ts');
+// NEOVIM_PLUGIN: another copy, such as the release's unzipped abi-explorer.nvim.
+const plugin = process.env.NEOVIM_PLUGIN ?? path.join(import.meta.dirname, '..');
+// ABI_EXPLORER_SERVER: another build, such as the npm package the release smoke-tests.
+const server =
+  process.env.ABI_EXPLORER_SERVER ??
+  path.join(import.meta.dirname, '..', '..', 'server', 'src', 'main.ts');
 const nvim = process.env.NVIM_BIN ?? findOnPath('nvim');
 const hasCompiler = findOnPath('c++') !== undefined;
+const skipped = !REQUIRE_ALL && (!nvim || !hasLocalEngine || !hasCompiler);
 
 interface Session {
   hover: string;
@@ -25,7 +31,7 @@ interface Session {
   otherTarget: string;
 }
 
-describe.skipIf(!nvim || !hasLocalEngine || !hasCompiler)('Neovim with the server', () => {
+describe.skipIf(skipped)('Neovim with the server', () => {
   let project: FixtureProject;
   let session: Session;
 
@@ -44,8 +50,22 @@ describe.skipIf(!nvim || !hasLocalEngine || !hasCompiler)('Neovim with the serve
       })
       vim.cmd.edit(${lua(project.path('main.cpp'))})
       local uri = vim.uri_from_bufnr(0)
+      -- A request sent before the client is initialized, or while :AbiTarget
+      -- restarts it, waits out its timeout (or, in some Neovim versions, fails),
+      -- so every request first waits for a running, initialized client.
+      local function ready_client(not_id)
+        local found
+        vim.wait(60000, function()
+          local client = vim.lsp.get_clients({ bufnr = 0, name = 'abi_explorer' })[1]
+          found = client and client.initialized and not client:is_stopped() and client.id ~= not_id and client or nil
+          return found ~= nil
+        end, 100)
+        return found
+      end
       local function request(method, params)
-        local replies = vim.lsp.buf_request_sync(0, method, params, 30000) or {}
+        if not ready_client() then return nil end
+        local ok, replies = pcall(vim.lsp.buf_request_sync, 0, method, params, 30000)
+        replies = ok and replies or {}
         for _, reply in pairs(replies) do
           if reply.result then return reply.result end
         end
@@ -76,7 +96,9 @@ describe.skipIf(!nvim || !hasLocalEngine || !hasCompiler)('Neovim with the serve
         return split[1] ~= nil and split[1]:find('Packet') ~= nil
       end, 200)
 
+      local before = ready_client()
       require('abi-explorer').set_target('armv7-unknown-linux-gnueabihf')
+      ready_client(before and before.id)
       local other
       vim.wait(90000, function()
         local answer = request('textDocument/hover', at_packet)

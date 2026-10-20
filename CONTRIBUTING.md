@@ -146,8 +146,18 @@ never evicts the other's.
 
 CI (`.github/workflows/ci.yml`) fetches the pinned clang-abi-wasm release, then
 runs lint, type-check, the unit suites (including the ones that drive the real
-module), the build and Playwright, all against the same copy of the module the
-site serves.
+module), the build and Playwright (split over three runners, and skipped for
+pull requests that only change `editors/`), all against the same copy of the
+module the site serves.
+
+## The editor plugins
+
+`editors/` holds the language server and the VS Code, CLion, Zed and Neovim plugins, an npm
+workspace of its own. [editors/README.md](editors/README.md) says how to build and test them,
+and [editors/RELEASING.md](editors/RELEASING.md) how they are released. Their tests run the
+engine from `public/vendor/abi`, the copy `npm run abi:fetch` puts there. Their CI is
+[`editors-release.yml`](.github/workflows/editors-release.yml), which runs for pull requests
+and pushes to main that touch `editors/`.
 
 ## The share-link package
 

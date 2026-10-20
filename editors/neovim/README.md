@@ -1,16 +1,31 @@
 # ABI Explorer for Neovim
 
-Neovim 0.11 or newer. Install the server, then add this directory to your runtime path:
+Neovim 0.11 or newer, and Node.js 20 or newer. Install the server from the
+[release](https://github.com/tothambrus11/abi-explorer-2/releases) (replace `<v>` with its version):
 
 ```sh
-npm install -g abi-explorer-lsp
+npm install -g https://github.com/tothambrus11/abi-explorer-2/releases/download/editors-v<v>/hylo-lang-abi-explorer-<v>.tgz
 ```
 
+Each release's GitHub page has this directory as `abi-explorer-neovim-<version>.zip`; unzip it
+and point a plugin manager at it:
+
 ```lua
--- lazy.nvim: { dir = '…/abi-explorer-2/editors/neovim', config = function() require('abi-explorer').setup() end }
+-- lazy.nvim
+{ dir = '/path/to/abi-explorer.nvim', main = 'abi-explorer', opts = {} }
+-- or the runtime path
+vim.opt.runtimepath:append('/path/to/abi-explorer.nvim')
 require('abi-explorer').setup()
--- or, to configure the server: require('abi-explorer').setup({ lsp = { init_options = { … } } })
 ```
+
+`setup` takes the server's configuration too:
+`require('abi-explorer').setup({ lsp = { init_options = { target = 'armv7-unknown-linux-gnueabihf' } } })`.
+To work on the plugin, add `editors/neovim` of a checkout to the runtime path instead.
+
+The server alone, without `:AbiLayout` and the colours, needs only
+[`lsp/abi_explorer.lua`](lsp/abi_explorer.lua) on the runtime path (the plugin puts it there) and
+`vim.lsp.enable('abi_explorer')`. That file is written the way nvim-lspconfig's are, so it can go
+into nvim-lspconfig, and the server into Mason's registry, unchanged ([RELEASING.md](../RELEASING.md#neovim-nvim-lspconfig-and-mason)).
 
 - `K` on a struct or member name shows its byte map and member table, and so does `K` on any use
   of a struct, library types included (`std::string`).

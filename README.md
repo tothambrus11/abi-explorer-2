@@ -92,6 +92,11 @@ VS Code and CLion) a side panel that follows the caret. A struct whose member
 order wastes space gets a warning, with reordering its members by alignment as
 the fix, and any struct's layout can be pinned with `static_assert`. See [editors/](editors/README.md).
 
+VS Code (and VSCodium, Cursor) install it as "ABI Explorer" from the extensions view. CLion, Zed
+and Neovim install it from the archives on the
+[editors releases](https://github.com/tothambrus11/abi-explorer-2/releases); [RELEASING.md](editors/RELEASING.md#installing-a-build-by-hand)
+says how.
+
 ## How it works
 
 The app asks one question and reads the answer. There are two compilers that

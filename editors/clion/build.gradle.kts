@@ -1,6 +1,7 @@
 // The CLion plugin. Run `npm run build` in editors/ first: the server and
 // panel bundles are copied in from ../server/dist and ../panel/dist.
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
+import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask.FailureLevel
 import org.jetbrains.kotlin.gradle.dsl.JvmDefaultMode
 
@@ -10,7 +11,7 @@ plugins {
 }
 
 group = "abiexplorer"
-version = "0.1.0"
+version = providers.gradleProperty("pluginVersion").get()
 
 repositories {
     mavenCentral()
@@ -30,10 +31,19 @@ kotlin {
 
 dependencies {
     implementation("abiexplorer:abi-explorer-core")
+    // PluginSmokeTest: the plugin in the real IntelliJ Platform, JUnit 3 style.
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.opentest4j:opentest4j:1.3.0")
     intellijPlatform {
         clion(providers.gradleProperty("platformVersion"))
         bundledPlugin("com.intellij.clion")
+        // JCEF (the tool window's browser) is a module of its own since 2026.1; before that it
+        // is part of the platform, and the alias plugin.xml depends on resolves to the core.
+        if (providers.gradleProperty("platformVersion").get().substringBefore('.').toInt() >= 2026) {
+            bundledPlugin("com.intellij.modules.jcef")
+        }
         pluginVerifier()
+        testFramework(TestFrameworkType.Platform)
     }
 }
 
@@ -44,17 +54,30 @@ intellijPlatform {
             untilBuild = provider { null }
         }
     }
-    // `./gradlew verifyPlugin`: the APIs the plugin uses exist in this CLion, and none is internal
-    // or deprecated.
+    // `./gradlew signPlugin publishPlugin` in the release workflow; see editors/RELEASING.md.
+    signing {
+        certificateChain = providers.environmentVariable("JETBRAINS_CERTIFICATE_CHAIN")
+        privateKey = providers.environmentVariable("JETBRAINS_PRIVATE_KEY")
+        password = providers.environmentVariable("JETBRAINS_PRIVATE_KEY_PASSWORD")
+    }
+    publishing {
+        token = providers.environmentVariable("JETBRAINS_MARKETPLACE_TOKEN")
+    }
+    // `./gradlew verifyPlugin`: the APIs the plugin uses exist in the oldest CLion it supports, and
+    // none is internal or deprecated there. `-PverifyNewest=true` checks the same plugin in the
+    // newest CLion, where deprecations are allowed: 2026.2 deprecates the whole LSP API in favour
+    // of a renamed one (LspClient, LspIntegrationProvider) that 2025.3 does not have.
     pluginVerification {
-        failureLevel = listOf(
+        val newest = providers.gradleProperty("verifyNewest").map { it.toBoolean() }.getOrElse(false)
+        failureLevel = listOfNotNull(
             FailureLevel.COMPATIBILITY_PROBLEMS,
             FailureLevel.INTERNAL_API_USAGES,
-            FailureLevel.DEPRECATED_API_USAGES,
+            FailureLevel.DEPRECATED_API_USAGES.takeUnless { newest },
             FailureLevel.SCHEDULED_FOR_REMOVAL_API_USAGES,
         )
         ides {
-            create(IntelliJPlatformType.CLion, providers.gradleProperty("platformVersion").get())
+            val version = if (newest) "newestPlatformVersion" else "platformVersion"
+            create(IntelliJPlatformType.CLion, providers.gradleProperty(version).get())
         }
     }
 }
@@ -62,4 +85,24 @@ intellijPlatform {
 tasks.processResources {
     from("../server/dist") { into("server") }
     from("../panel/dist") { into("panel") }
+}
+
+tasks.test {
+    // The project the smoke test opens; the server it runs comes from processResources above.
+    systemProperty("abiexplorer.fixture", file("../server/test/fixtures/project").absolutePath)
+    // Its sources are not inputs Gradle sees, so it always runs when asked.
+    outputs.upToDateWhen { false }
+    testLogging {
+        events("failed", "standard_out")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+}
+
+// The release signs and publishes the zip its smoke tests ran, not a new build:
+// `./gradlew signPlugin publishPlugin -x buildPlugin -PprebuiltPlugin=/path/to/plugin.zip`
+// (`-x buildPlugin`, or publishPlugin builds one first).
+providers.gradleProperty("prebuiltPlugin").orNull?.let { prebuilt ->
+    tasks.signPlugin {
+        archiveFile = file(prebuilt)
+    }
 }

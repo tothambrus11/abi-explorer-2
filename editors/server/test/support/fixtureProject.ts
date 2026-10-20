@@ -39,3 +39,9 @@ export const LOCAL_ENGINE =
   process.env.ABI_ENGINE_PATH ??
   path.join(import.meta.dirname, '..', '..', '..', '..', 'public', 'vendor', 'abi');
 export const hasLocalEngine = fs.existsSync(path.join(LOCAL_ENGINE, 'abi_query.wasm'));
+
+/**
+ * Set in CI (ABI_EXPLORER_REQUIRE_ALL=1): suites that skip themselves without an
+ * engine, a compiler, an editor or a build system run anyway, and fail.
+ */
+export const REQUIRE_ALL = Boolean(process.env.ABI_EXPLORER_REQUIRE_ALL);

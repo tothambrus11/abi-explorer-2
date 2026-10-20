@@ -4,9 +4,7 @@ import abiexplorer.core.NodeRuntime
 import com.intellij.execution.configurations.GeneralCommandLine
 import com.intellij.execution.configurations.PathEnvironmentVariableUtil
 import com.intellij.execution.util.ExecUtil
-import com.intellij.ide.plugins.PluginManagerCore
 import com.intellij.openapi.application.PathManager
-import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.util.SystemInfo
 import com.intellij.util.io.Decompressor
@@ -31,7 +29,6 @@ class ServerRuntime(private val node: Path, private val script: Path) {
         GeneralCommandLine(node.toString(), script.toString(), "--stdio").withCharset(Charsets.UTF_8)
 
     companion object {
-        private const val PLUGIN_ID = "io.github.tothambrus11.abiexplorer"
         private val home: Path get() = Path.of(PathManager.getSystemPath(), "abi-explorer")
 
         /** Set once `prepare` has run in this IDE session. */
@@ -84,26 +81,28 @@ class ServerRuntime(private val node: Path, private val script: Path) {
         private fun downloadedNode(): Path = home.resolve("node").resolve(distribution().executable)
 
         /**
-         * Copies the bundled server out of the plugin into a folder named for the
-         * plugin's version, so an update brings a new server. Each file is
-         * written beside its target and moved into place, so an interrupted
-         * copy is never mistaken for a finished one.
+         * Copies the bundled server out of the plugin into a folder named for its
+         * contents' hash, so an update (or a development build) brings a new
+         * server. Each file is written beside its target and moved into place,
+         * so an interrupted copy is never mistaken for a finished one.
          */
         private fun extractServer(): Path {
-            val version = PluginManagerCore.getPlugin(PluginId.getId(PLUGIN_ID))?.version ?: "dev"
-            val directory = home.resolve("server-$version")
-            Files.createDirectories(directory)
             val files = mapOf(
-                "server.js" to { resource("/server/server.js") },
-                "engineWorker.js" to { resource("/server/engineWorker.js") },
+                "server.js" to resource("/server/server.js"),
+                "engineWorker.js" to resource("/server/engineWorker.js"),
                 // The bundle is an ES module.
-                "package.json" to { """{ "type": "module" }""".toByteArray() },
+                "package.json" to """{ "type": "module" }""".toByteArray(),
             )
+            val digest = MessageDigest.getInstance("SHA-256")
+            files.values.forEach(digest::update)
+            val hash = digest.digest().take(6).joinToString("") { "%02x".format(it) }
+            val directory = home.resolve("server-$hash")
+            Files.createDirectories(directory)
             for ((name, content) in files) {
                 val target = directory.resolve(name)
-                if (target.exists() && version != "dev") continue
+                if (target.exists()) continue
                 val partial = Files.createTempFile(directory, name, ".partial")
-                Files.write(partial, content())
+                Files.write(partial, content)
                 Files.move(partial, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
             }
             return directory.resolve("server.js")

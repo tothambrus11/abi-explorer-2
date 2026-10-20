@@ -18,7 +18,10 @@ import {
   type Position,
 } from '@abi-explorer/shared/protocol';
 
-const SERVER_SOURCE = path.join(import.meta.dirname, '..', '..', 'src', 'main.ts');
+// ABI_EXPLORER_SERVER runs another build of the server instead, such as the npm
+// package as it will be published (the release's smoke tests do).
+const SERVER_SOURCE =
+  process.env.ABI_EXPLORER_SERVER ?? path.join(import.meta.dirname, '..', '..', 'src', 'main.ts');
 
 export class LspSession {
   private readonly process: ChildProcess;
