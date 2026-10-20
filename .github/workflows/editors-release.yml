@@ -14,10 +14,11 @@
 # archives to install by hand.
 #
 # This is also the editors' CI: pull requests and pushes to main that touch
-# editors/, and manual runs (Actions › Editors release › Run workflow), build
-# and smoke-test without publishing. A tag `editors-v0.2.0`
+# editors/, and manual runs on a branch (Actions › Editors release › Run
+# workflow), build and smoke-test without publishing. A tag `editors-v0.2.0`
 # also publishes, after `scripts/version.mjs check` has confirmed every plugin
-# says 0.2.0. The publish jobs run in the `release` environment, which holds
+# says 0.2.0: pushed by hand, or by Editors make release, which starts this
+# workflow on the tag it pushes. The publish jobs run in the `release` environment, which holds
 # their secrets; editors/RELEASING.md lists them and the one-time setup.
 name: Editors release
 

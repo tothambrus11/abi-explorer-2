@@ -5,14 +5,25 @@ command `abi-explorer-lsp`), the VS Code extension, the CLion plugin, the Zed ex
 
 ## Cutting a release
 
+On the Actions page, open **Editors make release**, choose **Run workflow** on `main`, and enter
+the version (`0.2.0`). [`editors-make-release.yml`](../.github/workflows/editors-make-release.yml)
+then writes that version into every package under `editors/` and the lock files
+(`node scripts/version.mjs set 0.2.0`), commits it to `main` as "editors 0.2.0", tags the commit
+`editors-v0.2.0` and starts [`editors-release.yml`](../.github/workflows/editors-release.yml) on
+the tag. Releasing the version the packages already say, as for the first release, tags without a
+commit. The workflow pushes to `main` with its own token, so if `main` is ever protected, let
+GitHub Actions bypass that rule.
+
+By hand, the same is:
+
 ```sh
 cd editors
-node scripts/version.mjs set 0.2.0     # server, vscode, clion, zed and the lock files
+node scripts/version.mjs set 0.2.0
 git commit -am "editors 0.2.0" && git push
-git tag editors-v0.2.0 && git push origin editors-v0.2.0
+git tag editors-v0.2.0 && git push origin editors-v0.2.0   # a pushed tag starts editors-release.yml itself
 ```
 
-The tag starts [`editors-release.yml`](../.github/workflows/editors-release.yml):
+`editors-release.yml` then runs on the tag:
 
 1. **build** checks that every plugin says the tag's version, runs the type checks and tests, and
    builds each package once: `hylo-lang-abi-explorer-<v>.tgz` (the server), `abi-explorer-<v>.vsix`,
@@ -29,8 +40,8 @@ The tag starts [`editors-release.yml`](../.github/workflows/editors-release.yml)
    server from its own version's release.
 
 A publish job skips a version that is already published, so a run that failed half way can be
-re-run from the Actions page. Pull requests that touch `editors/`, and **Run workflow** on the
-Actions page, run steps 1 and 2 only.
+re-run from the Actions page. Pull requests and pushes to `main` that touch `editors/`, and
+**Run workflow** on a branch, run steps 1 and 2 only.
 
 ## One-time setup
 
@@ -56,8 +67,8 @@ Actions page, run steps 1 and 2 only.
 | `VSCE_PAT` | the Azure token (2)                         |
 | `OVSX_PAT` | only for a first Open VSX version, see (3)  |
 
-The GitHub release uses the workflow's own token. Then cut a release as above: push the tag
-`editors-v0.1.0` for the version the plugins say now.
+The GitHub release uses the workflow's own token. Then cut a release as above, with the version
+the plugins say now (`node scripts/version.mjs` prints it).
 
 ## Installing a build by hand
 
