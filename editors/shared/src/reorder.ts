@@ -1,14 +1,58 @@
-// "Reorder members by alignment": the code action behind the reorder note.
+// The reorder warning and its two fixes, as text edits: what the language
+// server offers every editor and what the web explorer's editor offers too.
 //
-// It moves whole lines, so it is offered only where each member is one
-// declaration on a line of its own and only comments and blank lines are
-// between them (not an access specifier, a preprocessor line, a nested type).
-// A member takes the comment lines right above it along; everything else in
-// the record (other comments, functions, blank lines) stays put.
+// "Reorder members by alignment" moves whole lines, so it is offered only
+// where each member is one declaration on a line of its own and only comments
+// and blank lines are between them (not an access specifier, a preprocessor
+// line, a nested type). A member takes the comment lines right above it along;
+// everything else in the record (other comments, functions, blank lines) stays
+// put. A record whose order is kept on purpose (a wire format, a layout shared
+// with C) says so in a comment above it, `// abi-explorer: keep order`, which
+// the other fix writes.
 
-import type { Range, RecordView } from '@abi-explorer/shared/protocol';
-import { formatSizeShort } from '@abi-explorer/shared/format';
-import { tighterOrder } from '@abi-explorer/shared/layoutModel';
+import type { Range } from './protocol.ts';
+import { formatSizeShort } from './format.ts';
+import { reorderWarning, tighterOrder, type ReorderRecord } from './layoutModel.ts';
+
+const KEEP_ORDER = /abi-explorer:\s*keep[- ]order/i;
+const KEEP_ORDER_COMMENT = '// abi-explorer: keep order';
+
+/** The warning on the record's name, or null: its order costs nothing, or is kept on purpose. */
+export function reorderWarningAt(record: ReorderRecord, lines: readonly string[]): string | null {
+  if (!record.nameRange || keepsOrder(record, lines)) return null;
+  return reorderWarning(record);
+}
+
+/** Whether the comments right above the record (or its first line) ask to keep its order. */
+export function keepsOrder(record: ReorderRecord, lines: readonly string[]): boolean {
+  if (!record.extent) return false;
+  const start = record.extent.start.line;
+  if (KEEP_ORDER.test(lines[start] ?? '')) return true;
+  for (let line = start - 1; line >= 0; line--) {
+    const text = lines[line]!.trim();
+    if (KEEP_ORDER.test(text)) return true;
+    if (!isCommentOrTemplateHead(text)) return false;
+  }
+  return false;
+}
+
+/** The warning's other fix: the comment that keeps the order, above the declaration. */
+export function keepOrderEdit(
+  record: ReorderRecord,
+  lines: readonly string[],
+): { range: Range; newText: string } | null {
+  if (!record.extent || keepsOrder(record, lines)) return null;
+  let line = record.extent.start.line;
+  // Above `template <…>` when that is a line of its own.
+  while (line > 0 && /^template\s*</.test(lines[line - 1]!.trim())) line--;
+  const indent = /^\s*/.exec(lines[line] ?? '')![0];
+  const at = { line, character: 0 };
+  return { range: { start: at, end: at }, newText: `${indent}${KEEP_ORDER_COMMENT}\n` };
+}
+
+function isCommentOrTemplateHead(text: string): boolean {
+  return /^(\/\/|\/\*|\*)/.test(text) || /^template\s*</.test(text);
+}
 
 export interface ReorderAction {
   title: string;
@@ -16,7 +60,10 @@ export interface ReorderAction {
 }
 
 /** The action for `record`, given the document's lines, or null where it would not be safe. */
-export function reorderAction(record: RecordView, lines: readonly string[]): ReorderAction | null {
+export function reorderAction(
+  record: ReorderRecord,
+  lines: readonly string[],
+): ReorderAction | null {
   const tighter = tighterOrder(record);
   if (!tighter) return null;
   const memberLines = record.members.map((member) => member.nameRange?.start.line);

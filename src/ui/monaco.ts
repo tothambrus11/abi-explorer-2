@@ -8,6 +8,7 @@ import type { Language } from '$core/options';
 import { THEMES, type Theme } from '$core/themes';
 import { spaced } from '$core/spaced';
 import type { MemberDot } from '$state/editor-view';
+import type { EditorSpan, LayoutWarning } from '$state/layout-warnings';
 import { widenToTemplateArgs } from '$state/type-hover';
 import { HYLO_LANGUAGE_ID, HYLO_TOKENS, HYLO_CONFIGURATION } from './hylo-language';
 
@@ -99,6 +100,12 @@ export interface EditorHandle {
   setLanguage(lang: Language): void;
   /** Replaces the squiggles. An empty list clears them. */
   setDiagnostics(diags: Diagnostic[]): void;
+  /**
+   * Replaces the reorder warnings, found in `analysed`: their fixes are offered
+   * only while the buffer still holds that text, since edits by stale positions
+   * would land in the wrong place.
+   */
+  setLayoutWarnings(warnings: LayoutWarning[], analysed: string | null): void;
   /** Replaces the member circles in the gutter. */
   setMemberDots(dots: MemberDot[]): void;
   /** Subtle whole-line tint plus, when given, a strong highlight on the member's name. */
@@ -134,6 +141,13 @@ export interface CreateEditorOptions {
    * at a time, so an abandoned hover must not queue ahead of the next analysis.
    */
   typeHover: (line: number, word: WordAt, signal: AbortSignal) => Promise<string | null>;
+}
+
+/** The reorder warning's marker owner and source, as the language server names it. */
+const LAYOUT_OWNER = 'abi-explorer';
+
+function rangeOf(span: EditorSpan): monaco.Range {
+  return new monaco.Range(span.line, span.col, span.endLine, span.endCol);
 }
 
 /** How many editors this page has made, so each model has a name of its own. */
@@ -264,6 +278,43 @@ export function createEditor(container: HTMLElement, opts: CreateEditorOptions):
     },
   );
 
+  // The reorder warning's fixes, offered as Monaco offers any quick fix: the
+  // light bulb, Ctrl+. and the warning's hover. Applied as an edit, so they
+  // reach the app's history like typing does.
+  let layoutWarnings: LayoutWarning[] = [];
+  let layoutAnalysed: string | null = null;
+  const codeActionDisposable = monaco.languages.registerCodeActionProvider(
+    Object.values(MONACO_LANGUAGE).map((l) => l.id),
+    {
+      provideCodeActions(m, range, context) {
+        const none = { actions: [], dispose: () => undefined };
+        if (m !== model || m.getValue() !== layoutAnalysed) return none;
+        const actions = layoutWarnings
+          .filter((w) => monaco.Range.areIntersectingOrTouching(rangeOf(w.extent), range))
+          .flatMap((w) => {
+            const markers = context.markers.filter(
+              (mk) => mk.source === LAYOUT_OWNER && mk.startLineNumber === w.span.line,
+            );
+            return w.fixes.map((fix): monaco.languages.CodeAction => ({
+              title: fix.title,
+              kind: 'quickfix',
+              diagnostics: markers,
+              isPreferred: fix.preferred,
+              edit: {
+                edits: fix.edits.map((e) => ({
+                  resource: model.uri,
+                  versionId: model.getVersionId(),
+                  textEdit: { range: rangeOf(e.span), text: e.text },
+                })),
+              },
+            }));
+          });
+        return { actions, dispose: () => undefined };
+      },
+    },
+    { providedCodeActionKinds: ['quickfix'] },
+  );
+
   let hoverAt: { line: number; col: number } | null = null;
   let hoverPos: string | null = null;
   editor.onMouseMove((e) => {
@@ -324,6 +375,24 @@ export function createEditor(container: HTMLElement, opts: CreateEditorOptions):
           };
         });
       monaco.editor.setModelMarkers(model, 'clang', markers);
+    },
+    setLayoutWarnings(warnings, analysed) {
+      layoutWarnings = warnings;
+      layoutAnalysed = analysed;
+      monaco.editor.setModelMarkers(
+        model,
+        LAYOUT_OWNER,
+        warnings.map((w) => ({
+          severity: monaco.MarkerSeverity.Warning,
+          message: w.message,
+          startLineNumber: w.span.line,
+          startColumn: w.span.col,
+          endLineNumber: w.span.endLine,
+          endColumn: w.span.endCol,
+          source: LAYOUT_OWNER,
+          code: 'reorder',
+        })),
+      );
     },
     setMemberDots(list) {
       // The circle is drawn by the decoration on the first character of the
@@ -406,6 +475,7 @@ export function createEditor(container: HTMLElement, opts: CreateEditorOptions):
     dispose() {
       editor.removeContentWidget(inlayWidget);
       hoverDisposable.dispose();
+      codeActionDisposable.dispose();
       editor.dispose();
       model.dispose();
     },

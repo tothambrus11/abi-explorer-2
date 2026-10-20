@@ -204,6 +204,21 @@ export function recordSummary(record: RecordView): string {
   return parts.join(' · ');
 }
 
+/** What the reorder warning and its fixes read of a member. */
+export type ReorderMember = Pick<
+  MemberView,
+  'kind' | 'label' | 'offsetBits' | 'sizeBits' | 'alignBits' | 'nameRange'
+>;
+
+/**
+ * What they read of a record: as little as the web explorer, which has no
+ * `RecordView`, can build from its own model.
+ */
+export type ReorderRecord = Pick<
+  RecordView,
+  'kind' | 'name' | 'sizeBits' | 'alignBits' | 'paddingBytes' | 'nameRange' | 'extent'
+> & { members: readonly ReorderMember[] };
+
 /**
  * The members (as indices) in the order that packs them tightest, and the
  * size that order would give; null when the order already costs nothing, or
@@ -211,7 +226,7 @@ export function recordSummary(record: RecordView): string {
  * bit-fields and unions are laid out by rules a reorder does not simply
  * change).
  */
-export function tighterOrder(record: RecordView): { order: number[]; sizeBits: number } | null {
+export function tighterOrder(record: ReorderRecord): { order: number[]; sizeBits: number } | null {
   if (record.kind === 'union' || record.paddingBytes === 0 || record.members.length < 2) {
     return null;
   }
@@ -231,8 +246,8 @@ export function tighterOrder(record: RecordView): { order: number[]; sizeBits: n
     end = member.offsetBits + member.sizeBits;
   }
   // `#pragma pack` lowers the record's alignment, and each member's with it.
-  const alignOf = (member: MemberView) => Math.min(member.alignBits, record.alignBits);
-  const place = (order: readonly { member: MemberView }[]) => {
+  const alignOf = (member: ReorderMember) => Math.min(member.alignBits, record.alignBits);
+  const place = (order: readonly { member: ReorderMember }[]) => {
     let end = 0;
     const offsets = order.map(({ member }) => {
       const offset = roundUp(end, alignOf(member));
@@ -259,7 +274,7 @@ export function tighterOrder(record: RecordView): { order: number[]; sizeBits: n
  * `Packet would take 32 B instead of 40 B with its members ordered as b, a, c.`,
  * or null (see `tighterOrder`).
  */
-export function reorderWarning(record: RecordView): string | null {
+export function reorderWarning(record: ReorderRecord): string | null {
   const tighter = tighterOrder(record);
   if (!tighter) return null;
   // The order itself while it is short enough to read in one line.

@@ -1229,6 +1229,33 @@ test.describe('ABI Explorer', () => {
     await expect(page.locator('#record-chips .chip')).toHaveCount(2);
   });
 
+  test('a member order that wastes space: a warning, its quick fix, and undo', async ({ page }) => {
+    await waitReady(page);
+    expect(await statValues(page)).toEqual(['40', '8', '13']);
+    const warning = page.locator('.monaco-editor .squiggly-warning');
+    await expect(warning).toHaveCount(1);
+
+    // The language server's fix, offered as Monaco offers any: Ctrl+. on the name.
+    await hoverWord(page, 'struct Example', 'Example');
+    await page.mouse.down();
+    await page.mouse.up();
+    await page.keyboard.press('ControlOrMeta+.');
+    // The reorder is the preferred fix, so it is the one the menu opens on.
+    const reorder = page.getByRole('option', {
+      name: /Reorder members by alignment \(40 B → 32 B\)/,
+    });
+    await expect(reorder).toHaveClass(/focused/);
+    await expect(page.getByRole('option', { name: /Keep this member order/ })).toBeVisible();
+    await page.keyboard.press('Enter');
+    await expect.poll(() => statValues(page)).toEqual(['32', '8', '5']);
+    await expect(warning).toHaveCount(0);
+
+    // One step of the app's own history, like any edit.
+    await page.keyboard.press('ControlOrMeta+z');
+    await expect.poll(() => statValues(page)).toEqual(['40', '8', '13']);
+    await expect(warning).toHaveCount(1);
+  });
+
   test('an unknown triple says so instead of showing an empty panel', async ({ page }) => {
     // A triple is free text, so this is a thing users do. The failure has no
     // source location (it happens before a line of the file is read), so it

@@ -68,6 +68,9 @@ export default defineConfig({
         './packages/share-link/src/index.ts',
         import.meta.url,
       ).pathname,
+      // What the editor plugins share with the app (the reorder warning), on
+      // its source like the share-link package.
+      '@abi-explorer/shared': new URL('./editors/shared/src', import.meta.url).pathname,
       $core: new URL('./src/core', import.meta.url).pathname,
       $compiler: new URL('./src/compiler', import.meta.url).pathname,
       $state: new URL('./src/state', import.meta.url).pathname,

@@ -29,6 +29,7 @@
     "allowImportingTsExtensions": true,
     "paths": {
       "@ambrus-toth/abi-explorer-share-link": ["./packages/share-link/src/index.ts"],
+      "@abi-explorer/shared/*": ["./editors/shared/src/*"],
       "$core/*": ["./src/core/*"],
       "$compiler/*": ["./src/compiler/*"],
       "$state/*": ["./src/state/*"],

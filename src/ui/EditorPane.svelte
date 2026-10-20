@@ -12,6 +12,7 @@
   import { createEditor, setEditorTheme, type EditorHandle } from './monaco';
   import { theme } from '$state/theme.svelte';
   import { memberDots } from '$state/editor-view';
+  import { layoutWarnings } from '$state/layout-warnings';
   import Controls from './Controls.svelte';
 
   const { source, session }: { source: Source; session: SourceSession } = $props();
@@ -49,6 +50,7 @@
   const value = $derived(source.text);
   const language = $derived(source.options.lang);
   const diagnostics = $derived(source.analysis?.diagnostics ?? []);
+  const warnings = $derived(source.analysis ? layoutWarnings(source.analysis) : []);
   // Dots only for what is on screen: the active record in tabs mode, all when stacked.
   const dots = $derived(
     memberDots(session.lines.values(), new Set(source.sections.map((s) => s.key))),
@@ -70,6 +72,9 @@
   });
   $effect(() => {
     editor?.setDiagnostics(diagnostics);
+  });
+  $effect(() => {
+    editor?.setLayoutWarnings(warnings, source.analysis?.source ?? null);
   });
   $effect(() => {
     editor?.setMemberDots(dots);

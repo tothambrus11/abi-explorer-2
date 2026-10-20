@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { RecordView } from '@abi-explorer/shared/protocol';
 import { testRecord, type TestMember } from '../../../shared/test/records.ts';
-import { reorderAction } from '../../src/layout/reorderAction.ts';
+import { reorderAction } from '@abi-explorer/shared/reorder';
 
 /** `struct Packet` declared on `lines`, its members at the given lines. */
 function packet(lines: number[]): RecordView {

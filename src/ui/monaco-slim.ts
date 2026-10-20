@@ -10,6 +10,7 @@ import 'monaco-editor/editor/contrib/bracketMatching/browser/bracketMatching.js'
 import 'monaco-editor/editor/contrib/caretOperations/browser/caretOperations.js';
 import 'monaco-editor/editor/contrib/caretOperations/browser/transpose.js';
 import 'monaco-editor/editor/contrib/clipboard/browser/clipboard.js';
+import 'monaco-editor/editor/contrib/codeAction/browser/codeActionContributions.js';
 import 'monaco-editor/editor/contrib/comment/browser/comment.js';
 import 'monaco-editor/editor/contrib/contextmenu/browser/contextmenu.js';
 import 'monaco-editor/editor/contrib/cursorUndo/browser/cursorUndo.js';
