@@ -25,16 +25,10 @@ import { ToolchainProber } from './compile/toolchain.ts';
 import { EngineClient } from './engine/engineClient.ts';
 import { ensureEngineFiles } from './engine/engineFiles.ts';
 import { createPathMap } from './engine/pathMap.ts';
-import {
-  DIAGNOSTIC_SOURCE,
-  keepOrderEdit,
-  layoutDiagnostics,
-  REORDER_CODE,
-} from './layout/diagnostics.ts';
+import { DIAGNOSTIC_SOURCE, layoutDiagnostics, REORDER_CODE } from './layout/diagnostics.ts';
 import { memberHover, recordHover } from './layout/hover.ts';
 import { typeNameAt } from './layout/typeNameAt.ts';
 import { pinAction } from './layout/pinAction.ts';
-import { reorderAction } from './layout/reorderAction.ts';
 import { textLayout } from './layout/textLayout.ts';
 import packageJson from '../package.json' with { type: 'json' };
 import {
@@ -53,6 +47,7 @@ import {
   type Range,
   type RecordView,
 } from '@abi-explorer/shared/protocol';
+import { keepOrderEdit, reorderAction } from '@abi-explorer/shared/reorder';
 
 /** How long a hover or layout request waits for a document's first analysis before answering without it. */
 const FIRST_ANALYSIS_WAIT_MS = 1_500;

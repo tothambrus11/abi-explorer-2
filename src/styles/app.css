@@ -298,6 +298,11 @@ input.input {
   white-space: pre;
   pointer-events: none;
 }
+/* The quick-fix menu is sized by its rows' widths, and a title free to shrink
+   came out a few pixels short of its own text: `(40 B → 3…` hid the answer. */
+.monaco-editor .action-widget .monaco-list-row.action .title {
+  flex: none;
+}
 @media (prefers-reduced-motion: reduce) {
   .monaco-editor .member-dot::before {
     transition: none;

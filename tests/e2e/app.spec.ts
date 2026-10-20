@@ -75,7 +75,8 @@ test.describe('the theme control', () => {
     // Pressing it keeps it, and the list closes.
     await paper.hover();
     await paper.click();
-    await expect(page.locator('[role=listbox]')).toHaveCount(0);
+    // By role, so hidden ones do not count: Monaco's light bulb is a listbox too.
+    await expect(page.getByRole('listbox')).toHaveCount(0);
     expect(await page_bg()).toBe(worn);
 
     // Nothing of the try survives once the list is shut: leaving the row after
@@ -1227,6 +1228,33 @@ test.describe('ABI Explorer', () => {
     await page.keyboard.type(';');
     await expect(page.locator('[role=status].ok')).toBeVisible();
     await expect(page.locator('#record-chips .chip')).toHaveCount(2);
+  });
+
+  test('a member order that wastes space: a warning, its quick fix, and undo', async ({ page }) => {
+    await waitReady(page);
+    expect(await statValues(page)).toEqual(['40', '8', '13']);
+    const warning = page.locator('.monaco-editor .squiggly-warning');
+    await expect(warning).toHaveCount(1);
+
+    // The language server's fix, offered as Monaco offers any: Ctrl+. on the name.
+    await hoverWord(page, 'struct Example', 'Example');
+    await page.mouse.down();
+    await page.mouse.up();
+    await page.keyboard.press('ControlOrMeta+.');
+    // The reorder is the preferred fix, so it is the one the menu opens on.
+    const reorder = page.getByRole('option', {
+      name: /Reorder members by alignment \(40 B → 32 B\)/,
+    });
+    await expect(reorder).toHaveClass(/focused/);
+    await expect(page.getByRole('option', { name: /Keep this member order/ })).toBeVisible();
+    await page.keyboard.press('Enter');
+    await expect.poll(() => statValues(page)).toEqual(['32', '8', '5']);
+    await expect(warning).toHaveCount(0);
+
+    // One step of the app's own history, like any edit.
+    await page.keyboard.press('ControlOrMeta+z');
+    await expect.poll(() => statValues(page)).toEqual(['40', '8', '13']);
+    await expect(warning).toHaveCount(1);
   });
 
   test('an unknown triple says so instead of showing an empty panel', async ({ page }) => {

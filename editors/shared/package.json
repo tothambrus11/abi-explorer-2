@@ -8,6 +8,7 @@
   "exports": {
     "./protocol": "./src/protocol.ts",
     "./layoutModel": "./src/layoutModel.ts",
+    "./reorder": "./src/reorder.ts",
     "./format": "./src/format.ts",
     "./splitCommandLine": "./src/splitCommandLine.ts",
     "./targets": "./src/targets.ts"

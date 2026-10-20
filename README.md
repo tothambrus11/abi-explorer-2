@@ -27,9 +27,13 @@ bytes with none.
   padding. The Examples menu has one of each.
 - Try the flags that change layout, such as `-fpack-struct`, `-mms-bitfields`
   and `-fshort-enums`.
+- Get a warning when a struct's member order wastes space, with a quick fix
+  (Ctrl+.) that reorders the members, the same one the editor extensions offer.
 - Share a link to exactly what you are looking at. In
   [Compiler Explorer](https://godbolt.org), "Open in ABI Explorer" brings your
   code across.
+
+![The quick fixes for a struct whose member order wastes space: reorder the members by alignment, from 40 B to 32 B, or keep the order](docs/reorder-quick-fix.png)
 
 ## In your editor
 

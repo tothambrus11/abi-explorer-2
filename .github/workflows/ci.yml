@@ -53,7 +53,8 @@ jobs:
         working-directory: packages/share-link
 
   # Whether a pull request touches the web app at all; one that only changes
-  # editors/ (which the Editors release workflow builds and tests) skips e2e.
+  # editors/ (which the Editors release workflow builds and tests) skips e2e,
+  # except editors/shared/, whose reorder warning the app shows too.
   changes:
     runs-on: ubuntu-latest
     outputs:
@@ -65,8 +66,12 @@ jobs:
           fetch-depth: 0
       - id: diff
         run: |
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            changed=$(git diff --name-only "$BASE" HEAD)
+          fi
           if [ "$GITHUB_EVENT_NAME" != pull_request ] ||
-            git diff --name-only "$BASE" HEAD | grep -qvE '^(editors/|\.github/workflows/editors-release\.yml$)'; then
+            grep -qvE '^(editors/|\.github/workflows/editors-release\.yml$)' <<< "$changed" ||
+            grep -q '^editors/shared/' <<< "$changed"; then
             echo web=true >> "$GITHUB_OUTPUT"
           else
             echo web=false >> "$GITHUB_OUTPUT"
