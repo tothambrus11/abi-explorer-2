@@ -4,7 +4,7 @@ See how your C and C++ structs are laid out in memory, using your project's
 own compile flags: each member's offset, the padding between them, and the
 struct's size and alignment.
 
-![Hovering a struct shows its byte map with 10 bytes of padding; the quick fix reorders its members and the struct shrinks from 24 to 16 bytes](https://raw.githubusercontent.com/tothambrus11/abi-explorer-2/main/editors/vscode/media/demo.gif)
+![Hovering a struct shows its byte map with 10 bytes of padding; the quick fix reorders its members and the struct shrinks from 24 to 16 bytes](media/demo.gif)
 
 ## Features
 
