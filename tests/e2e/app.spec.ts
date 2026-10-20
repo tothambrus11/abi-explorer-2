@@ -75,7 +75,8 @@ test.describe('the theme control', () => {
     // Pressing it keeps it, and the list closes.
     await paper.hover();
     await paper.click();
-    await expect(page.locator('[role=listbox]')).toHaveCount(0);
+    // By role, so hidden ones do not count: Monaco's light bulb is a listbox too.
+    await expect(page.getByRole('listbox')).toHaveCount(0);
     expect(await page_bg()).toBe(worn);
 
     // Nothing of the try survives once the list is shut: leaving the row after
