@@ -2,7 +2,7 @@
   "name": "abi-explorer",
   "displayName": "ABI Explorer",
   "description": "Sizes, offsets and padding of C and C++ structs in hovers and a layout view, from your project's own compile flags.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "hylo-lang",
   "icon": "images/icon.png",
   "license": "Apache-2.0",
@@ -103,8 +103,8 @@
     "package": "node build.mjs && vsce package --no-dependencies --baseImagesUrl https://raw.githubusercontent.com/tothambrus11/abi-explorer-2/HEAD/editors/vscode --out dist/abi-explorer.vsix"
   },
   "devDependencies": {
-    "@abi-explorer/layout-panel": "0.1.0",
-    "@abi-explorer/shared": "0.1.0",
+    "@abi-explorer/layout-panel": "0.2.0",
+    "@abi-explorer/shared": "0.2.0",
     "@types/vscode": "^1.95.0",
     "@vscode/vsce": "^3.9.2",
     "vscode-languageclient": "^10.1.2"
