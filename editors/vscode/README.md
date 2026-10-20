@@ -1,21 +1,69 @@
 # ABI Explorer for VS Code
 
-See how your C and C++ structs are laid out, with your project's own compile flags and target:
+See how your C and C++ structs are laid out in memory, using your project's
+own compile flags: each member's offset, the padding between them, and the
+struct's size and alignment.
 
-- **Hover** a struct's name for its size, alignment, padding and a byte map; hover a member for its offset. Uses of a type hover the same way, library types included: `std::string`, `std::vector<int>`.
-- A **warning** on a struct whose member order wastes space, saying how small another order would make it. A struct laid out on purpose (a wire format, say) keeps its order with `// abi-explorer: keep order` above it, which the warning's other fix, **Keep this member order**, writes.
-- **Refactorings** on a struct (the light bulb, or `Ctrl+.`): **Reorder members by alignment**, the quick fix for that warning, moves the member lines into the order that packs tightest (positional initializers such as `{'a', 1.5}` elsewhere then need the new order too); **Pin layout with static_assert** adds assertions of its size, alignment and (where the file includes `<cstddef>`) member offsets, so a change that moves them stops the build.
-- **Struct Layout** view in the Explorer, drawn as the web explorer draws a layout: a tab per struct, its size tiles, a byte grid (bit by bit for bit-fields, striped where union members share a byte) and the nested member table. It follows the caret; click a member to jump to it, a compound member's name to open its struct (in its header, if that is where it is declared), or hover a byte to light up its member here and in the editor. Members of the struct on screen get a dot in their colour, as on the web.
+![Hovering a struct shows its byte map with 10 bytes of padding; the quick fix reorders its members and the struct shrinks from 24 to 16 bytes](https://raw.githubusercontent.com/tothambrus11/abi-explorer-2/main/editors/vscode/media/demo.gif)
 
-Flags come from, in order: CMake Tools, `compile_commands.json` (searched like clangd does, or the directory clangd or the C/C++ extension is told to use), `compile_flags.txt`, then `abiExplorer.fallbackFlags`. System headers are found by asking the project's compiler, the way clangd's `--query-driver` does; MSVC (`cl.exe`, `clang-cl`) projects are supported.
+## Features
 
-The layout engine (clang compiled to WebAssembly, about 50 MB) is downloaded once on first use and shared by every editor that uses it.
+- **Hover a struct** for its size, alignment, padding and a map of its bytes.
+  Hover a member for its offset. Any use of a type works too, library types
+  like `std::string` included.
+- **Find wasted space.** A struct whose member order leaves holes gets a
+  warning that says how small it could be. The quick fix (`Ctrl+.`, or `Cmd+.`
+  on macOS) reorders the members to pack them tightly. Positional initializers
+  such as `{true, 42}` elsewhere then need the new order too. If the order is
+  deliberate, say for a wire format, choose **Keep this member order**, which
+  adds `// abi-explorer: keep order` above the struct.
+- **Pin a layout.** The light bulb on any struct also offers _Pin layout with
+  static_assert_, which adds assertions for its size and alignment (and member
+  offsets, if the file includes `<cstddef>` or `<stddef.h>`), so a change that
+  moves them breaks the build.
+- **Struct Layout view.** A panel in the Explorer side bar (or run **ABI
+  Explorer: Show Struct Layout**) shows the byte grid and member table of the
+  struct under your cursor. Click a member to jump to it; hover a byte to
+  highlight its member in the code.
+- **Other targets.** Run **ABI Explorer: Choose Target…** to see the layout on
+  another platform, such as 32-bit Arm or Windows, without a cross toolchain.
+
+## Getting started
+
+Open a C or C++ file and hover a struct. The extension picks up your compile
+flags from, in order:
+
+1. CMake Tools, if you use it
+2. `compile_commands.json`, found the way clangd finds it, or wherever clangd
+   or the C/C++ extension is told to look
+3. `compile_flags.txt`
+4. the `abiExplorer.fallbackFlags` setting
+
+System headers come from asking your project's compiler (GCC, Clang or MSVC).
+A compiler inside your workspace is run only if `abiExplorer.allowedCompilers`
+lists it.
+
+On first use the extension downloads the layout engine (about 50 MB) once.
+It is clang compiled to WebAssembly, so it runs the same on every platform.
+
+If a hover says _Nothing could be laid out_, the reason follows, usually a
+missing include path. Fix it in your compile commands or
+`abiExplorer.fallbackFlags`; if the hover doesn't pick that up, run **ABI
+Explorer: Restart Server**.
 
 ## Settings
 
-| Setting | Default | |
-|:--|:--|:--|
-| `abiExplorer.compileCommandsDir` | | Where `compile_commands.json` is, when it is not found by searching |
-| `abiExplorer.allowedCompilers` | `[]` | Globs of compilers inside the workspace that may be run |
-| `abiExplorer.fallbackFlags` | `[]` | Flags for files no compile command covers |
-| `abiExplorer.target` | | Lay structs out for another target, such as `armv7-unknown-linux-gnueabihf`, with the engine's bundled headers; **ABI Explorer: Choose Target…** picks one |
+| Setting                          | What it does                                                                                                                     |
+| :------------------------------- | :------------------------------------------------------------------------------------------------------------------------------- |
+| `abiExplorer.target`             | Lay structs out for another target triple, such as `armv7-unknown-linux-gnueabihf`; your `-I`, `-D` and `-std` flags still apply |
+| `abiExplorer.fallbackFlags`      | Flags for files no compile command covers, such as `["-std=c++20", "-Iinclude"]`                                                 |
+| `abiExplorer.compileCommandsDir` | Where `compile_commands.json` is, if searching doesn't find it                                                                   |
+| `abiExplorer.allowedCompilers`   | Globs of compilers inside your workspace that may be run to find system headers (none by default)                                |
+
+## More
+
+- [abiexplorer.org](https://abiexplorer.org): the same layouts in your browser,
+  for more than 40 targets, and for the [Hylo](https://hylo-lang.org) language
+- [Source and issues](https://github.com/tothambrus11/abi-explorer-2)
+- Also available for CLion, Zed and Neovim, from the
+  [releases page](https://github.com/tothambrus11/abi-explorer-2/releases)
