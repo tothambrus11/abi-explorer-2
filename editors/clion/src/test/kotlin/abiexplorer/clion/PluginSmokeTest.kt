@@ -9,7 +9,9 @@ import com.intellij.openapi.extensions.PluginId
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.progress.EmptyProgressIndicator
 import com.intellij.openapi.wm.ToolWindowEP
+import com.intellij.serviceContainer.AlreadyDisposedException
 import com.intellij.testFramework.LightVirtualFile
+import com.intellij.testFramework.LoggedErrorProcessor
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.jetbrains.cidr.lang.workspace.OCWorkspace
 import org.eclipse.lsp4j.ClientCapabilities
@@ -30,6 +32,7 @@ import org.eclipse.lsp4j.jsonrpc.services.JsonNotification
 import org.eclipse.lsp4j.services.LanguageClient
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.EnumSet
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 
@@ -87,7 +90,24 @@ class PluginSmokeTest : BasePlatformTestCase() {
         // Something bundled turns on the quick documentation popup when the first
         // project opens, and the platform's check would blame this test for it.
         CodeInsightSettings.getInstance().AUTO_POPUP_JAVADOC_INFO = CodeInsightSettings().AUTO_POPUP_JAVADOC_INFO
-        super.tearDown()
+        // CLion Nova's backend starts with the project and may still be sending its models
+        // when the test closes it; those land on the disposed project and are logged as
+        // errors that are not this plugin's. Every other error still fails the test.
+        LoggedErrorProcessor.executeWith<Throwable>(NovaShutdownRace) { super.tearDown() }
+    }
+
+    private object NovaShutdownRace : LoggedErrorProcessor() {
+        override fun processError(
+            category: String,
+            message: String,
+            details: Array<String>,
+            t: Throwable?,
+        ): Set<LoggedErrorProcessor.Action> =
+            if (generateSequence(t) { it.cause }.any { it is AlreadyDisposedException }) {
+                EnumSet.of(LoggedErrorProcessor.Action.LOG)
+            } else {
+                super.processError(category, message, details, t)
+            }
     }
 
     fun testCFamilyFilesStartTheServer() {

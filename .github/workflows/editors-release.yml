@@ -284,7 +284,11 @@ jobs:
           cd "$RUNNER_TEMP"
           mkdir zip npm
           unzip -q "release/abi-explorer-clion-$VERSION.zip" -d zip
-          unzip -q -o "$(find zip -name 'abi-explorer-clion-*.jar' | head -1)" 'server/*' 'panel/*' -d zip/jar
+          # The plugin's jar is the one carrying the server; lib/ holds others, such as
+          # the searchable options jar, and find lists them in no fixed order.
+          jar=$(for j in $(find zip -name '*.jar'); do if unzip -l "$j" server/server.js >/dev/null 2>&1; then echo "$j"; fi; done | head -1)
+          test -n "$jar"
+          unzip -q -o "$jar" 'server/*' 'panel/*' -d zip/jar
           tar xzf "release/hylo-lang-abi-explorer-$VERSION.tgz" -C npm
           cmp zip/jar/server/server.js npm/package/dist/server.js
           cmp zip/jar/server/engineWorker.js npm/package/dist/engineWorker.js
