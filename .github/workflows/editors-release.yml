@@ -244,8 +244,9 @@ jobs:
           ABI_EXPLORER_SERVER: ${{ runner.temp }}/lsp/node_modules/@hylo-lang/abi-explorer/bin/abi-explorer-lsp.js
           NEOVIM_PLUGIN: ${{ runner.temp }}/neovim/abi-explorer.nvim
 
-  # The plugin in the real IntelliJ Platform of CLion (PluginSmokeTest), and a
-  # check that the zip carries the very server the other smoke jobs ran.
+  # The plugin in the real IntelliJ Platform of CLion (PluginSmokeTest), in the
+  # oldest CLion it supports and the newest, and a check that the zip carries the
+  # very server the other smoke jobs ran.
   smoke-clion:
     needs: build
     runs-on: ubuntu-latest
@@ -284,6 +285,9 @@ jobs:
       # No engine is provided: the server downloads the pinned release, as for a user.
       - run: ./gradlew test
         working-directory: editors/clion
+      - name: The same in the newest CLion
+        working-directory: editors/clion
+        run: ./gradlew test -PplatformVersion="$(sed -n 's/^newestPlatformVersion *= *//p' gradle.properties)"
       - name: The release would sign and publish this zip, not a new build
         working-directory: editors/clion
         run: |

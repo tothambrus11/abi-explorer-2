@@ -1,6 +1,6 @@
 # ABI Explorer for CLion
 
-CLion 2025.3 or newer (classic or Nova engine). Install `abi-explorer-clion-<version>.zip` from an
+CLion 2025.3.1 or newer (classic or Nova engine). Install `abi-explorer-clion-<version>.zip` from an
 [editors release](https://github.com/tothambrus11/abi-explorer-2/releases) with Settings › Plugins › ⚙ ›
 Install Plugin from Disk…; it is not on the JetBrains Marketplace yet.
 

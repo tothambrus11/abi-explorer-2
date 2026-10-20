@@ -37,6 +37,11 @@ dependencies {
     intellijPlatform {
         clion(providers.gradleProperty("platformVersion"))
         bundledPlugin("com.intellij.clion")
+        // JCEF (the tool window's browser) is a module of its own since 2026.1; before that it
+        // is part of the platform, and the alias plugin.xml depends on resolves to the core.
+        if (providers.gradleProperty("platformVersion").get().substringBefore('.').toInt() >= 2026) {
+            bundledPlugin("com.intellij.modules.jcef")
+        }
         pluginVerifier()
         testFramework(TestFrameworkType.Platform)
     }
@@ -69,6 +74,7 @@ intellijPlatform {
         )
         ides {
             create(IntelliJPlatformType.CLion, providers.gradleProperty("platformVersion").get())
+            create(IntelliJPlatformType.CLion, providers.gradleProperty("newestPlatformVersion").get())
         }
     }
 }

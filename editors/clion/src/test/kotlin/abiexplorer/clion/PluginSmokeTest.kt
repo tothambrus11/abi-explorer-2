@@ -64,6 +64,11 @@ class PluginSmokeTest : BasePlatformTestCase() {
         }
         assertTrue("the language server is registered among ${lspProviders.map { it.javaClass.name }}", registered)
         assertTrue("the tool window is registered", ToolWindowEP.EP_NAME.extensionList.any { it.id == "Struct Layout" })
+        // The tool window's browser, as the plugin's own class loader sees it: since 2026.1 JCEF is a
+        // module the plugin reaches only through its dependency on it.
+        val loader = PluginManagerCore.getPlugin(id)!!.pluginClassLoader
+        println("ABI Explorer smoke test: plugin class loader ${loader?.javaClass?.name}")
+        assertNotNull("JCEF from the plugin", (loader ?: javaClass.classLoader).loadClass("com.intellij.ui.jcef.JBCefApp"))
         assertTrue(
             "the settings page is registered",
             Configurable.PROJECT_CONFIGURABLE.getExtensions(project).any { it.id == "abiexplorer.settings" },

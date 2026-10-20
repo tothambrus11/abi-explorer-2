@@ -18,6 +18,9 @@
        classic engine, which CLion Nova (the default since 2025.3) does not load, so a
        plugin requiring it would not load there at all. -->
   <depends>com.intellij.modules.clion</depends>
+  <!-- The Struct Layout tool window's browser. A module of its own since 2026.1, which a
+       plugin only sees when it says so; an alias of the core in 2025.3.1 and later. -->
+  <depends>com.intellij.modules.jcef</depends>
 
   <extensions defaultExtensionNs="com.intellij">
     <platform.lsp.serverSupportProvider implementation="abiexplorer.clion.AbiExplorerLspSupport"/>
