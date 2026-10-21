@@ -3,6 +3,8 @@ package abiexplorer.screenshotdriver
 import com.intellij.codeInsight.daemon.impl.HighlightInfo
 import com.intellij.ide.ui.UISettings
 import com.intellij.lang.annotation.HighlightSeverity
+import com.intellij.notification.Notification
+import com.intellij.notification.NotificationsManager
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.ActionPlaces
 import com.intellij.openapi.application.ApplicationInfo
@@ -25,7 +27,6 @@ import com.intellij.openapi.wm.WindowManager
 import com.intellij.openapi.wm.ex.ToolWindowEx
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.currentCoroutineContext
@@ -82,9 +83,10 @@ class ScreenshotDriver : ProjectActivity {
             runCatching { shots.capture("failure") }
         } finally {
             if (System.getProperty("abiexplorer.screenshots.stay") == null) {
-                withContext(NonCancellable) {
-                    onEdt { ApplicationManager.getApplication().exit(true, true, false) }
-                }
+                // Non-modal: exiting saves documents, which is not allowed from the "any" modality.
+                ApplicationManager.getApplication().invokeLater(
+                    { ApplicationManager.getApplication().exit(true, true, false) }, ModalityState.nonModal(),
+                )
             }
         }
     }
@@ -215,6 +217,15 @@ private class Shots(private val project: Project, private val out: Path) {
         }
         placeFrame(1880, 1040)
         val editor = open("demo.cpp", "Message {")
+        awaitProjectDialogs()
+        // A fresh CLion's notifications and other tabs would cover the editor.
+        onEdt {
+            val notifications = NotificationsManager.getNotificationsManager()
+            (notifications.getNotificationsOfType(Notification::class.java, project) +
+                notifications.getNotificationsOfType(Notification::class.java, null)).forEach { it.expire() }
+            val manager = FileEditorManager.getInstance(project)
+            manager.openFiles.filter { it != editor.virtualFile }.forEach { manager.closeFile(it) }
+        }
         // The editor and, beside it, the Struct Layout tool window: no other tool windows.
         val panelWindow = onEdt {
             val manager = ToolWindowManager.getInstance(project)
@@ -227,7 +238,8 @@ private class Shots(private val project: Project, private val out: Path) {
             val width = panelWindow.component.width
             if (panelWindow is ToolWindowEx && width > 0) runCatching { panelWindow.stretchWidth(frameWidth * 45 / 100 - width) }
         }
-        caretAt(editor, 0)
+        // The caret in the struct, so the panel shows its layout from the first frame.
+        caretAt(editor, editor.document.text.indexOf("Message {") + 3)
         val neutral = onEdt {
             val visible = editor.contentComponent.visibleRect
             val point = Point(visible.x + visible.width * 3 / 4, visible.y + visible.height * 3 / 4)
@@ -405,12 +417,38 @@ private class Shots(private val project: Project, private val out: Path) {
         log("saved $name.png")
     }
 
-    /** Accepts dialogs a fresh CLion opens over the project (the CMake profile wizard, say), never a licence one. */
+    /**
+     * Waits for the CMake profile dialog a fresh project opens, which can come up well after the
+     * plugin's warning, to show and close again (closeDialogs accepts it): 60 s when none comes.
+     */
+    private suspend fun awaitProjectDialogs() {
+        val start = System.nanoTime()
+        var seen = false
+        var quietSince = System.nanoTime()
+        while (true) {
+            val showing = onEdt { Window.getWindows().any { it is java.awt.Dialog && it.isShowing } }
+            val now = System.nanoTime()
+            if (showing) {
+                seen = true
+                quietSince = now
+            }
+            val quiet = (now - quietSince) / 1_000_000 >= 3_000
+            val waited = (now - start) / 1_000_000
+            if (quiet && (seen || waited >= 60_000) || waited >= 180_000) break
+            delay(500)
+        }
+        log(if (seen) "the project's dialogs closed" else "no project dialog for 60 s")
+    }
+
+    /**
+     * Accepts dialogs a fresh CLion opens over the project (the CMake profile wizard, which CLion 2026.3
+     * opens modeless, say), never a licence one.
+     */
     suspend fun closeDialogs() {
         while (true) {
             delay(2_000)
             val closed = onEdt {
-                Window.getWindows().filterIsInstance<JDialog>().filter { it.isShowing && it.isModal }.mapNotNull { dialog ->
+                Window.getWindows().filterIsInstance<JDialog>().filter { it.isShowing && (it.isModal || DialogWrapper.findInstance(it) != null) }.mapNotNull { dialog ->
                     val title = dialog.title.orEmpty()
                     if ("licen" in title.lowercase()) return@mapNotNull null
                     val button = dialog.rootPane.defaultButton

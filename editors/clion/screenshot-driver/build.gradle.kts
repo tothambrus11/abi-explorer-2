@@ -46,6 +46,8 @@ val sampleCopy = layout.buildDirectory.dir("sample")
 val syncSample by tasks.registering(Sync::class) {
     from("sample")
     into(sampleCopy)
+    // CLion saves the reordered struct on exit; always start from the original.
+    outputs.upToDateWhen { false }
 }
 
 tasks.runIde {
@@ -62,5 +64,13 @@ tasks.runIde {
         "-Djb.consents.confirmation.enabled=false",
         "-Djb.privacy.policy.text=<!--999.999-->",
         "-Dide.browser.jcef.sandbox.enable=false",
+        // Cloud containers run as root, where CLion otherwise suspends the panel's browser.
+        "-Dide.browser.jcef.run-under-superuser.allowed=true",
     )
+    // Newer CLions' AI agent and onboarding put promos over the editor, and the OS integration daemon
+    // reports an IDE error in containers. CLion rewrites this file on exit.
+    val disabled = sandboxConfigDirectory.file("disabled_plugins.txt")
+    doFirst {
+        disabled.get().asFile.writeText("com.intellij.air\norg.jetbrains.completion.full.line\ntraining\ncom.intellij.platform.daemon\n")
+    }
 }

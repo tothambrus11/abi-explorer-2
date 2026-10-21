@@ -14,7 +14,8 @@ python3 make-gif.py build/screenshots/demo ../media/demo.gif --start 1000
 ```
 
 `-PscreenshotIde="/path/to/CLion"` runs an installed CLion (its licence too) instead of the
-2025.3.1 Gradle downloads; `-Pzoom=1.75` zooms the IDE further for the demo (1.5 by default).
+2025.3.1 Gradle downloads (a CLion EAP works too, signed in to a JetBrains Account; on a headless
+Linux box run it under `Xvfb :99 -screen 0 1920x1080x24` with `DISPLAY=:99`, as root if need be); `-Pzoom=1.75` zooms the IDE further for the demo (1.5 by default).
 The **stills** hover `struct Packet` and a member in `main.cpp`, show quick documentation, the
 intentions and the Struct Layout tool window. The **demo** opens the Struct Layout tool window
 beside `demo.cpp`, hovers `struct Message`, applies **Reorder members by alignment** with
