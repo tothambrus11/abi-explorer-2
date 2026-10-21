@@ -129,9 +129,11 @@ export function renderPanel(
     });
     chips.append(chip);
   }
-  const toggle = element('button', 'icon-button', state.stacked ? '▭' : '☰');
+  const toggle = element('button', 'icon-button');
   toggle.type = 'button';
+  toggle.append(state.stacked ? icon(PANEL_TOP) : icon(ROWS_3));
   toggle.title = state.stacked ? 'Show one record at a time (tabs)' : 'Show all records stacked';
+  toggle.setAttribute('aria-label', 'Toggle between tabs and stacked view');
   toggle.setAttribute('aria-pressed', String(state.stacked));
   toggle.addEventListener('click', () => {
     state.stacked = !state.stacked;
@@ -263,36 +265,40 @@ function recordSection(
 function summary(record: RecordView): HTMLElement {
   const box = element('div', 'summary');
   const size = record.sizeBits / 8;
-  const tile = (label: string, value: string, unit: string, title: string, warn = false) => {
+  /** `unit` and, for the compact tiles of a narrow pane, its short form. */
+  const tile = (
+    label: string,
+    value: string,
+    unit: [string, string],
+    title: string,
+    warn = false,
+  ) => {
     const node = element('div', warn ? 'tile warn' : 'tile');
     node.title = title;
-    node.append(
-      element('div', 'label', label),
-      element('div', 'value', value),
-      element('div', 'unit', unit),
-    );
+    const units = element('div', 'unit');
+    units.append(element('span', 'long', unit[0]), element('span', 'short', unit[1]));
+    node.append(element('div', 'label', label), element('div', 'value', value), units);
     return node;
   };
   const padding = record.paddingBytes;
+  const share = padding !== null && size ? ` · ${Math.round((100 * padding) / size)}%` : '';
   box.append(
     tile(
       'sizeof',
       String(size),
-      'bytes',
+      ['bytes', 'B'],
       'sizeof: the bytes one object of this type takes, including any trailing padding. An array element is spaced by exactly this much.',
     ),
     tile(
       'alignof',
       String(record.alignBits / 8),
-      'bytes',
+      ['bytes', 'B'],
       'alignof: the address boundary an object of this type must start on.',
     ),
     tile(
       'padding',
       padding === null ? '-' : String(padding),
-      padding === null
-        ? 'not measured'
-        : `bytes${size ? ` · ${Math.round((100 * padding) / size)}%` : ''}`,
+      padding === null ? ['not measured', ''] : [`bytes${share}`, `B${share}`],
       padding === null
         ? 'Not measured: the record is too large to scan byte by byte.'
         : 'Bytes inside sizeof that no member occupies, inserted to keep members aligned.',
@@ -363,7 +369,8 @@ function byteGrid(record: RecordView): { element: HTMLElement } {
     return { element: box };
   }
 
-  const perRow = bytesPerRow(size);
+  // A narrow pane gets 8 columns: 16 would be too thin to point at.
+  const perRow = narrowPane() ? 8 : bytesPerRow(size);
   const box = element('div', 'grid-box');
   const grid = element('div', 'grid');
   grid.style.setProperty('--bpr', String(perRow));
@@ -673,6 +680,52 @@ function showTip(
 /** The bytes something occupies, as `[first, end)`. */
 function extent(item: { offsetBits: number; sizeBits: number }): [number, number] {
   return [Math.floor(item.offsetBits / 8), Math.ceil((item.offsetBits + item.sizeBits) / 8)];
+}
+
+/** Below this width the grid keeps to 8 bytes a row and the tiles go on one line (panel.css). */
+export const NARROW_QUERY = '(max-width: 440px)';
+
+function narrowPane(): boolean {
+  return window.matchMedia(NARROW_QUERY).matches;
+}
+
+// The web's toggle icons, Lucide's rows-3 and panel-top, as its @lucide/svelte draws them.
+const ROWS_3 = ['M21 9H3', 'M21 15H3'];
+const PANEL_TOP = ['M3 9h18'];
+
+function icon(lines: string[]): SVGSVGElement {
+  const svgNs = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNs, 'svg');
+  for (const [name, value] of Object.entries({
+    width: '16',
+    height: '16',
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    'stroke-width': '2',
+    'stroke-linecap': 'round',
+    'stroke-linejoin': 'round',
+    'aria-hidden': 'true',
+  })) {
+    svg.setAttribute(name, value);
+  }
+  const frame = document.createElementNS(svgNs, 'rect');
+  for (const [name, value] of Object.entries({
+    width: '18',
+    height: '18',
+    x: '3',
+    y: '3',
+    rx: '2',
+  })) {
+    frame.setAttribute(name, value);
+  }
+  svg.append(frame);
+  for (const d of lines) {
+    const path = document.createElementNS(svgNs, 'path');
+    path.setAttribute('d', d);
+    svg.append(path);
+  }
+  return svg;
 }
 
 function element<K extends keyof HTMLElementTagNameMap>(

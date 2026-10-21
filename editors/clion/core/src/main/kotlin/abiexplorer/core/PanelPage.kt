@@ -46,6 +46,8 @@ fun themeCss(theme: PanelTheme): String = buildString {
     append(" --ae-font: ${cssFontFamily(theme.font)}, system-ui, sans-serif;")
     append(" --ae-font-size: ${theme.fontSizePx}px;")
     append(" --ae-mono: ${cssFontFamily(theme.monospaceFont)}, monospace;")
+    // The IDE's scrollbars: a thin rounded thumb, inset from the edge, on no track.
+    append(" --ae-scrollbar-size: 10px; --ae-scrollbar-inset: 2px; --ae-scrollbar-radius: 5px;")
     append(" }")
 }
 

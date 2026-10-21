@@ -22,6 +22,7 @@ class PanelPageTest {
     fun `writes the theme as CSS variables`() {
         val css = themeCss(theme)
         assertContains(css, "--ae-foreground: #dfe1e5;")
+        assertContains(css, "--ae-scrollbar-radius: 5px;")
         assertContains(css, "--ae-mono: \"JetBrains \\\"Mono\\\"\", monospace;")
     }
 
