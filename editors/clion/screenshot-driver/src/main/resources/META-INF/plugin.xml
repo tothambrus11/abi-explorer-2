@@ -1,0 +1,10 @@
+<idea-plugin>
+  <id>abiexplorer.screenshots</id>
+  <name>ABI Explorer Screenshot Driver</name>
+  <vendor>Hylo</vendor>
+  <description>Takes the CLion plugin's screenshots; not for release.</description>
+  <depends>com.intellij.modules.platform</depends>
+  <extensions defaultExtensionNs="com.intellij">
+    <postStartupActivity implementation="abiexplorer.screenshotdriver.ScreenshotDriver"/>
+  </extensions>
+</idea-plugin>
