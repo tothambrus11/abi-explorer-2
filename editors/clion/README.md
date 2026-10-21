@@ -4,6 +4,8 @@ CLion 2025.3.1 or newer (classic or Nova engine). Install `abi-explorer-clion-<v
 [editors release](https://github.com/tothambrus11/abi-explorer-2/releases) with Settings › Plugins › ⚙ ›
 Install Plugin from Disk…; it is not on the JetBrains Marketplace yet.
 
+![The Struct Layout tool window beside the editor shows struct Message at 24 bytes with 10 bytes of padding; hovering it offers Reorder members by alignment, and after Alt+Enter the struct shrinks to 16 bytes](media/demo.gif)
+
 Struct layouts from the project's own compiler and flags:
 
 - **Quick documentation** (hover, or `F1`/`Ctrl+Q`) on a struct or member name, or any use of a
