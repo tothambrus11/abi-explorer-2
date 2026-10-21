@@ -56,6 +56,44 @@
   --c-special: #9a9a94;
 }
 
+/* Scrollbars in the editor's colours. A VS Code webview has its own, from
+   the theme's --vscode-scrollbarSlider-*; the CLion plugin draws the IDE's
+   (thin, rounded, on no track) with --ae-scrollbar-* in place of Chromium's
+   grey bars. */
+::-webkit-scrollbar {
+  width: var(--ae-scrollbar-size, 10px);
+  height: var(--ae-scrollbar-size, 10px);
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: var(--ae-scrollbar-inset, 0px) solid transparent;
+  border-radius: var(--ae-scrollbar-radius, 0);
+  background-color: var(
+    --vscode-scrollbarSlider-background,
+    color-mix(in srgb, var(--ae-foreground) 24%, transparent)
+  );
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(
+    --vscode-scrollbarSlider-hoverBackground,
+    color-mix(in srgb, var(--ae-foreground) 40%, transparent)
+  );
+}
+
+::-webkit-scrollbar-thumb:active {
+  background-color: var(
+    --vscode-scrollbarSlider-activeBackground,
+    color-mix(in srgb, var(--ae-foreground) 50%, transparent)
+  );
+}
+
 body {
   margin: 0;
   padding: 12px 14px;
@@ -102,7 +140,11 @@ body {
 }
 
 .chips button {
+  max-width: 100%;
+  overflow: hidden;
   padding: 4px 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   border: 1px solid var(--border);
   border-radius: 999px;
   color: var(--text-primary);
@@ -131,18 +173,21 @@ body {
 
 .icon-button {
   flex: none;
-  width: 28px;
-  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 7px;
   color: var(--text-secondary);
   background: var(--page);
-  font: inherit;
-  line-height: 1;
   cursor: pointer;
 }
 
 .icon-button:hover {
+  border-color: var(--baseline);
   color: var(--text-primary);
 }
 
@@ -210,17 +255,90 @@ tr.clickable:focus-visible {
   font-size: 12.5px;
 }
 
-/* ByteGrid. */
-.grid-box {
-  margin-bottom: 16px;
-  overflow-x: auto;
+.tile .unit .short {
+  display: none;
 }
 
+/* The web's compact tiles, as on a phone: the three numbers on one line,
+   label and value side by side, instead of three cards stacked. They never
+   wrap: a unit shortens to "B" and, in the narrowest panes, goes, each number
+   taking a third of the line under its label. */
+@media (max-width: 440px) {
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, max-content));
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .tile {
+    display: flex;
+    flex: 0 1 auto;
+    align-items: baseline;
+    gap: 5px;
+    min-width: 0;
+    padding: 3px 8px;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .tile .label {
+    font-size: 10px;
+    letter-spacing: 0.04em;
+  }
+
+  .tile .value {
+    font-size: 15px;
+  }
+
+  .tile .unit {
+    font-size: 10.5px;
+  }
+
+  .tile .unit .long {
+    display: none;
+  }
+
+  .tile .unit .short {
+    display: inline;
+  }
+
+  .extras {
+    grid-column: 1 / -1;
+    font-size: 11.5px;
+  }
+}
+
+@media (max-width: 340px) {
+  .summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .tile {
+    display: block;
+    padding: 3px 6px;
+  }
+
+  .tile .label {
+    font-size: 9px;
+  }
+
+  .tile .value {
+    line-height: 1.1;
+  }
+
+  .tile .unit {
+    display: none;
+  }
+}
+
+/* The web's columns are 26 to 44px wide; here they also give way to a narrow
+   pane, down to 14px, and the rows with them, rather than scroll sideways. */
 .grid {
   --band-ink: color-mix(in srgb, var(--text-primary) 62%, transparent);
   display: grid;
-  grid-template-columns: minmax(40px, auto) repeat(var(--bpr, 8), minmax(26px, 44px));
-  width: max-content;
+  grid-template-columns: minmax(28px, auto) repeat(var(--bpr, 8), minmax(14px, 44px));
+  justify-content: start;
   font-size: 11px;
 }
 
@@ -247,7 +365,8 @@ tr.clickable:focus-visible {
 
 .cell {
   position: relative;
-  height: 30px;
+  /* 30px at the full 44px column, as on the web, and in proportion below. */
+  height: clamp(18px, (100cqw - 28px) / var(--bpr, 8) * 30 / 44, 30px);
   border: 1px solid var(--surface-1);
   border-radius: 3px;
   box-sizing: border-box;

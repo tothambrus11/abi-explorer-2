@@ -4,7 +4,8 @@
 // `window.abiExplorerHost` before loading this script.
 
 import type { HostMessage, PanelMessage } from './messages.ts';
-import { initialState, renderPanel } from './render.ts';
+import type { LayoutResult } from '@abi-explorer/shared/protocol';
+import { initialState, NARROW_QUERY, renderPanel } from './render.ts';
 
 declare global {
   interface Window {
@@ -23,26 +24,38 @@ const post: (message: PanelMessage) => void =
 const root = document.getElementById('root')!;
 const state = initialState();
 
+let latest: LayoutResult | null = null;
+
 window.addEventListener('message', (event: MessageEvent<HostMessage>) => {
   // Other extensions' messages can reach a webview too.
   if ((event.data as HostMessage | undefined)?.type === 'layout') {
-    document.documentElement.dataset.mode = isLight() ? 'light' : 'dark';
-    renderPanel(root, event.data.result, state, {
-      reveal: (range, uri) => {
-        post({ type: 'reveal', range, ...(uri !== undefined && { uri }) });
-      },
-      mark: (ranges) => {
-        post({ type: 'mark', ranges });
-      },
-      shown: (recordIds) => {
-        post({ type: 'shown', recordIds });
-      },
-      copy: (text) => {
-        post({ type: 'copy', text });
-      },
-    });
+    latest = event.data.result;
+    render(latest);
   }
 });
+
+// The grid has fewer columns in a narrow pane: draw it again when the pane crosses over.
+window.matchMedia(NARROW_QUERY).addEventListener('change', () => {
+  if (latest) render(latest);
+});
+
+function render(result: LayoutResult): void {
+  document.documentElement.dataset.mode = isLight() ? 'light' : 'dark';
+  renderPanel(root, result, state, {
+    reveal: (range, uri) => {
+      post({ type: 'reveal', range, ...(uri !== undefined && { uri }) });
+    },
+    mark: (ranges) => {
+      post({ type: 'mark', ranges });
+    },
+    shown: (recordIds) => {
+      post({ type: 'shown', recordIds });
+    },
+    copy: (text) => {
+      post({ type: 'copy', text });
+    },
+  });
+}
 
 /** Is the panel's ground light? Then the member colours are the web's light set. */
 function isLight(): boolean {

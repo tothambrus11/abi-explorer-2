@@ -304,9 +304,25 @@ describe('renderPanel', () => {
 
   it('stacks every record, as the web view toggle does', () => {
     renderPanel(root, result(), state, actions);
+    const paths = () =>
+      [...root.querySelectorAll('.icon-button svg path')].map((path) => path.getAttribute('d'));
+    // The web's icons: Lucide's rows-3, then panel-top to go back to tabs.
+    expect(paths()).toEqual(['M21 9H3', 'M21 15H3']);
     root.querySelector<HTMLButtonElement>('.icon-button')!.click();
     expect(texts('.title')).toEqual(['struct Packet', 'struct Header']);
     expect(root.querySelector<HTMLElement>('.chips')!.hidden).toBe(true);
+    expect(paths()).toEqual(['M3 9h18']);
+  });
+
+  it('keeps a large record to 8 bytes a row in a narrow pane', () => {
+    const big = record(5, 'Big', [member('id', 0, 4, 51)], 96, 92);
+    const columns = () => root.querySelectorAll('.grid .col').length;
+    renderPanel(root, result({ records: [big], selection: null }), state, actions);
+    expect(columns()).toBe(16);
+    vi.spyOn(window, 'matchMedia').mockReturnValue({ matches: true } as MediaQueryList);
+    renderPanel(root, result({ records: [big], selection: null }), state, actions);
+    expect(columns()).toBe(8);
+    vi.restoreAllMocks();
   });
 
   it('says why there is nothing to show', () => {
