@@ -2,14 +2,15 @@ package abiexplorer.clion
 
 import abiexplorer.core.NodeRuntime
 import com.intellij.execution.configurations.GeneralCommandLine
-import com.intellij.execution.configurations.PathEnvironmentVariableUtil
 import com.intellij.execution.util.ExecUtil
 import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.util.SystemInfo
+import com.intellij.util.EnvironmentUtil
 import com.intellij.util.io.Decompressor
 import com.intellij.util.io.HttpRequests
 import com.intellij.util.system.CpuArch
+import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
@@ -45,9 +46,13 @@ class ServerRuntime(private val node: Path, private val script: Path) {
         }
 
         private fun systemNode(): Path? {
-            val node = PathEnvironmentVariableUtil.findInPath(if (SystemInfo.isWindows) "node.exe" else "node") ?: return null
-            val version = runCatching { ExecUtil.execAndGetOutput(GeneralCommandLine(node.path, "--version"), 5_000) }.getOrNull()
-            return node.toPath().takeIf { version != null && NodeRuntime.isSupported(version.stdout) }
+            // The IDE's PATH, which on macOS is the login shell's, as a terminal would see it.
+            val path = EnvironmentUtil.getValue("PATH") ?: return null
+            val node = path.split(File.pathSeparatorChar).filter { it.isNotBlank() }
+                .mapNotNull { runCatching { Path.of(it.trim('"'), if (SystemInfo.isWindows) "node.exe" else "node") }.getOrNull() }
+                .firstOrNull { Files.isRegularFile(it) && Files.isExecutable(it) } ?: return null
+            val version = runCatching { ExecUtil.execAndGetOutput(GeneralCommandLine(node.toString(), "--version"), 5_000) }.getOrNull()
+            return node.takeIf { version != null && NodeRuntime.isSupported(version.stdout) }
         }
 
         private fun downloadNode(indicator: ProgressIndicator): Path {
