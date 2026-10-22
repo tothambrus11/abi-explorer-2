@@ -4,3 +4,4 @@ build/
 core/build/
 core/.gradle/
 core/.kotlin/
+.intellijPlatform/
